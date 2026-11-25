@@ -153,13 +153,13 @@ const LIGHTING = [
 ];
 
 function cleanPremise(value: string): string {
-  return value.trim().replace(/\\s+/g, " ").slice(0, 700);
+  return value.trim().replace(/\s+/g, " ").slice(0, 700);
 }
 
 function durationInSeconds(duration: string): number {
   const normalized = duration.toLowerCase();
-  const minutes = normalized.match(/(\\d+(?:[.,]\\d+)?)\\s*min/);
-  const seconds = normalized.match(/(\\d+(?:[.,]\\d+)?)\\s*seg/);
+  const minutes = normalized.match(/(\d+(?:[.,]\d+)?)\s*min/);
+  const seconds = normalized.match(/(\d+(?:[.,]\d+)?)\s*seg/);
   if (minutes) return Math.max(15, Math.round(Number(minutes[1].replace(",", ".")) * 60));
   if (seconds) return Math.max(10, Math.round(Number(seconds[1].replace(",", "."))));
   return 60;
@@ -277,5 +277,5 @@ export function buildProductionPrompt(plan: StoryPlan): string {
       "",
     ]),
     "NOTA: este plano foi preparado localmente. Nenhuma imagem ou vídeo foi gerado.",
-  ].join("\\n");
+  ].join("\n");
 }
