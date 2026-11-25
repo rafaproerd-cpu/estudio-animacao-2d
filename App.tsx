@@ -598,6 +598,13 @@ export default function App() {
             {(["videoWidthNode", "videoHeightNode", "videoFramesNode", "videoFpsNode", "videoSeedNode"] as const).map((key, index) => <TextInput key={key} value={comfyConfig[key] || ""} onChangeText={value => setComfyConfig(prev => ({ ...prev, [key]: value }))} keyboardType="number-pad" placeholder={["Larg.", "Alt.", "Frames", "FPS", "Seed"][index]} placeholderTextColor="#777789" style={[styles.smallInput, { flex: 1 }]} />)}
           </View>
           <Text style={styles.note}>O workflow de imagem termina em SaveImage. O de vídeo precisa ter LoadImage conectado ao modelo de animação e SaveVideo na saída. Os nomes de entrada padrão do adaptador são image, text, width, height, length, fps e seed. Cada clique gera um clipe de referência de 4 segundos a 16 FPS.</Text>
+          <Text style={styles.step}>MONTAGEM DO MP4 FINAL · SERVIDOR PRÓPRIO</Text>
+          <Text style={styles.note}>Este serviço usa FFmpeg na mesma máquina ou rede do ComfyUI. Configure-o seguindo render-server/README.md.</Text>
+          <Text style={styles.label}>ENDEREÇO DO SERVIDOR DE MONTAGEM</Text>
+          <TextInput value={comfyConfig.renderBaseUrl || ""} onChangeText={value => setComfyConfig(prev => ({ ...prev, renderBaseUrl: value }))} autoCapitalize="none" placeholder="http://IP-DO-SERVIDOR:8765" placeholderTextColor="#777789" style={styles.input} />
+          <Text style={styles.label}>TOKEN DE ACESSO DO SERVIDOR</Text>
+          <TextInput value={comfyConfig.renderToken || ""} onChangeText={value => setComfyConfig(prev => ({ ...prev, renderToken: value }))} autoCapitalize="none" secureTextEntry placeholder="Token configurado no servidor" placeholderTextColor="#777789" style={styles.smallInput} />
+          <TouchableOpacity style={styles.secondary} onPress={testRenderConnection}><Text style={styles.secondaryText}>TESTAR SERVIDOR DE MONTAGEM</Text></TouchableOpacity>
           <TouchableOpacity style={styles.secondary} onPress={saveComfyConfig}><Text style={styles.secondaryText}>SALVAR CONFIGURAÇÃO</Text></TouchableOpacity>
           <TouchableOpacity style={styles.primary} onPress={testComfyConnection}><Text style={styles.primaryText}>TESTAR CONEXÃO</Text><Text style={styles.arrow}>→</Text></TouchableOpacity>
         </View>}\n
@@ -692,7 +699,28 @@ export default function App() {
               <TouchableOpacity style={styles.primary} disabled={!!busyScene || !!batchProgress} onPress={generateAllSceneVideos}>
                 <Text style={styles.primaryText}>{batchProgress ? "PROCESSANDO VÍDEOS…" : "ANIMAR CENAS PENDENTES"}</Text><Text style={styles.arrow}>▶</Text>
               </TouchableOpacity>
-              <Text style={styles.note}>Gera os clipes em sequência usando as imagens já criadas. A montagem em um único MP4 com transições e áudio ainda será uma etapa separada.</Text>
+              <Text style={styles.note}>Gera os clipes em sequência usando as imagens já criadas.</Text>
+              <TouchableOpacity style={styles.primary} disabled={!!busyScene || !!batchProgress} onPress={renderFinalVideo}>
+                <Text style={styles.primaryText}>{busyScene === "render:final" ? "MONTANDO MP4 FINAL…" : "MONTAR TODAS AS CENAS EM UM MP4"}</Text><Text style={styles.arrow}>▣</Text>
+              </TouchableOpacity>
+              {selected.finalVideoUri ? <>
+                <Text style={styles.label}>VÍDEO COMPLETO DO PROJETO</Text>
+                <SceneVideoPlayer uri={selected.finalVideoUri} />
+                <TouchableOpacity style={styles.secondary} onPress={async () => {
+                  if (!selected.finalVideoUri?.startsWith("file://")) {
+                    Alert.alert("Arquivo indisponível", "Baixe novamente o MP4 final para exportá-lo.");
+                    return;
+                  }
+                  try {
+                    await Sharing.shareAsync(selected.finalVideoUri, { mimeType: "video/mp4", dialogTitle: "Exportar MP4 final", UTI: "public.movie" });
+                  } catch (error) {
+                    Alert.alert("Não foi possível exportar", error instanceof Error ? error.message : "Tente novamente.");
+                  }
+                }}>
+                  <Text style={styles.secondaryText}>EXPORTAR MP4 FINAL PARA ARQUIVOS</Text>
+                </TouchableOpacity>
+              </> : null}
+              <Text style={styles.note}>A montagem atual concatena os clipes em 1024×576, 30 FPS e H.264. Voz, música e transições ainda serão adicionadas em etapas próprias.</Text>
             </View>
             <TouchableOpacity style={styles.primary} onPress={copyScript}>
               <Text style={styles.primaryText}>COPIAR ROTEIRO</Text><Text style={styles.arrow}>⧉</Text>
