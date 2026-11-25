@@ -466,7 +466,10 @@ export default function App() {
       if (!voices.length) Alert.alert("Nenhuma voz instalada", "Instale o Piper e adicione pelo menos um modelo .onnx na pasta de vozes do render-server.");
     } catch (error) {
       Alert.alert("Vozes indisponíveis", error instanceof Error ? error.message : "Verifique o servidor Piper.");
-    }\n  };\n\n  const generateAiNarration = async () => {
+    }
+  };
+
+  const generateAiNarration = async () => {
     if (!selected) return;
     const dialogue = selected.scenes.map(scene => (scene.dialogue || "").trim()).filter(Boolean).join("\\n\\n");
     if (!dialogue) { Alert.alert("Roteiro sem diálogos", "Adicione falas às cenas antes de gerar a narração."); return; }
@@ -496,7 +499,9 @@ export default function App() {
       Alert.alert("Falha na geração de voz", error instanceof Error ? error.message : "Não foi possível gerar a narração.");
     } finally {
       setBusyScene(null);
-    }\n  };\n  const renderFinalVideo = async () => {
+    }\n  };
+
+  const renderFinalVideo = async () => {
     if (!selected) return;
     const missingClips = selected.scenes.filter(scene => !scene.videoUri);
     if (missingClips.length) {
