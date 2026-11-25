@@ -11,13 +11,7 @@
       "bundleIdentifier": "com.rafaproerd.estudioanimacao2d"
     },
     "android": {
-      "package": "com.rafaproerd.estudioanimacao2d",
-      "adaptiveIcon": {
-        "backgroundColor": "#11111B"
-      }
-    },
-    "plugins": [
-      "expo-status-bar"
-    ]
+      "package": "com.rafaproerd.estudioanimacao2d"
+    }
   }
 }
