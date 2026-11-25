@@ -18,6 +18,10 @@
     },
     "android": {
       "package": "com.rafaproerd.estudioanimacao2d"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
     }
   }
 }
