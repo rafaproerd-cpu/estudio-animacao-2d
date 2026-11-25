@@ -179,3 +179,8 @@ A tela do projeto agora mostra um resumo da linha do tempo: quantidade de imagen
 ## Geração sequencial de imagens
 
 A tela de linha do tempo também oferece geração em lote das imagens que ainda não existem. O aplicativo percorre as cenas pendentes em sequência, usa o prompt visual de cada uma e salva a URI assim que a geração termina. Se o processo falhar, as imagens já concluídas permanecem salvas e o usuário pode retomar sem gerar novamente as cenas que já possuem imagem. Ao substituir uma imagem, o vínculo do clipe antigo daquela cena é limpo para evitar que um vídeo desatualizado seja confundido com a nova referência.
+
+
+## Exportar um clipe para Arquivos ou outro aplicativo
+
+Foi adicionada a dependência `expo-sharing` compatível com SDK 54 (`~14.0.8`). Depois de baixar um clipe para o armazenamento privado do aplicativo, o botão **Exportar para Arquivos / Compartilhar** abre a folha nativa de compartilhamento. No iPhone, o usuário pode escolher Salvar em Arquivos ou outro destino compatível. O compartilhamento não move nem apaga a cópia interna do projeto. A exportação é por clipe; ainda não cria um único MP4 com todas as cenas.
