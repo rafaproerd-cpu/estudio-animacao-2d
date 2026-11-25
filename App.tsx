@@ -434,7 +434,13 @@ export default function App() {
         Alert.alert("Formato não aceito", "Escolha um áudio MP3, WAV, M4A, AAC, OGG ou FLAC.");
         return;
       }
-      saveUpdatedProject({ ...selected, [kind]: asset.uri, finalVideoUri: undefined, finalVideoRemoteUri: undefined });
+      const audioDirectory = (FileSystem.documentDirectory || "") + "project-audio/";
+      const directoryInfo = await FileSystem.getInfoAsync(audioDirectory);
+      if (!directoryInfo.exists) await FileSystem.makeDirectoryAsync(audioDirectory, { intermediates: true });
+      const safeName = asset.name.replace(/[^a-zA-Z0-9._-]+/g, "-");
+      const permanentUri = audioDirectory + selected.id + "-" + kind + "-" + Date.now() + "-" + safeName;
+      await FileSystem.copyAsync({ from: asset.uri, to: permanentUri });
+      saveUpdatedProject({ ...selected, [kind]: permanentUri, finalVideoUri: undefined, finalVideoRemoteUri: undefined });
     } catch (error) {
       Alert.alert("Não foi possível selecionar o áudio", error instanceof Error ? error.message : "Tente novamente.");
     }
