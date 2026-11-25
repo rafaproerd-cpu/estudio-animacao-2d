@@ -14,7 +14,7 @@ import { createStoryPlan, type Genre } from "./src/engine/storyEngine";
 import { ComfyUiImageProvider, type ComfyUiImageWorkflow } from "./src/engine/providers/comfyuiImageProvider";
 import { ComfyUiVideoProvider, type ComfyUiVideoWorkflow } from "./src/engine/providers/comfyuiVideoProvider";
 
-type Scene = { title: string; description: string; dialogue: string; imagePrompt: string; videoPrompt: string; shot: string; camera: string; lighting: string; imageUri?: string; videoUri?: string; videoRemoteUri?: string };
+type Scene = { title: string; description: string; dialogue: string; imagePrompt: string; videoPrompt: string; shot: string; camera: string; lighting: string; voiceId?: string; imageUri?: string; videoUri?: string; videoRemoteUri?: string };
 type Project = {
   id: string;
   title: string;
@@ -472,8 +472,8 @@ export default function App() {
 
   const generateAiNarration = async () => {
     if (!selected) return;
-    const dialogue = selected.scenes.map(scene => (scene.dialogue || "").trim()).filter(Boolean).join("\n\n");
-    if (!dialogue) { Alert.alert("Roteiro sem diálogos", "Adicione falas às cenas antes de gerar a narração."); return; }
+    const segments = selected.scenes.filter(scene => (scene.dialogue || "").trim()).map(scene => ({ text: scene.dialogue.trim(), voice: scene.voiceId || selectedTtsVoice }));
+    if (!segments.length) { Alert.alert("Roteiro sem diálogos", "Adicione falas às cenas antes de gerar a narração."); return; }
     if (!selectedTtsVoice) { Alert.alert("Escolha uma voz", "Atualize a lista e selecione uma voz Piper disponível."); return; }
     let baseUrl = (comfyConfig.renderBaseUrl || "").trim();
     while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
@@ -481,10 +481,10 @@ export default function App() {
     if (!baseUrl || !token) { Alert.alert("Configure a montagem", "Informe o endereço e o token do servidor nas configurações."); setShowSettings(true); return; }
     setBusyScene("tts:project");
     try {
-      const response = await fetch(baseUrl + "/tts", {
+      const response = await fetch(baseUrl + "/tts/batch", {
         method: "POST",
         headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ text: dialogue, voice: selectedTtsVoice }),
+        body: JSON.stringify({ segments }),
       });
       const payload = await response.json();
       if (!response.ok || !payload.download_url) throw new Error(payload.detail || "O servidor não conseguiu gerar a voz.");
@@ -671,6 +671,11 @@ export default function App() {
     saveUpdatedProject(updated);
   };
 
+  const updateSceneVoice = (sceneTitle: string, voiceId: string) => {
+    if (!selected) return;
+    saveUpdatedProject({ ...selected, scenes: selected.scenes.map(scene => scene.title === sceneTitle ? { ...scene, voiceId } : scene) });
+  };
+
   const updateScene = (sceneTitle: string, field: "description" | "dialogue" | "imagePrompt" | "videoPrompt", value: string) => {
     if (!selected) return;
     saveUpdatedProject({
@@ -813,6 +818,7 @@ export default function App() {
               <TextInput value={scene.description} onChangeText={value => updateScene(scene.title, "description", value)} multiline textAlignVertical="top" placeholder="Descreva o que acontece nesta cena..." placeholderTextColor="#777789" style={styles.sceneInput} />
               <Text style={styles.label}>FALA / DIÁLOGO</Text>
               <TextInput value={scene.dialogue} onChangeText={value => updateScene(scene.title, "dialogue", value)} multiline textAlignVertical="top" placeholder="Escreva a fala do personagem..." placeholderTextColor="#777789" style={styles.sceneInput} />
+              {ttsVoices.length ? <><Text style={styles.label}>VOZ DESTA CENA</Text><View style={styles.chips}>{ttsVoices.map(voice => <TouchableOpacity key={voice} style={[styles.chip, (scene.voiceId || selectedTtsVoice) === voice && styles.chipActive]} onPress={() => updateSceneVoice(scene.title, voice)}><Text style={[styles.chipText, (scene.voiceId || selectedTtsVoice) === voice && styles.chipTextActive]}>{voice}</Text></TouchableOpacity>)}</View></> : null}
               <Text style={styles.label}>ENQUADRAMENTO · {(scene.shot || "plano médio").toUpperCase()}</Text>
               <Text style={styles.body}>Câmera: {scene.camera}{"\n"}Luz: {scene.lighting}</Text>
               <Text style={styles.label}>PROMPT VISUAL · EDITÁVEL</Text>
