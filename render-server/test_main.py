@@ -46,6 +46,71 @@ class RenderServerTests(unittest.TestCase):
             main.API_TOKEN = original
 
 
+    def test_lists_local_piper_voice_models(self):
+        original = main.PIPER_VOICES_DIR
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                main.PIPER_VOICES_DIR = Path(temp_dir)
+                (Path(temp_dir) / "pt_BR-faber-medium.onnx").write_bytes(b"model")
+                (Path(temp_dir) / "not-a-model.txt").write_text("ignored")
+                self.assertEqual(main.available_piper_voices(), ["pt_BR-faber-medium"])
+        finally:
+            main.PIPER_VOICES_DIR = original
+
+    def test_tts_rejects_empty_text_and_invalid_voice(self):
+        original_token = main.API_TOKEN
+        try:
+            main.API_TOKEN = "integration-test-token"
+            with self.assertRaises(HTTPException) as empty:
+                main.generate_tts(main.TTSRequest(text="  ", voice="voice"), "Bearer integration-test-token")
+            self.assertEqual(empty.exception.status_code, 400)
+            with self.assertRaises(HTTPException) as invalid:
+                main.generate_tts(main.TTSRequest(text="Olá", voice="../voice"), "Bearer integration-test-token")
+            self.assertEqual(invalid.exception.status_code, 400)
+        finally:
+            main.API_TOKEN = original_token
+
+    def test_tts_rejects_missing_voice_model(self):
+        original_token = main.API_TOKEN
+        original_voices = main.PIPER_VOICES_DIR
+        try:
+            main.API_TOKEN = "integration-test-token"
+            with tempfile.TemporaryDirectory() as temp_dir:
+                main.PIPER_VOICES_DIR = Path(temp_dir)
+                with self.assertRaises(HTTPException) as raised:
+                    main.generate_tts(main.TTSRequest(text="Olá", voice="pt_BR-test"), "Bearer integration-test-token")
+                self.assertEqual(raised.exception.status_code, 404)
+        finally:
+            main.API_TOKEN = original_token
+            main.PIPER_VOICES_DIR = original_voices
+
+    def test_tts_generates_wav_with_local_piper_model(self):
+        original_token = main.API_TOKEN
+        original_voices = main.PIPER_VOICES_DIR
+        original_output = main.OUTPUT_DIR
+        try:
+            main.API_TOKEN = "integration-test-token"
+            with tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                voices = root / "voices"
+                voices.mkdir()
+                (voices / "pt_BR-test.onnx").write_bytes(b"model")
+                main.PIPER_VOICES_DIR = voices
+                main.OUTPUT_DIR = root / "outputs"
+                def fake_run(command, **kwargs):
+                    Path(command[command.index("--output_file") + 1]).write_bytes(b"RIFFfake-wav")
+                    class Result:
+                        returncode = 0
+                        stderr = ""
+                    return Result()
+                with patch.object(main.shutil, "which", return_value="/usr/bin/piper"), patch.object(main.subprocess, "run", side_effect=fake_run):
+                    result = main.generate_tts(main.TTSRequest(text="Olá, mundo!", voice="pt_BR-test"), "Bearer integration-test-token")
+                self.assertEqual(result.media_type, "audio/wav")
+                self.assertTrue(Path(result.path).is_file())
+        finally:
+            main.API_TOKEN = original_token
+            main.PIPER_VOICES_DIR = original_voices
+            main.OUTPUT_DIR = original_output
     def test_render_endpoint_normalizes_clips_and_returns_download_path(self):
         original_token = main.API_TOKEN
         original_output = main.OUTPUT_DIR
