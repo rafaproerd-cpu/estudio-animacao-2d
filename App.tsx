@@ -24,14 +24,15 @@ const genres = ["Aventura", "Comédia", "Fantasia", "Ação", "Drama", "Mistéri
 const durations = ["30 segundos", "1 minuto", "2 minutos", "3 minutos", "5 minutos", "10 minutos"];
 
 function buildProject(idea: string, genre: string, duration: string): Project {
-  const plan = createStoryPlan(idea, genre as Genre, duration);
+  const character = "Personagem principal\\nNome: a definir\\nAparência: a definir\\nRoupa: a definir\\nPersonalidade: a definir\\nVoz: a definir\\nRegra de continuidade: manter o mesmo rosto, cabelo, roupa, cores e proporções em todas as cenas.";
+  const plan = createStoryPlan(idea, genre as Genre, duration, character);
   return {
     id: Date.now().toString(),
     title: plan.title,
     idea: plan.premise,
     genre,
     duration,
-    character: "Personagem principal\nNome: a definir\nAparência: a definir\nRoupa: a definir\nPersonalidade: a definir\nVoz: a definir\nRegra de continuidade: manter o mesmo rosto, cabelo, roupa, cores e proporções em todas as cenas.",
+    character,
     scenes: plan.scenes.map(scene => ({
       title: scene.title,
       description: scene.action,
@@ -130,11 +131,31 @@ export default function App() {
     setIdea("");
   };
 
-  const updateCharacter = (value: string) => {
-    if (!selected) return;
-    const updated = { ...selected, character: value };
+  const saveUpdatedProject = (updated: Project) => {
     setSelected(updated);
     setProjects(previous => previous.map(item => item.id === updated.id ? updated : item));
+  };
+
+  const updateCharacter = (value: string) => {
+    if (!selected) return;
+    const plan = createStoryPlan(selected.idea, selected.genre as Genre, selected.duration, value);
+    const updated: Project = {
+      ...selected,
+      character: value,
+      scenes: selected.scenes.map((scene, index) => {
+        const planned = plan.scenes[index];
+        return planned ? { ...scene, imagePrompt: planned.imagePrompt, videoPrompt: planned.videoPrompt } : scene;
+      })
+    };
+    saveUpdatedProject(updated);
+  };
+
+  const updateScene = (sceneTitle: string, field: "description" | "dialogue", value: string) => {
+    if (!selected) return;
+    saveUpdatedProject({
+      ...selected,
+      scenes: selected.scenes.map(scene => scene.title === sceneTitle ? { ...scene, [field]: value } : scene)
+    });
   };
 
   return (
@@ -215,8 +236,10 @@ export default function App() {
             <TextInput value={selected.character} onChangeText={updateCharacter} multiline textAlignVertical="top" placeholder="Descreva aparência, roupa, personalidade e voz do personagem..." placeholderTextColor="#777789" style={styles.characterInput} />
             {selected.scenes.map(scene => <View key={scene.title} style={styles.scene}>
               <Text style={styles.sceneTitle}>{scene.title}</Text>
-              <Text style={styles.body}>{scene.description}</Text>
-              <Text style={styles.dialogue}>{scene.dialogue}</Text>
+              <Text style={styles.label}>AÇÃO DA CENA</Text>
+              <TextInput value={scene.description} onChangeText={value => updateScene(scene.title, "description", value)} multiline textAlignVertical="top" placeholder="Descreva o que acontece nesta cena..." placeholderTextColor="#777789" style={styles.sceneInput} />
+              <Text style={styles.label}>FALA / DIÁLOGO</Text>
+              <TextInput value={scene.dialogue} onChangeText={value => updateScene(scene.title, "dialogue", value)} multiline textAlignVertical="top" placeholder="Escreva a fala do personagem..." placeholderTextColor="#777789" style={styles.sceneInput} />
               <Text style={styles.label}>ENQUADRAMENTO · {(scene.shot || "plano médio").toUpperCase()}</Text>
               <Text style={styles.body}>Câmera: {scene.camera}{"\n"}Luz: {scene.lighting}</Text>
               <Text style={styles.label}>PROMPT VISUAL</Text>
@@ -263,6 +286,7 @@ const styles = StyleSheet.create({
   step: { color: "#A78BFA", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
   panelTitle: { color: "#F7F5FF", fontSize: 22, fontWeight: "800", marginTop: 10, marginBottom: 13 },
   characterInput: { minHeight: 150, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 14, padding: 13, color: "#F7F5FF", fontSize: 13, lineHeight: 21 },
+  sceneInput: { minHeight: 76, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 12, padding: 11, color: "#F7F5FF", fontSize: 12, lineHeight: 19 },
   input: { minHeight: 120, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 14, padding: 13, color: "#F7F5FF", fontSize: 14, lineHeight: 21 },
   counter: { color: "#777789", fontSize: 10, textAlign: "right", marginTop: 7 },
   label: { color: "#C6C2D5", fontSize: 10, fontWeight: "800", letterSpacing: 1.2, marginTop: 21, marginBottom: 10 },
