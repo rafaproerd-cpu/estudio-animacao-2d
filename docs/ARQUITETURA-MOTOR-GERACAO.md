@@ -103,6 +103,6 @@ A implementação segue as rotas HTTP documentadas pelo projeto ComfyUI: https:/
 - Criar uma instância ComfyUI acessível pela rede.
 - Instalar um checkpoint/modelo de imagem compatível e montar um workflow de imagem com nó `SaveImage`.
 - Configurar os IDs dos nós no adaptador.
-- Ligar o adaptador à interface do aplicativo e validar a transferência/visualização do arquivo no iPhone.
+- Adaptador já ligado à interface do aplicativo: há configuração local do servidor/workflow, teste de conexão e botão por cena para gerar e visualizar a imagem retornada.\n- Ainda falta validar a integração com uma instância ComfyUI real e um workflow/modelo concreto no iPhone.
 
 O adaptador não inclui nem baixa modelos automaticamente e não representa geração disponível sem servidor. Ele não usa créditos de geração, mas exige máquina, GPU, energia e armazenamento próprios. Não exponha uma instância ComfyUI sem proteção diretamente à internet; prefira rede privada/VPN e HTTPS. Em iPhone, conexões HTTP sem TLS também podem ser bloqueadas pelas regras de segurança de transporte do iOS.
