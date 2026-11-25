@@ -204,6 +204,8 @@ def generate_tts_batch(payload: TTSBatchRequest, authorization: Annotated[str | 
                         speech_duration = wav_file.getnframes() / float(wav_file.getframerate())
                 except (wave.Error, OSError, ZeroDivisionError, EOFError):
                     speech_duration = segment.duration_seconds
+                if speech_duration > segment.duration_seconds * 2.0:
+                    raise HTTPException(status_code=422, detail="A fala " + str(index + 1) + " é longa demais para a duração desta cena. Encurte o diálogo.")
                 tempo = min(2.0, max(1.0, speech_duration / segment.duration_seconds))
                 audio_filter = f"aresample=22050,atempo={tempo:.4f},apad,atrim=duration={segment.duration_seconds:.3f},aformat=sample_fmts=s16:channel_layouts=mono"
                 fitted_file = temporary_dir / ("fitted-" + str(index).zfill(3) + ".wav")
