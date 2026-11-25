@@ -7,6 +7,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
+import * as DocumentPicker from "expo-document-picker";
 import * as SecureStore from "expo-secure-store";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { createStoryPlan, type Genre } from "./src/engine/storyEngine";
@@ -24,6 +25,8 @@ type Project = {
   scenes: Scene[];
   finalVideoUri?: string;
   finalVideoRemoteUri?: string;
+  narrationUri?: string;
+  musicUri?: string;
   createdAt: string;
 };
 
@@ -420,6 +423,23 @@ export default function App() {
     }
   };
 
+  const pickProjectAudio = async (kind: "narrationUri" | "musicUri") => {
+    if (!selected) return;
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: "audio/*", copyToCacheDirectory: true, multiple: false });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      const extension = asset.name.split(".").pop()?.toLowerCase() || "";
+      if (!["mp3", "wav", "m4a", "aac", "ogg", "flac"].includes(extension)) {
+        Alert.alert("Formato não aceito", "Escolha um áudio MP3, WAV, M4A, AAC, OGG ou FLAC.");
+        return;
+      }
+      saveUpdatedProject({ ...selected, [kind]: asset.uri, finalVideoUri: undefined, finalVideoRemoteUri: undefined });
+    } catch (error) {
+      Alert.alert("Não foi possível selecionar o áudio", error instanceof Error ? error.message : "Tente novamente.");
+    }
+  };
+
   const renderFinalVideo = async () => {
     if (!selected) return;
     const missingClips = selected.scenes.filter(scene => !scene.videoUri);
@@ -444,6 +464,14 @@ export default function App() {
       const form = new FormData();
       form.append("project_name", selected.title);
       let workingProject = selected;
+      const appendAudio = async (uri: string | undefined, field: "narration" | "music") => {
+        if (!uri) return;
+        const extension = uri.split("?")[0].split(".").pop()?.toLowerCase() || "mp3";
+        const mimeTypes: Record<string, string> = { mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4", aac: "audio/aac", ogg: "audio/ogg", flac: "audio/flac" };
+        form.append(field, { uri, name: field + "." + extension, type: mimeTypes[extension] || "application/octet-stream" } as any);
+      };
+      await appendAudio(selected.narrationUri, "narration");
+      await appendAudio(selected.musicUri, "music");
 
       for (let index = 0; index < selected.scenes.length; index += 1) {
         const scene = selected.scenes[index];
@@ -497,7 +525,7 @@ export default function App() {
         finalVideoRemoteUri: remoteFinalUri,
       };
       saveUpdatedProject(completedProject);
-      Alert.alert("MP4 final pronto", "Todas as cenas foram montadas em um único vídeo e salvas no iPhone. O arquivo ainda não contém narração ou trilha sonora.");
+      Alert.alert("MP4 final pronto", "Todas as cenas foram montadas e salvas no iPhone." + (selected.narrationUri || selected.musicUri ? " Os áudios selecionados foram incluídos." : " Você pode adicionar narração e música antes da próxima montagem."));
     } catch (error) {
       Alert.alert("Falha na montagem", error instanceof Error ? error.message : "Não foi possível montar o MP4 final.");
     } finally {
@@ -740,7 +768,13 @@ export default function App() {
                 <Text style={styles.primaryText}>{batchProgress ? "PROCESSANDO VÍDEOS…" : "ANIMAR CENAS PENDENTES"}</Text><Text style={styles.arrow}>▶</Text>
               </TouchableOpacity>
               <Text style={styles.note}>Gera os clipes em sequência usando as imagens já criadas.</Text>
-              <TouchableOpacity style={styles.primary} disabled={!!busyScene || !!batchProgress} onPress={renderFinalVideo}>
+              <Text style={styles.step}>ÁUDIO DO PROJETO</Text>
+              <Text style={styles.note}>Adicione uma narração e/ou música de fundo. A voz será mixada em volume normal e a música em volume reduzido.</Text>
+              <TouchableOpacity style={styles.secondary} onPress={() => pickProjectAudio("narrationUri")} disabled={!!busyScene || !!batchProgress}><Text style={styles.secondaryText}>{selected.narrationUri ? "NARRAÇÃO SELECIONADA · " + selected.narrationUri.split("/").pop() : "ESCOLHER NARRAÇÃO"}</Text></TouchableOpacity>
+              {selected.narrationUri ? <TouchableOpacity style={styles.secondary} onPress={() => saveUpdatedProject({ ...selected, narrationUri: undefined, finalVideoUri: undefined, finalVideoRemoteUri: undefined })}><Text style={styles.secondaryText}>REMOVER NARRAÇÃO</Text></TouchableOpacity> : null}
+              <TouchableOpacity style={styles.secondary} onPress={() => pickProjectAudio("musicUri")} disabled={!!busyScene || !!batchProgress}><Text style={styles.secondaryText}>{selected.musicUri ? "MÚSICA SELECIONADA · " + selected.musicUri.split("/").pop() : "ESCOLHER MÚSICA DE FUNDO"}</Text></TouchableOpacity>
+              {selected.musicUri ? <TouchableOpacity style={styles.secondary} onPress={() => saveUpdatedProject({ ...selected, musicUri: undefined, finalVideoUri: undefined, finalVideoRemoteUri: undefined })}><Text style={styles.secondaryText}>REMOVER MÚSICA</Text></TouchableOpacity> : null}
+              <TouchableOpacity style={styles.primary} disabled={!!busyScene || !!batchProgress} onPress={renderFinalVideo}><Text style={styles.primaryText}>{busyScene === "render:final" ? "MONTANDO MP4 FINAL…" : "MONTAR TODAS AS CENAS EM UM MP4"}</Text><Text style={styles.arrow}>▣</Text></TouchableOpacity>
                 <Text style={styles.primaryText}>{busyScene === "render:final" ? "MONTANDO MP4 FINAL…" : "MONTAR TODAS AS CENAS EM UM MP4"}</Text><Text style={styles.arrow}>▣</Text>
               </TouchableOpacity>
               {selected.finalVideoUri ? <>
@@ -760,7 +794,7 @@ export default function App() {
                   <Text style={styles.secondaryText}>EXPORTAR MP4 FINAL PARA ARQUIVOS</Text>
                 </TouchableOpacity>
               </> : null}
-              <Text style={styles.note}>A montagem atual concatena os clipes em 1024×576, 30 FPS e H.264. Voz, música e transições ainda serão adicionadas em etapas próprias.</Text>
+              <Text style={styles.note}>A montagem concatena os clipes em 1024×576, 30 FPS e H.264. Narração e música podem ser anexadas acima; transições ainda serão adicionadas em uma etapa própria.</Text>
             </View>
             <TouchableOpacity style={styles.primary} onPress={copyScript}>
               <Text style={styles.primaryText}>COPIAR ROTEIRO</Text><Text style={styles.arrow}>⧉</Text>
