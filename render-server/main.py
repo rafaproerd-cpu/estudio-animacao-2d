@@ -202,7 +202,7 @@ def generate_tts_batch(payload: TTSBatchRequest, authorization: Annotated[str | 
                     import wave
                     with wave.open(str(audio_file), "rb") as wav_file:
                         speech_duration = wav_file.getnframes() / float(wav_file.getframerate())
-                except (wave.Error, OSError, ZeroDivisionError):
+                except (wave.Error, OSError, ZeroDivisionError, EOFError):
                     speech_duration = segment.duration_seconds
                 tempo = min(2.0, max(1.0, speech_duration / segment.duration_seconds))
                 audio_filter = f"aresample=22050,atempo={tempo:.4f},apad,atrim=duration={segment.duration_seconds:.3f},aformat=sample_fmts=s16:channel_layouts=mono"
