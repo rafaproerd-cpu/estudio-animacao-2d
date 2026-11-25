@@ -162,7 +162,7 @@ export default function App() {
 
   const testRenderConnection = async () => {
     const url = (comfyConfig.renderBaseUrl || "").trim().replace(/\/+$/, "");
-    if (!/^https?:\\/\\//i.test(url)) {
+    if (!/^https?:\/\//i.test(url)) {
       Alert.alert("Endereço inválido", "Informe o endereço do servidor de montagem, incluindo http:// ou https://.");
       return;
     }
