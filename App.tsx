@@ -7,6 +7,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
+import * as SecureStore from "expo-secure-store";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { createStoryPlan, type Genre } from "./src/engine/storyEngine";
 import { ComfyUiImageProvider, type ComfyUiImageWorkflow } from "./src/engine/providers/comfyuiImageProvider";
@@ -111,11 +112,16 @@ export default function App() {
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem(COMFY_STORAGE_KEY)
-      .then(value => {
-        if (value) setComfyConfig(prev => ({ ...prev, ...(JSON.parse(value) as Partial<ComfyConfig>) }));
+    Promise.all([
+      AsyncStorage.getItem(COMFY_STORAGE_KEY),
+      SecureStore.getItemAsync("@estudio2d/render-token"),
+    ])
+      .then(([value, token]) => {
+        const saved = value ? JSON.parse(value) as Partial<ComfyConfig> : {};
+        delete saved.renderToken;
+        setComfyConfig(prev => ({ ...prev, ...saved, renderToken: token || "" }));
       })
-      .catch(() => Alert.alert("Aviso", "Não foi possível carregar a configuração do ComfyUI."));
+      .catch(() => Alert.alert("Aviso", "Não foi possível carregar as configurações seguras do servidor."));
   }, []);
 
   useEffect(() => {
@@ -135,8 +141,15 @@ export default function App() {
   }, [projects, ready]);
 
   const saveComfyConfig = async () => {
-    try { await AsyncStorage.setItem(COMFY_STORAGE_KEY, JSON.stringify(comfyConfig)); Alert.alert("Configuração salva", "As configurações do servidor foram guardadas neste aparelho."); }
-    catch { Alert.alert("Erro", "Não foi possível salvar a configuração."); }
+    try {
+      const { renderToken, ...publicConfig } = comfyConfig;
+      await AsyncStorage.setItem(COMFY_STORAGE_KEY, JSON.stringify(publicConfig));
+      if (renderToken?.trim()) await SecureStore.setItemAsync("@estudio2d/render-token", renderToken.trim());
+      else await SecureStore.deleteItemAsync("@estudio2d/render-token");
+      Alert.alert("Configuração salva", "Workflows e endereços foram guardados no aparelho; o token fica no armazenamento seguro do iPhone.");
+    } catch {
+      Alert.alert("Erro", "Não foi possível salvar as configurações. Verifique o armazenamento do aparelho.");
+    }
   };
 
   const testComfyConnection = async () => {
