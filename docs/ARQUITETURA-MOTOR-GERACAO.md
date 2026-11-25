@@ -62,3 +62,25 @@ Cada candidato deve ser avaliado por:
 ## Estado atual
 
 A aplicação ainda não tem geração real de imagem, vídeo ou áudio integrada. A próxima fase é escolher e testar um motor de geração que possa ser executado sem cobrar créditos por vídeo, considerando os recursos de hardware disponíveis.
+
+## Pesquisa inicial de modelos (25/11/2026)
+
+### Candidato prioritário para o primeiro teste: Wan2.2 TI2V-5B
+
+- O modelo 5B aceita texto para vídeo e imagem para vídeo, com saída anunciada em 720p/24 fps.
+- O repositório oficial informa execução em GPU de consumo com pelo menos 24 GB de VRAM para o fluxo 720p descrito.
+- O projeto declara licença Apache 2.0 para os modelos.
+- O repositório informa cerca de 9 minutos para gerar 5 segundos em 720p em uma GPU de consumo sem otimizações específicas.
+- Referência oficial: https://github.com/Wan-Video/Wan2.2
+
+**Decisão provisória:** testar Wan2.2 TI2V-5B primeiro, pois o mesmo modelo cobre texto-para-vídeo e imagem-para-vídeo e tem licença clara. Não está integrado ao aplicativo ainda.
+
+### Alternativa para avaliar: HunyuanVideo-1.5
+
+- O projeto oficial informa 8,3 bilhões de parâmetros e suporte a texto-para-vídeo e imagem-para-vídeo.
+- O requisito mínimo anunciado é GPU NVIDIA com 14 GB de VRAM usando offloading, em Linux.
+- Referência oficial: https://github.com/Tencent-Hunyuan/HunyuanVideo-1.5
+
+### Limite importante
+
+Esses modelos não rodam no iPhone como motor local de geração. O app móvel precisará conversar com um computador/servidor que execute o modelo, ou usar outro ambiente de execução. "Sem créditos por vídeo" não significa processamento sem custo: execução própria exige hardware, energia, armazenamento e tempo. A integração só será escolhida após validar o hardware realmente disponível.
