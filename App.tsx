@@ -130,6 +130,13 @@ export default function App() {
     setIdea("");
   };
 
+  const updateCharacter = (value: string) => {
+    if (!selected) return;
+    const updated = { ...selected, character: value };
+    setSelected(updated);
+    setProjects(previous => previous.map(item => item.id === updated.id ? updated : item));
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor="#101018" />
@@ -205,7 +212,7 @@ export default function App() {
             <Text style={styles.label}>IDEIA ORIGINAL</Text>
             <Text style={styles.body}>{selected.idea}</Text>
             <Text style={styles.label}>FICHA DO PERSONAGEM</Text>
-            <Text style={styles.body}>{selected.character}</Text>
+            <TextInput value={selected.character} onChangeText={updateCharacter} multiline textAlignVertical="top" placeholder="Descreva aparência, roupa, personalidade e voz do personagem..." placeholderTextColor="#777789" style={styles.characterInput} />
             {selected.scenes.map(scene => <View key={scene.title} style={styles.scene}>
               <Text style={styles.sceneTitle}>{scene.title}</Text>
               <Text style={styles.body}>{scene.description}</Text>
@@ -221,7 +228,9 @@ export default function App() {
               <Text style={styles.primaryText}>COPIAR ROTEIRO</Text><Text style={styles.arrow}>⧉</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.secondary} onPress={async () => { const prompts = selected.scenes.map(scene => scene.imagePrompt + "\n\n" + scene.videoPrompt).join("\n\n---\n\n"); await Clipboard.setStringAsync(prompts); Alert.alert("Prompts copiados", "Os prompts visuais e de animação foram copiados."); }}>
-              <Text style={styles.secondaryText}>COPIAR PROMPTS VISUAIS</Text>\n            </TouchableOpacity>\n            <TouchableOpacity style={styles.secondary} onPress={shareScript}>
+              <Text style={styles.secondaryText}>COPIAR PROMPTS VISUAIS</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.secondary} onPress={shareScript}>
               <Text style={styles.secondaryText}>COMPARTILHAR / EXPORTAR TEXTO</Text>
             </TouchableOpacity>
           </View>
@@ -253,6 +262,7 @@ const styles = StyleSheet.create({
   panel: { backgroundColor: "#1A1A27", borderColor: "#303044", borderWidth: 1, borderRadius: 22, padding: 17, marginBottom: 20 },
   step: { color: "#A78BFA", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
   panelTitle: { color: "#F7F5FF", fontSize: 22, fontWeight: "800", marginTop: 10, marginBottom: 13 },
+  characterInput: { minHeight: 150, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 14, padding: 13, color: "#F7F5FF", fontSize: 13, lineHeight: 21 },
   input: { minHeight: 120, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 14, padding: 13, color: "#F7F5FF", fontSize: 14, lineHeight: 21 },
   counter: { color: "#777789", fontSize: 10, textAlign: "right", marginTop: 7 },
   label: { color: "#C6C2D5", fontSize: 10, fontWeight: "800", letterSpacing: 1.2, marginTop: 21, marginBottom: 10 },
