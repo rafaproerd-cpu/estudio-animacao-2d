@@ -48,7 +48,7 @@ function buildProject(idea: string, genre: string, duration: string): Project {
 }
 
 function updateCharacterInPrompt(prompt: string, previous: string, next: string): string {
-  const marker = "\\nFICHA FIXA DO PERSONAGEM: ";
+  const marker = "\nFICHA FIXA DO PERSONAGEM: ";
   const markerAt = prompt.indexOf(marker);
   const base = markerAt >= 0 ? prompt.slice(0, markerAt) : prompt;
   const oldText = `Personagem: ${previous}.`;
