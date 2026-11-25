@@ -472,8 +472,8 @@ export default function App() {
 
   const generateAiNarration = async () => {
     if (!selected) return;
-    const segments = selected.scenes.filter(scene => (scene.dialogue || "").trim()).map(scene => ({ text: scene.dialogue.trim(), voice: scene.voiceId || selectedTtsVoice }));
-    if (!segments.length) { Alert.alert("Roteiro sem diálogos", "Adicione falas às cenas antes de gerar a narração."); return; }
+    const segments = selected.scenes.map(scene => ({ text: (scene.dialogue || "").trim(), voice: scene.voiceId || selectedTtsVoice, duration_seconds: 4 }));
+    if (!segments.some(segment => segment.text)) { Alert.alert("Roteiro sem diálogos", "Adicione pelo menos uma fala às cenas antes de gerar a narração."); return; }
     if (!selectedTtsVoice) { Alert.alert("Escolha uma voz", "Atualize a lista e selecione uma voz Piper disponível."); return; }
     let baseUrl = (comfyConfig.renderBaseUrl || "").trim();
     while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
