@@ -21,7 +21,7 @@ type Project = {
 
 const STORAGE_KEY = "@estudio2d/projects-v1";
 const genres = ["Aventura", "Comédia", "Fantasia", "Ação", "Drama", "Mistério"];
-const durations = ["30 segundos", "1 minuto", "2 minutos", "3 minutos"];
+const durations = ["30 segundos", "1 minuto", "2 minutos", "3 minutos", "5 minutos", "10 minutos"];
 
 function buildProject(idea: string, genre: string, duration: string): Project {
   const plan = createStoryPlan(idea, genre as Genre, duration);
@@ -58,7 +58,7 @@ function projectText(project: Project) {
     "FICHA DO PERSONAGEM",
     project.character,
     "",
-    ...project.scenes.flatMap(scene => [scene.title, scene.description, scene.dialogue, "ENQUADRAMENTO: " + scene.shot, "CÂMERA: " + scene.camera, "ILUMINAÇÃO: " + scene.lighting, "PROMPT DE IMAGEM: " + scene.imagePrompt, "PROMPT DE ANIMAÇÃO: " + scene.videoPrompt, ""])
+    ...project.scenes.flatMap(scene => [scene.title, scene.description, scene.dialogue, "ENQUADRAMENTO: " + (scene.shot || "plano médio"), "CÂMERA: " + (scene.camera || "movimento suave"), "ILUMINAÇÃO: " + (scene.lighting || "luz cinematográfica"), "PROMPT DE IMAGEM: " + (scene.imagePrompt || ""), "PROMPT DE ANIMAÇÃO: " + (scene.videoPrompt || ""), ""])
   ].join("\n");
 }
 
@@ -175,7 +175,7 @@ export default function App() {
             <TouchableOpacity style={styles.primary} onPress={createProject}>
               <Text style={styles.primaryText}>✦  CRIAR MEU PROJETO</Text><Text style={styles.arrow}>→</Text>
             </TouchableOpacity>
-            <Text style={styles.note}>Nesta etapa, o app organiza sua ideia em um roteiro-base. A geração de imagens, vozes e vídeos será integrada em seguida.</Text>
+            <Text style={styles.note}>O app distribui a história em cenas conforme a duração escolhida. A geração real de imagens, vozes e vídeos será integrada em uma próxima etapa.</Text>
           </View>
 
           <View style={styles.sectionHeader}>
@@ -201,7 +201,7 @@ export default function App() {
           <View style={styles.panel}>
             <Text style={styles.step}>PROJETO SALVO NO APARELHO</Text>
             <Text style={styles.panelTitle}>{selected.title}</Text>
-            <Text style={styles.projectMeta}>{selected.genre} · {selected.duration}</Text>
+            <Text style={styles.projectMeta}>{selected.genre} · {selected.duration} · {selected.scenes.length} cenas</Text>
             <Text style={styles.label}>IDEIA ORIGINAL</Text>
             <Text style={styles.body}>{selected.idea}</Text>
             <Text style={styles.label}>FICHA DO PERSONAGEM</Text>
