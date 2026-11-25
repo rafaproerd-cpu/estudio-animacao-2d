@@ -30,3 +30,6 @@ select{height:47px}.primary-button{width:100%;height:51px;border:0;border-radius
 .result-actions{display:flex;gap:10px;margin-top:17px}.secondary-button{flex:1;background:#292638;border:1px solid #49415e;color:var(--text);padding:12px;border-radius:9px;font:600 12px 'DM Sans';cursor:pointer}.secondary-button:hover{background:#373149}
 footer{display:flex;justify-content:space-between;gap:10px;padding:25px 3px 35px;color:#777487;font-size:10px}footer span:first-child{letter-spacing:1.5px;font-weight:700}
 @media(max-width:540px){.topbar{height:58px;padding:0 18px}.shell{width:min(100% - 24px,760px)}.hero{padding:48px 5px 27px}.hero p{font-size:13px}.workspace,.result{padding:19px 16px}.form-grid{grid-template-columns:1fr;gap:15px}.section-heading{align-items:flex-start}h2{font-size:16px}.private-tag{font-size:10px}.field-meta{font-size:10px}.result-actions{flex-direction:column}footer{font-size:9px}}
+
+.bible label{margin-top:13px}.bible textarea{min-height:0;margin-bottom:2px}.bible-actions{display:flex;gap:9px;margin-top:15px}.bible-status{font-size:11px!important;color:#b9a8f5!important;margin:10px 0 0!important}.bible>p{margin:0 0 12px}.bible-actions .secondary-button{font-size:11px}
+@media(max-width:540px){.bible-actions{flex-direction:column}}
