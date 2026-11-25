@@ -25,7 +25,7 @@ A geração de clipes de vídeo está implementada por workflow ComfyUI, mas ain
 ## Custos e infraestrutura
 A integração ComfyUI não cobra créditos por geração do aplicativo e não exige uma chave de API. Entretanto, o servidor e o hardware são do proprietário: GPU, energia, armazenamento, rede e manutenção podem ter custos. Modelos de vídeo de alta qualidade normalmente exigem uma máquina com GPU; não rodam diretamente no iPhone.
 
-Não exponha uma instância ComfyUI sem proteção à internet pública. Prefira rede privada ou VPN e HTTPS. Em iOS, conexões HTTP sem TLS podem ser bloqueadas pelas políticas de segurança da plataforma.
+Não exponha uma instância ComfyUI ou o render-server sem proteção à internet pública. Prefira rede privada ou VPN e HTTPS. O app declara a permissão de rede local no iOS para acessar servidores na LAN; essa alteração exige gerar uma nova build nativa antes de testar. Conexões HTTP fora da rede local continuam sujeitas às regras ATS do iOS.
 
 ## Desenvolvimento
 ```bash
