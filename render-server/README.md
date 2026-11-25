@@ -14,7 +14,7 @@ Este serviço opcional transforma os clipes gerados no app em um único MP4. Ele
 cd render-server
 python -m venv .venv
 # Windows:
-.venv\\Scripts\\activate
+.venv\Scripts\activate
 # macOS/Linux:
 source .venv/bin/activate
 pip install -r requirements.txt
