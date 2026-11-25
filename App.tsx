@@ -5,12 +5,13 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
+import * as FileSystem from "expo-file-system/legacy";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { createStoryPlan, type Genre } from "./src/engine/storyEngine";
 import { ComfyUiImageProvider, type ComfyUiImageWorkflow } from "./src/engine/providers/comfyuiImageProvider";
 import { ComfyUiVideoProvider, type ComfyUiVideoWorkflow } from "./src/engine/providers/comfyuiVideoProvider";
 
-type Scene = { title: string; description: string; dialogue: string; imagePrompt: string; videoPrompt: string; shot: string; camera: string; lighting: string; imageUri?: string; videoUri?: string };
+type Scene = { title: string; description: string; dialogue: string; imagePrompt: string; videoPrompt: string; shot: string; camera: string; lighting: string; imageUri?: string; videoUri?: string; videoRemoteUri?: string };
 type Project = {
   id: string;
   title: string;
@@ -202,6 +203,37 @@ export default function App() {
     }
   };
 
+  const downloadSceneVideo = async (scene: Scene) => {
+    if (!scene.videoUri || !selected) return;
+    const sourceUri = scene.videoRemoteUri || scene.videoUri;
+    if (sourceUri.startsWith("file://")) {
+      Alert.alert("Vídeo já está no aparelho", "Este clipe já foi salvo para assistir offline.");
+      return;
+    }
+    setBusyScene(`download:${scene.title}`);
+    try {
+      const directory = `${FileSystem.documentDirectory}scene-videos/`;
+      const directoryInfo = await FileSystem.getInfoAsync(directory);
+      if (!directoryInfo.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
+      const safeName = scene.title.replace(/[^a-z0-9-_]/gi, "-").slice(0, 48) || "scene";
+      const destination = `${directory}${selected.id}-${safeName}-${Date.now()}.mp4`;
+      const result = await FileSystem.downloadAsync(sourceUri, destination);
+      if (result.status < 200 || result.status >= 300) throw new Error(`O servidor retornou HTTP ${result.status}.`);
+      const updated = {
+        ...selected,
+        scenes: selected.scenes.map(item => item.title === scene.title
+          ? { ...item, videoRemoteUri: sourceUri, videoUri: result.uri }
+          : item),
+      };
+      saveUpdatedProject(updated);
+      Alert.alert("Vídeo salvo no iPhone", "Agora este clipe pode ser reproduzido sem manter conexão com o servidor.");
+    } catch (error) {
+      Alert.alert("Falha ao baixar", error instanceof Error ? error.message : "Não foi possível salvar o vídeo no aparelho.");
+    } finally {
+      setBusyScene(null);
+    }
+  };
+
   const openSceneVideo = async (uri: string) => {
     try { await Linking.openURL(uri); }
     catch { Alert.alert("Não foi possível abrir", "Verifique se o endereço do vídeo está acessível no celular."); }
@@ -368,7 +400,7 @@ export default function App() {
               <Text style={styles.sceneTitle}>{scene.title}</Text>
               {scene.imageUri ? <Image source={{ uri: scene.imageUri }} style={styles.generatedImage} resizeMode="cover" /> : <View style={styles.imagePlaceholder}><Text style={styles.note}>Imagem ainda não gerada</Text></View>}\n              <TouchableOpacity style={styles.secondary} disabled={busyScene === scene.title || busyScene === `video:${scene.title}`} onPress={() => generateSceneImage(scene)}><Text style={styles.secondaryText}>{busyScene === scene.title ? "GERANDO IMAGEM…" : "GERAR IMAGEM DESTA CENA"}</Text></TouchableOpacity>
               <TouchableOpacity style={styles.primary} disabled={busyScene === scene.title || busyScene === `video:${scene.title}`} onPress={() => generateSceneVideo(scene)}><Text style={styles.primaryText}>{busyScene === `video:${scene.title}` ? "GERANDO CLIPE…" : "ANIMAR ESTA CENA · 4 SEGUNDOS"}</Text><Text style={styles.arrow}>▶</Text></TouchableOpacity>
-              {scene.videoUri ? <><SceneVideoPlayer uri={scene.videoUri} /><TouchableOpacity style={styles.secondary} onPress={() => openSceneVideo(scene.videoUri!)}><Text style={styles.secondaryText}>ABRIR VÍDEO NO NAVEGADOR</Text></TouchableOpacity></> : null}
+              {scene.videoUri ? <><SceneVideoPlayer uri={scene.videoUri} /><TouchableOpacity style={styles.secondary} disabled={busyScene === `download:${scene.title}`} onPress={() => downloadSceneVideo(scene)}><Text style={styles.secondaryText}>{busyScene === `download:${scene.title}` ? "SALVANDO NO IPHONE…" : scene.videoUri.startsWith("file://") ? "VÍDEO SALVO OFFLINE" : "BAIXAR VÍDEO PARA O IPHONE"}</Text></TouchableOpacity><TouchableOpacity style={styles.secondary} onPress={() => openSceneVideo(scene.videoRemoteUri || scene.videoUri!)}><Text style={styles.secondaryText}>ABRIR VÍDEO NO NAVEGADOR</Text></TouchableOpacity></> : null}
               <Text style={styles.label}>AÇÃO DA CENA</Text>
               <TextInput value={scene.description} onChangeText={value => updateScene(scene.title, "description", value)} multiline textAlignVertical="top" placeholder="Descreva o que acontece nesta cena..." placeholderTextColor="#777789" style={styles.sceneInput} />
               <Text style={styles.label}>FALA / DIÁLOGO</Text>
