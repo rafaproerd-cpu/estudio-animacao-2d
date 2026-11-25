@@ -13,6 +13,7 @@ Aplicativo mobile multiplataforma desenvolvido com Expo e React Native, pensado 
 - Configuração separada de workflow e IDs dos nós de vídeo, salva no aparelho e recarregada ao abrir o aplicativo.
 - Cada cena pode solicitar um clipe de referência de quatro segundos a 16 FPS e reproduzi-lo dentro do app.
 - Download dos clipes para o armazenamento do iPhone, permitindo reprodução offline.
+- Exportação de clipes baixados pela folha de compartilhamento do iOS/Android, incluindo opção de salvar em Arquivos.
 - Geração sequencial de imagens e clipes de todas as cenas em lote, com salvamento do progresso após cada cena.
 
 ## Estado real da geração
@@ -39,6 +40,6 @@ O projeto usa Expo SDK 54, React Native 0.81 e TypeScript. A checagem de tipos �
 ## Próximas etapas
 1. Validar os workflows reais de imagem e vídeo em um iPhone conectado ao servidor ComfyUI.
 2. Implementar montagem dos clipes e exportação de um MP4 final.
-3. Integrar geração de voz e sincronização com as cenas.
-4. Montar todos os clipes e exportar um único MP4 final.
+3. Implementar montagem dos clipes em um único MP4 final.
+4. Integrar geração de voz e sincronização com as cenas.
 5. Reforçar o acesso privado e a gestão segura das conexões.
