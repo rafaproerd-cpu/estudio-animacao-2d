@@ -147,6 +147,24 @@ export default function App() {
     catch (error) { setConnectionStatus("Falha na conexão"); Alert.alert("Não conectou", error instanceof Error ? error.message : "Verifique endereço, rede e HTTPS."); }
   };
 
+  const testRenderConnection = async () => {
+    const url = (comfyConfig.renderBaseUrl || "").trim().replace(/\\/+$/, "");
+    if (!/^https?:\\/\\//i.test(url)) {
+      Alert.alert("Endereço inválido", "Informe o endereço do servidor de montagem, incluindo http:// ou https://.");
+      return;
+    }
+    try {
+      const response = await fetch(`${url}/health`);
+      const data = await response.json();
+      if (!response.ok || !data.ok || !data.ffmpeg_available || !data.token_configured) {
+        throw new Error("Servidor respondeu, mas FFmpeg ou token não está configurado corretamente.");
+      }
+      Alert.alert("Servidor de montagem conectado", "FFmpeg disponível e token configurado.");
+    } catch (error) {
+      Alert.alert("Não conectou", error instanceof Error ? error.message : "Verifique endereço, rede e servidor.");
+    }
+  };
+
   const generateSceneImage = async (scene: Scene) => {
     if (!selected) return;
     if (!comfyConfig.baseUrl.trim() || !comfyConfig.workflowText.trim() || !comfyConfig.positiveNode.trim()) { Alert.alert("Configure o ComfyUI", "Abra Configurar geração e informe servidor, workflow API e nó do prompt positivo."); setShowSettings(true); return; }
@@ -379,6 +397,89 @@ export default function App() {
       });
     } catch (error) {
       Alert.alert("Não foi possível exportar", error instanceof Error ? error.message : "Tente novamente.");
+    }
+  };
+
+  const renderFinalVideo = async () => {
+    if (!selected) return;
+    const missingClips = selected.scenes.filter(scene => !scene.videoUri);
+    if (missingClips.length) {
+      Alert.alert("Faltam animações", `Ainda faltam ${missingClips.length} clipes. Gere todas as cenas antes de montar o MP4.`);
+      return;
+    }
+    const renderBaseUrl = (comfyConfig.renderBaseUrl || "").trim().replace(/\\/+$/, "");
+    const renderToken = (comfyConfig.renderToken || "").trim();
+    if (!renderBaseUrl || !renderToken) {
+      Alert.alert("Configure a montagem", "Informe o endereço e o token do servidor de montagem nas configurações.");
+      setShowSettings(true);
+      return;
+    }
+    setBusyScene("render:final");
+    try {
+      const directory = `${FileSystem.documentDirectory}final-videos/`;
+      const directoryInfo = await FileSystem.getInfoAsync(directory);
+      if (!directoryInfo.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
+
+      const form = new FormData();
+      form.append("project_name", selected.title);
+      let workingProject = selected;
+
+      for (let index = 0; index < selected.scenes.length; index += 1) {
+        const scene = selected.scenes[index];
+        let localUri = scene.videoUri!;
+        if (!localUri.startsWith("file://")) {
+          const sourceUri = scene.videoRemoteUri || localUri;
+          const filenameParam = sourceUri.match(/[?&]filename=([^&]+)/)?.[1];
+          const sourceFilename = filenameParam ? decodeURIComponent(filenameParam) : "";
+          const extension = sourceFilename.match(/\\.(mp4|webm|mov|mkv)$/i)?.[1] || "mp4";
+          const localPath = `${directory}${selected.id}-scene-${String(index + 1).padStart(2, "0")}-${Date.now()}.${extension}`;
+          const download = await FileSystem.downloadAsync(sourceUri, localPath);
+          if (download.status < 200 || download.status >= 300) throw new Error(`Não foi possível baixar o clipe ${index + 1} (HTTP ${download.status}).`);
+          localUri = download.uri;
+          workingProject = {
+            ...workingProject,
+            scenes: workingProject.scenes.map(item => item.title === scene.title
+              ? { ...item, videoUri: localUri, videoRemoteUri: sourceUri }
+              : item),
+          };
+          setSelected(workingProject);
+          setProjects(previous => previous.map(item => item.id === workingProject.id ? workingProject : item));
+        }
+
+        const extension = localUri.split("?")[0].split(".").pop()?.toLowerCase() || "mp4";
+        const mimeType = extension === "webm" ? "video/webm" : extension === "mov" ? "video/quicktime" : extension === "mkv" ? "video/x-matroska" : "video/mp4";
+        form.append("clips", { uri: localUri, name: `scene-${String(index + 1).padStart(2, "0")}.${extension}`, type: mimeType } as any);
+      }
+
+      const response = await fetch(`${renderBaseUrl}/render`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${renderToken}` },
+        body: form,
+      });
+      const payload = await response.json().catch(() => ({} as { detail?: string; download_url?: string; filename?: string }));
+      if (!response.ok || !payload.download_url) {
+        throw new Error(payload.detail || `Servidor de montagem respondeu HTTP ${response.status}.`);
+      }
+
+      const remoteFinalUri = `${renderBaseUrl}${payload.download_url.startsWith("/") ? payload.download_url : `/${payload.download_url}`}`;
+      const finalPath = `${directory}${selected.id}-final-${Date.now()}.mp4`;
+      const finalDownload = await FileSystem.downloadAsync(remoteFinalUri, finalPath, {
+        headers: { Authorization: `Bearer ${renderToken}` },
+      });
+      if (finalDownload.status < 200 || finalDownload.status >= 300) {
+        throw new Error(`A montagem terminou, mas o download do MP4 falhou (HTTP ${finalDownload.status}).`);
+      }
+      const completedProject = {
+        ...workingProject,
+        finalVideoUri: finalDownload.uri,
+        finalVideoRemoteUri: remoteFinalUri,
+      };
+      saveUpdatedProject(completedProject);
+      Alert.alert("MP4 final pronto", "Todas as cenas foram montadas em um único vídeo e salvas no iPhone. O arquivo ainda não contém narração ou trilha sonora.");
+    } catch (error) {
+      Alert.alert("Falha na montagem", error instanceof Error ? error.message : "Não foi possível montar o MP4 final.");
+    } finally {
+      setBusyScene(null);
     }
   };
 
