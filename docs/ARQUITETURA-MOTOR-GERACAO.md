@@ -127,3 +127,30 @@ Referências oficiais:
 - Documentação do Save Video: https://github.com/Comfy-Org/embedded-docs/blob/main/comfyui_embedded_docs/docs/SaveVideo/en.md
 
 **Importante:** o workflow pode usar modelos abertos como Wan2.2, mas o modelo precisa estar instalado no servidor e os requisitos de GPU devem ser atendidos. A interface do iPhone será o controle e a visualização; não executará sozinha a difusão de vídeo.
+
+
+## Segundo adaptador real: ComfyUI para imagem-para-vídeo
+
+Foi criado `src/engine/providers/comfyuiVideoProvider.ts`, que implementa `VideoGenerationProvider` para workflows ComfyUI configurados pelo proprietário.
+
+O adaptador:
+1. baixa a imagem-chave gerada para a cena;
+2. envia a imagem para `POST /upload/image` como arquivo de entrada do ComfyUI;
+3. injeta o nome retornado no nó `LoadImage`;
+4. injeta prompt de movimento e, se configurados, largura, altura, quantidade de quadros, FPS e seed;
+5. envia o workflow para `POST /prompt` e acompanha `GET /history/{prompt_id}`;
+6. procura um artefato de vídeo MP4, WebM, MOV ou MKV na saída e monta a URL `/view`.
+
+A interface agora permite colar um workflow de vídeo separado, configurar IDs de nós e solicitar um clipe de quatro segundos a 16 FPS por cena. O vídeo gerado fica registrado no projeto e pode ser aberto pelo endereço retornado pelo servidor. A reprodução embutida no app e o download/exportação local ainda não estão concluídos.
+
+### Requisitos do workflow de vídeo
+
+- Um nó `LoadImage` cujo campo de entrada padrão é `image`.
+- Um pipeline real de imagem-para-vídeo, por exemplo Wan2.2 ou outro modelo instalado e suportado pelo servidor.
+- Um nó `SaveVideo` configurado para MP4/H.264, se o workflow/modelo permitir.
+- O ID do nó positivo de texto e os IDs opcionais para nós de resolução, quadros, FPS, seed e prompt negativo.
+- Os campos de entrada padrão esperados pelo adaptador são `image`, `text`, `width`, `height`, `length`, `fps` e `seed`. Workflows com nomes diferentes exigem adaptação do código.
+
+O endpoint oficial de upload de imagem é documentado nas rotas do ComfyUI: https://github.com/Comfy-Org/docs/blob/main/development/comfyui-server/comms_routes.mdx. O nó Save Video documentado pelo ComfyUI salva o vídeo no diretório de saída e permite escolher contêiner e codec: https://github.com/Comfy-Org/docs/blob/main/built-in-nodes/SaveVideo.mdx.
+
+**Limites atuais:** a integração depende de um servidor ComfyUI real, workflow correto, modelos e GPU suficientes. Não foi executada geração real porque ainda não há servidor/modelo/workflow do usuário conectado. A validação automática do repositório verifica tipos TypeScript, não substitui o teste com hardware real.
