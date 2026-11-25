@@ -47,6 +47,17 @@ function buildProject(idea: string, genre: string, duration: string): Project {
   };
 }
 
+function updateCharacterInPrompt(prompt: string, previous: string, next: string): string {
+  const marker = "\\nFICHA FIXA DO PERSONAGEM: ";
+  const markerAt = prompt.indexOf(marker);
+  const base = markerAt >= 0 ? prompt.slice(0, markerAt) : prompt;
+  const oldText = `Personagem: ${previous}.`;
+  const replaced = base.includes(oldText)
+    ? base.replace(oldText, `Personagem: ${next}.`)
+    : base;
+  return replaced + marker + next;
+}
+
 function projectText(project: Project) {
   return [
     project.title,
@@ -138,14 +149,14 @@ export default function App() {
 
   const updateCharacter = (value: string) => {
     if (!selected) return;
-    const plan = createStoryPlan(selected.idea, selected.genre as Genre, selected.duration, value);
     const updated: Project = {
       ...selected,
       character: value,
-      scenes: selected.scenes.map((scene, index) => {
-        const planned = plan.scenes[index];
-        return planned ? { ...scene, imagePrompt: planned.imagePrompt, videoPrompt: planned.videoPrompt } : scene;
-      })
+      scenes: selected.scenes.map(scene => ({
+        ...scene,
+        imagePrompt: updateCharacterInPrompt(scene.imagePrompt || "", selected.character, value),
+        videoPrompt: updateCharacterInPrompt(scene.videoPrompt || "", selected.character, value)
+      }))
     };
     saveUpdatedProject(updated);
   };
