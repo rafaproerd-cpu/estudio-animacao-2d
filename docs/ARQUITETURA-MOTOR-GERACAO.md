@@ -141,7 +141,7 @@ O adaptador:
 5. envia o workflow para `POST /prompt` e acompanha `GET /history/{prompt_id}`;
 6. procura um artefato de vídeo MP4, WebM, MOV ou MKV na saída e monta a URL `/view`.
 
-A interface agora permite colar um workflow de vídeo separado, configurar IDs de nós e solicitar um clipe de quatro segundos a 16 FPS por cena. O vídeo gerado fica registrado no projeto e pode ser aberto pelo endereço retornado pelo servidor. A reprodução embutida no app e o download/exportação local ainda não estão concluídos.
+A interface agora permite colar um workflow de vídeo separado, configurar IDs de nós e solicitar um clipe de quatro segundos a 16 FPS por cena. O player nativo usa os controles de reprodução da plataforma. O vídeo gerado fica registrado no projeto e já pode ser reproduzido na própria tela do aplicativo por meio do pacote `expo-video`. Também há opção para abrir o endereço retornado pelo servidor. O download/exportação local ainda não está concluído.
 
 ### Requisitos do workflow de vídeo
 
@@ -154,3 +154,8 @@ A interface agora permite colar um workflow de vídeo separado, configurar IDs d
 O endpoint oficial de upload de imagem é documentado nas rotas do ComfyUI: https://github.com/Comfy-Org/docs/blob/main/development/comfyui-server/comms_routes.mdx. O nó Save Video documentado pelo ComfyUI salva o vídeo no diretório de saída e permite escolher contêiner e codec: https://github.com/Comfy-Org/docs/blob/main/built-in-nodes/SaveVideo.mdx.
 
 **Limites atuais:** a integração depende de um servidor ComfyUI real, workflow correto, modelos e GPU suficientes. Não foi executada geração real porque ainda não há servidor/modelo/workflow do usuário conectado. A validação automática do repositório verifica tipos TypeScript, não substitui o teste com hardware real.
+
+
+## Player de vídeo no aplicativo
+
+Foi adicionada a dependência `expo-video` compatível com Expo SDK 54 (`~3.0.11`). Cada cena com `videoUri` persistido exibe um player nativo com controles, sem exigir que o usuário saia do aplicativo. O arquivo ainda é servido pelo ComfyUI; para reprodução, o iPhone precisa continuar alcançando o servidor. O armazenamento/download offline no aparelho será implementado em uma etapa posterior.
