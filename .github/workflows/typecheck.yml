@@ -22,3 +22,12 @@ jobs:
         run: npx expo config --type public
       - name: Check TypeScript
         run: npm run typecheck
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install render server dependencies
+        run: pip install -r render-server/requirements.txt
+      - name: Test render server and local TTS
+        working-directory: render-server
+        run: python -m unittest -v
