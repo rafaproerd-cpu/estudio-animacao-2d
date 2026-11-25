@@ -106,3 +106,24 @@ A implementação segue as rotas HTTP documentadas pelo projeto ComfyUI: https:/
 - Adaptador já ligado à interface do aplicativo: há configuração local do servidor/workflow, teste de conexão e botão por cena para gerar e visualizar a imagem retornada.\n- Ainda falta validar a integração com uma instância ComfyUI real e um workflow/modelo concreto no iPhone.
 
 O adaptador não inclui nem baixa modelos automaticamente e não representa geração disponível sem servidor. Ele não usa créditos de geração, mas exige máquina, GPU, energia e armazenamento próprios. Não exponha uma instância ComfyUI sem proteção diretamente à internet; prefira rede privada/VPN e HTTPS. Em iPhone, conexões HTTP sem TLS também podem ser bloqueadas pelas regras de segurança de transporte do iOS.
+
+
+## Próxima integração: imagem-para-vídeo via ComfyUI
+
+O próximo marco técnico é um provedor de vídeo que implemente `VideoGenerationProvider` e execute um workflow de animação real no ComfyUI. O fluxo esperado é:
+
+1. receber a imagem-chave da cena e o prompt de movimento/câmera;
+2. enviar a imagem ao servidor ComfyUI por um mecanismo de upload seguro, quando ela ainda não estiver disponível no armazenamento de entrada do servidor;
+3. preencher os nós do workflow para imagem, prompt, duração/quadros, resolução, FPS e seed;
+4. executar o workflow pela API HTTP e acompanhar o histórico até a conclusão;
+5. identificar o artefato de vídeo retornado pelo nó de saída e recuperar o arquivo;
+6. armazenar a referência do clipe no projeto e permitir sua pré-visualização no iPhone.
+
+O workflow deve terminar em um nó de saída de vídeo, preferencialmente o nó nativo `SaveVideo`, configurado para MP4/H.264 quando compatível. A forma exata do artefato no histórico precisa ser validada com a versão e os nós instalados no servidor; o adaptador não deve presumir que todo workflow retorna o mesmo formato.
+
+Referências oficiais:
+- API e histórico do ComfyUI: https://github.com/Comfy-Org/ComfyUI/blob/master/openapi.yaml
+- Implementação do nó nativo SaveVideo: https://github.com/Comfy-Org/ComfyUI/blob/master/comfy_extras/nodes_video.py
+- Documentação do Save Video: https://github.com/Comfy-Org/embedded-docs/blob/main/comfyui_embedded_docs/docs/SaveVideo/en.md
+
+**Importante:** o workflow pode usar modelos abertos como Wan2.2, mas o modelo precisa estar instalado no servidor e os requisitos de GPU devem ser atendidos. A interface do iPhone será o controle e a visualização; não executará sozinha a difusão de vídeo.
