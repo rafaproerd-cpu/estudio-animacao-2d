@@ -24,7 +24,7 @@ const genres = ["Aventura", "Comédia", "Fantasia", "Ação", "Drama", "Mistéri
 const durations = ["30 segundos", "1 minuto", "2 minutos", "3 minutos", "5 minutos", "10 minutos"];
 
 function buildProject(idea: string, genre: string, duration: string): Project {
-  const character = "Personagem principal\\nNome: a definir\\nAparência: a definir\\nRoupa: a definir\\nPersonalidade: a definir\\nVoz: a definir\\nRegra de continuidade: manter o mesmo rosto, cabelo, roupa, cores e proporções em todas as cenas.";
+  const character = "Personagem principal\nNome: a definir\nAparência: a definir\nRoupa: a definir\nPersonalidade: a definir\nVoz: a definir\nRegra de continuidade: manter o mesmo rosto, cabelo, roupa, cores e proporções em todas as cenas.";
   const plan = createStoryPlan(idea, genre as Genre, duration, character);
   return {
     id: Date.now().toString(),
