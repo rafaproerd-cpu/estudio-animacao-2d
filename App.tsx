@@ -104,6 +104,7 @@ export default function App() {
   const [comfyConfig, setComfyConfig] = useState<ComfyConfig>({ baseUrl: "", workflowText: "", positiveNode: "", negativeNode: "", widthNode: "", heightNode: "", seedNode: "", videoWorkflowText: "", videoImageNode: "", videoPositiveNode: "", videoNegativeNode: "", videoWidthNode: "", videoHeightNode: "", videoFramesNode: "", videoFpsNode: "", videoSeedNode: "" });
   const [connectionStatus, setConnectionStatus] = useState("Não testada");
   const [busyScene, setBusyScene] = useState<string | null>(null);
+  const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(COMFY_STORAGE_KEY)
@@ -200,6 +201,68 @@ export default function App() {
       Alert.alert("Erro na geração do vídeo", error instanceof Error ? error.message : "Não foi possível gerar o clipe.");
     } finally {
       setBusyScene(null);
+    }
+  };
+
+  const generateAllSceneVideos = async () => {
+    if (!selected) return;
+    const missingImages = selected.scenes.filter(scene => !scene.imageUri);
+    if (missingImages.length) {
+      Alert.alert("Faltam imagens", `Gere primeiro as imagens de todas as cenas. Ainda faltam ${missingImages.length}.`);
+      return;
+    }
+    if (!comfyConfig.videoWorkflowText?.trim() || !comfyConfig.videoImageNode?.trim() || !comfyConfig.videoPositiveNode?.trim()) {
+      Alert.alert("Configure o motor de vídeo", "Informe o workflow de vídeo e os nós LoadImage e prompt positivo.");
+      setShowSettings(true);
+      return;
+    }
+    let workingProject = selected;
+    let completed = 0;
+    setBatchProgress({ current: 0, total: selected.scenes.length });
+    try {
+      const workflow = JSON.parse(comfyConfig.videoWorkflowText) as ComfyUiVideoWorkflow;
+      const provider = new ComfyUiVideoProvider({
+        baseUrl: comfyConfig.baseUrl,
+        workflow,
+        imageNodeId: comfyConfig.videoImageNode.trim(),
+        positivePromptNodeId: comfyConfig.videoPositiveNode.trim(),
+        negativePromptNodeId: comfyConfig.videoNegativeNode?.trim() || undefined,
+        widthNodeId: comfyConfig.videoWidthNode?.trim() || undefined,
+        heightNodeId: comfyConfig.videoHeightNode?.trim() || undefined,
+        framesNodeId: comfyConfig.videoFramesNode?.trim() || undefined,
+        fpsNodeId: comfyConfig.videoFpsNode?.trim() || undefined,
+        seedNodeId: comfyConfig.videoSeedNode?.trim() || undefined,
+      });
+      for (const scene of selected.scenes) {
+        setBusyScene(`video:${scene.title}`);
+        const result = await provider.generate({
+          prompt: scene.videoPrompt || scene.description,
+          imageUri: scene.imageUri,
+          durationSeconds: 4,
+          width: 1024,
+          height: 576,
+          fps: 16,
+        });
+        if (result.status !== "completed" || !result.outputUri) {
+          throw new Error(`${scene.title}: ${result.error || "o workflow não retornou um clipe"}`);
+        }
+        workingProject = {
+          ...workingProject,
+          scenes: workingProject.scenes.map(item => item.title === scene.title
+            ? { ...item, videoUri: result.outputUri, videoRemoteUri: undefined }
+            : item),
+        };
+        completed += 1;
+        setSelected(workingProject);
+        setProjects(previous => previous.map(item => item.id === workingProject.id ? workingProject : item));
+        setBatchProgress({ current: completed, total: selected.scenes.length });
+      }
+      Alert.alert("Animação concluída", `${completed} clipes foram gerados e salvos no projeto.`);
+    } catch (error) {
+      Alert.alert("Geração interrompida", `${completed} de ${selected.scenes.length} clipes concluídos. ${error instanceof Error ? error.message : "Falha desconhecida."}`);
+    } finally {
+      setBusyScene(null);
+      setBatchProgress(null);
     }
   };
 
@@ -415,6 +478,16 @@ export default function App() {
               <Text style={styles.label}>PROMPT DE ANIMAÇÃO · EDITÁVEL</Text>
               <TextInput value={scene.videoPrompt || ""} onChangeText={value => updateScene(scene.title, "videoPrompt", value)} multiline textAlignVertical="top" placeholder="Descreva os movimentos, expressões e movimentos de câmera..." placeholderTextColor="#777789" style={styles.promptInput} />
             </View>)}
+            <View style={styles.timelinePanel}>
+              <Text style={styles.step}>LINHA DO TEMPO</Text>
+              <Text style={styles.panelTitle}>Animação das cenas</Text>
+              <Text style={styles.body}>{selected.scenes.filter(scene => !!scene.videoUri).length} de {selected.scenes.length} clipes gerados · {selected.scenes.filter(scene => !!scene.imageUri).length} imagens prontas</Text>
+              {batchProgress ? <Text style={styles.note}>Gerando clipe {batchProgress.current + 1} de {batchProgress.total}…</Text> : null}
+              <TouchableOpacity style={styles.primary} disabled={!!busyScene || !!batchProgress} onPress={generateAllSceneVideos}>
+                <Text style={styles.primaryText}>{batchProgress ? "GERANDO TODAS AS CENAS…" : "GERAR VÍDEOS DE TODAS AS CENAS"}</Text><Text style={styles.arrow}>▶</Text>
+              </TouchableOpacity>
+              <Text style={styles.note}>Gera os clipes em sequência usando as imagens já criadas. A montagem em um único MP4 com transições e áudio ainda será uma etapa separada.</Text>
+            </View>
             <TouchableOpacity style={styles.primary} onPress={copyScript}>
               <Text style={styles.primaryText}>COPIAR ROTEIRO</Text><Text style={styles.arrow}>⧉</Text>
             </TouchableOpacity>
@@ -457,6 +530,7 @@ const styles = StyleSheet.create({
   generatedImage: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, marginTop: 10, backgroundColor: "#11111B" },
   videoPlayer: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, marginTop: 10, backgroundColor: "#000" },
   imagePlaceholder: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, marginTop: 10, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", alignItems: "center", justifyContent: "center" },
+  timelinePanel: { backgroundColor: "#202033", borderColor: "#514174", borderWidth: 1, borderRadius: 18, padding: 15, marginTop: 20 },
   panel: { backgroundColor: "#1A1A27", borderColor: "#303044", borderWidth: 1, borderRadius: 22, padding: 17, marginBottom: 20 },
   step: { color: "#A78BFA", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
   panelTitle: { color: "#F7F5FF", fontSize: 22, fontWeight: "800", marginTop: 10, marginBottom: 13 },
