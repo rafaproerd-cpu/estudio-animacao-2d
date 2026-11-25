@@ -138,7 +138,7 @@ class RenderServerTests(unittest.TestCase):
                     result = main.generate_tts_batch(main.TTSBatchRequest(segments=segments), "Bearer integration-test-token")
                 self.assertEqual(result.voice, "multiple")
                 self.assertEqual(ffmpeg.call_count, 4)
-                self.assertTrue(any("anullsrc" in call.args[0] for call in ffmpeg.call_args_list))
+                self.assertTrue(any(any("anullsrc" in argument for argument in call.args[0]) for call in ffmpeg.call_args_list))
                 self.assertTrue((main.OUTPUT_DIR / ("tts-" + result.id + ".wav")).is_file())
         finally:
             main.API_TOKEN = original_token
