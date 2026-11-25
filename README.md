@@ -39,7 +39,6 @@ O projeto usa Expo SDK 54, React Native 0.81 e TypeScript. A checagem de tipos �
 
 ## Próximas etapas
 1. Validar os workflows reais de imagem e vídeo em um iPhone conectado ao servidor ComfyUI.
-2. Implementar montagem dos clipes e exportação de um MP4 final.
-3. Implementar montagem dos clipes em um único MP4 final.
-4. Integrar geração de voz e sincronização com as cenas.
-5. Reforçar o acesso privado e a gestão segura das conexões.
+2. Implementar montagem dos clipes em um único MP4 final.
+3. Integrar geração de voz e sincronização com as cenas.
+4. Reforçar o acesso privado e a gestão segura das conexões.
