@@ -90,6 +90,14 @@ export default function App() {
   const [busyScene, setBusyScene] = useState<string | null>(null);
 
   useEffect(() => {
+    AsyncStorage.getItem(COMFY_STORAGE_KEY)
+      .then(value => {
+        if (value) setComfyConfig({ ...comfyConfig, ...(JSON.parse(value) as Partial<ComfyConfig>) });
+      })
+      .catch(() => Alert.alert("Aviso", "Não foi possível carregar a configuração do ComfyUI."));
+  }, []);
+
+  useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
       .then(value => {
         if (value) setProjects(JSON.parse(value) as Project[]);
