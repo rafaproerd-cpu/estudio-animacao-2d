@@ -47,6 +47,10 @@ class TTSResponse(BaseModel):
     voice: str
 
 
+class TTSBatchRequest(BaseModel):
+    segments: list[TTSRequest]
+
+
 def require_token(authorization: str | None) -> None:
     if not API_TOKEN:
         raise HTTPException(status_code=503, detail="Configure ESTUDIO_RENDER_TOKEN antes de iniciar o servidor.")
@@ -160,6 +164,51 @@ def generate_tts(payload: TTSRequest, authorization: Annotated[str | None, Heade
         raise HTTPException(status_code=422, detail="Não foi possível gerar a voz: " + detail)
     return TTSResponse(id=tts_id, download_url="/tts/" + tts_id, voice=voice)
 
+
+@app.post("/tts/batch")
+def generate_tts_batch(payload: TTSBatchRequest, authorization: Annotated[str | None, Header()] = None) -> TTSResponse:
+    require_token(authorization)
+    if not payload.segments or len(payload.segments) > MAX_CLIPS:
+        raise HTTPException(status_code=400, detail=f"Envie entre 1 e {MAX_CLIPS} falas.")
+    for segment in payload.segments:
+        if not segment.text.strip():
+            raise HTTPException(status_code=400, detail="Cada fala precisa ter texto.")
+        if len(segment.text) > MAX_TTS_CHARACTERS:
+            raise HTTPException(status_code=413, detail="Uma das falas excede o limite de caracteres.")
+        if not re.fullmatch(r"[a-zA-Z0-9_-]{1,100}", segment.voice.strip()):
+            raise HTTPException(status_code=400, detail="Identificador de voz inválido.")
+        model = (PIPER_VOICES_DIR / (segment.voice.strip() + ".onnx")).resolve()
+        if model.parent != PIPER_VOICES_DIR or not model.is_file():
+            raise HTTPException(status_code=404, detail="Modelo de voz não encontrado: " + segment.voice)
+    executable = shutil.which(PIPER)
+    if not executable:
+        raise HTTPException(status_code=503, detail="O motor Piper não está instalado neste servidor.")
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    batch_id = uuid.uuid4().hex
+    temporary_dir = Path(tempfile.mkdtemp(prefix="tts-batch-", dir=OUTPUT_DIR))
+    try:
+        audio_files: list[Path] = []
+        for index, segment in enumerate(payload.segments):
+            model = PIPER_VOICES_DIR / (segment.voice.strip() + ".onnx")
+            audio_file = temporary_dir / f"segment-{index:03d}.wav"
+            result = subprocess.run(
+                [executable, "--model", str(model), "--output_file", str(audio_file)],
+                input=segment.text.strip(), capture_output=True, text=True, timeout=180, check=False,
+            )
+            if result.returncode != 0 or not audio_file.is_file() or audio_file.stat().st_size == 0:
+                detail = (result.stderr or "Falha desconhecida no Piper")[-1200:]
+                raise HTTPException(status_code=422, detail="Falha ao gerar fala " + str(index + 1) + ": " + detail)
+            audio_files.append(audio_file)
+        output_file = OUTPUT_DIR / ("tts-" + batch_id + ".wav")
+        ffmpeg_args: list[str] = []
+        for audio_file in audio_files:
+            ffmpeg_args.extend(["-i", str(audio_file)])
+        inputs = "".join(f"[{index}:a]" for index in range(len(audio_files)))
+        ffmpeg_args.extend(["-filter_complex", f"{inputs}concat=n={len(audio_files)}:v=0:a=1[out]", "-map", "[out]", str(output_file)])
+        run_ffmpeg(ffmpeg_args)
+        return TTSResponse(id=batch_id, download_url="/tts/" + batch_id, voice="multiple")
+    finally:
+        shutil.rmtree(temporary_dir, ignore_errors=True)
 
 @app.get("/tts/{tts_id}")
 def download_tts(tts_id: str, authorization: Annotated[str | None, Header()] = None) -> FileResponse:
