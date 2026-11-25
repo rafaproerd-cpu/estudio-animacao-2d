@@ -1,20 +1,39 @@
 # Estúdio de Animação 2D
 
-Um estúdio web simples, responsivo e pensado para funcionar também no celular.
+Aplicativo mobile multiplataforma, desenvolvido com Expo e React Native.
 
-## Primeira versão
+## Plataformas
+- iPhone (iOS)
+- Android
+
+O mesmo código-fonte atende às duas plataformas. Este projeto é um aplicativo mobile; não estamos desenvolvendo um site como produto final.
+
+## Estado atual
+- Interface nativa para celular.
 - Campo para descrever uma ideia.
 - Seleção de gênero e duração.
-- Estrutura inicial de roteiro com personagens e cenas.
-- Copiar roteiro e baixar em arquivo TXT.
+- Estrutura inicial de personagem e cenas.
+- Configuração Expo/EAS para builds iOS e Android.
 
-## Como testar
-Abra o arquivo `index.html` em um navegador ou publique o repositório com GitHub Pages.
+## Rodar em desenvolvimento
+`npm install`
+`npx expo start`
 
-## Limitação atual
-Esta versão gera uma estrutura inicial de roteiro localmente, sem serviço externo de IA. A geração de imagens, vozes, animações e exportação de vídeo MP4 ainda será integrada em etapas futuras. Não é necessário inserir chave de API nesta versão.
+## Gerar instaladores
+É possível gerar builds na nuvem com Expo Application Services (EAS):
+- iOS: `eas build --platform ios --profile preview`
+- Android: `eas build --platform android --profile preview`
 
-## Arquivos
-- `index.html`: interface.
-- `styles.css`: visual responsivo.
-- `app.js`: lógica de criação e exportação do roteiro.
+A instalação em iPhone requer provisionamento Apple. Distribuição pela App Store exige uma conta Apple Developer. O Android pode gerar um APK/AAB para instalação ou publicação, conforme o perfil de build.
+
+## Próximas etapas
+1. Testar e validar o app nos dois sistemas.
+2. Salvar projetos no próprio aparelho.
+3. Integrar geração de roteiro com IA.
+4. Integrar imagens, vozes, animação e exportação MP4.
+5. Implementar acesso privado.
+
+## Limitações
+A criação atual é uma estrutura inicial local, não uma geração completa por IA. Nenhum serviço pago ou chave de API foi conectado ainda.
+
+Documentação: https://docs.expo.dev/build/introduction/
