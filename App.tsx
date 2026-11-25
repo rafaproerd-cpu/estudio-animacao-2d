@@ -116,10 +116,13 @@ export default function App() {
       AsyncStorage.getItem(COMFY_STORAGE_KEY),
       SecureStore.getItemAsync("@estudio2d/render-token"),
     ])
-      .then(([value, token]) => {
+      .then(async ([value, token]) => {
         const saved = value ? JSON.parse(value) as Partial<ComfyConfig> : {};
+        const legacyToken = saved.renderToken;
         delete saved.renderToken;
-        setComfyConfig(prev => ({ ...prev, ...saved, renderToken: token || "" }));
+        if (!token && legacyToken) await SecureStore.setItemAsync("@estudio2d/render-token", legacyToken);
+        if (value && legacyToken) await AsyncStorage.setItem(COMFY_STORAGE_KEY, JSON.stringify(saved));
+        setComfyConfig(prev => ({ ...prev, ...saved, renderToken: token || legacyToken || "" }));
       })
       .catch(() => Alert.alert("Aviso", "Não foi possível carregar as configurações seguras do servidor."));
   }, []);
@@ -167,7 +170,7 @@ export default function App() {
       return;
     }
     try {
-      const response = await fetch(`${url}/health`);
+      const response = await fetch(`${url}/health`, { headers: { Authorization: `Bearer ${(comfyConfig.renderToken || "").trim()}` } });
       const data = await response.json();
       if (!response.ok || !data.ok || !data.ffmpeg_available || !data.token_configured) {
         throw new Error("Servidor respondeu, mas FFmpeg ou token não está configurado corretamente.");
