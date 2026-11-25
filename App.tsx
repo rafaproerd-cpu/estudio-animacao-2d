@@ -21,6 +21,8 @@ type Project = {
   duration: string;
   character: string;
   scenes: Scene[];
+  finalVideoUri?: string;
+  finalVideoRemoteUri?: string;
   createdAt: string;
 };
 
@@ -32,6 +34,7 @@ type ComfyConfig = {
   videoWorkflowText?: string; videoImageNode?: string; videoPositiveNode?: string;
   videoNegativeNode?: string; videoWidthNode?: string; videoHeightNode?: string;
   videoFramesNode?: string; videoFpsNode?: string; videoSeedNode?: string;
+  renderBaseUrl?: string; renderToken?: string;
 };
 const genres = ["Aventura", "Comédia", "Fantasia", "Ação", "Drama", "Mistério"];
 const durations = ["30 segundos", "1 minuto", "2 minutos", "3 minutos", "5 minutos", "10 minutos"];
@@ -102,7 +105,7 @@ export default function App() {
   const [selected, setSelected] = useState<Project | null>(null);
   const [ready, setReady] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [comfyConfig, setComfyConfig] = useState<ComfyConfig>({ baseUrl: "", workflowText: "", positiveNode: "", negativeNode: "", widthNode: "", heightNode: "", seedNode: "", videoWorkflowText: "", videoImageNode: "", videoPositiveNode: "", videoNegativeNode: "", videoWidthNode: "", videoHeightNode: "", videoFramesNode: "", videoFpsNode: "", videoSeedNode: "" });
+  const [comfyConfig, setComfyConfig] = useState<ComfyConfig>({ baseUrl: "", workflowText: "", positiveNode: "", negativeNode: "", widthNode: "", heightNode: "", seedNode: "", videoWorkflowText: "", videoImageNode: "", videoPositiveNode: "", videoNegativeNode: "", videoWidthNode: "", videoHeightNode: "", videoFramesNode: "", videoFpsNode: "", videoSeedNode: "", renderBaseUrl: "", renderToken: "" });
   const [connectionStatus, setConnectionStatus] = useState("Não testada");
   const [busyScene, setBusyScene] = useState<string | null>(null);
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
