@@ -21,6 +21,7 @@ FFMPEG = os.getenv("FFMPEG_PATH", "ffmpeg")
 MAX_CLIPS = int(os.getenv("MAX_CLIPS", "80"))
 MAX_CLIP_BYTES = int(os.getenv("MAX_CLIP_BYTES", str(500 * 1024 * 1024)))
 ALLOWED_EXTENSIONS = {".mp4", ".mov", ".mkv", ".webm"}
+ALLOWED_AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac"}
 
 app = FastAPI(title="Estúdio 2D Render Server", version="1.0.0")
 
@@ -46,6 +47,33 @@ def safe_extension(filename: str | None) -> str:
     if extension not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=415, detail=f"Formato não aceito: {extension or 'sem extensão'}. Use MP4, MOV, MKV ou WebM.")
     return extension
+
+
+def safe_audio_extension(filename: str | None) -> str:
+    extension = Path(filename or "").suffix.lower()
+    if extension not in ALLOWED_AUDIO_EXTENSIONS:
+        raise HTTPException(status_code=415, detail=f"Áudio não aceito: {extension or 'sem extensão'}. Use MP3, WAV, M4A, AAC, OGG ou FLAC.")
+    return extension
+
+
+async def save_audio_upload(upload: UploadFile | None, target: Path) -> Path | None:
+    if upload is None:
+        return None
+    safe_audio_extension(upload.filename)
+    total = 0
+    with target.open("wb") as output:
+        while True:
+            chunk = await upload.read(1024 * 1024)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > MAX_CLIP_BYTES:
+                raise HTTPException(status_code=413, detail="O arquivo de áudio excede o limite de 500 MB.")
+            output.write(chunk)
+    await upload.close()
+    if total == 0:
+        raise HTTPException(status_code=400, detail="O arquivo de áudio está vazio.")
+    return target
 
 
 def run_ffmpeg(arguments: list[str]) -> None:
@@ -75,6 +103,8 @@ def health(authorization: Annotated[str | None, Header()] = None) -> dict[str, s
 @app.post("/render", response_model=RenderResponse)
 async def render_video(
     clips: Annotated[list[UploadFile], File(description="Clipes ordenados na sequência desejada")],
+    narration: Annotated[UploadFile | None, File(description="Narração opcional")] = None,
+    music: Annotated[UploadFile | None, File(description="Música de fundo opcional")] = None,
     project_name: Annotated[str, Form()] = "Estudio-2D",
     authorization: Annotated[str | None, Header()] = None,
 ) -> RenderResponse:
@@ -125,6 +155,9 @@ async def render_video(
                 ])
                 normalized_files.append(normalized)
 
+            narration_path = await save_audio_upload(narration, temp_path / f"narration{safe_audio_extension(narration.filename)}") if narration else None
+            music_path = await save_audio_upload(music, temp_path / f"music{safe_audio_extension(music.filename)}") if music else None
+
             concat_list = temp_path / "clips.txt"
             concat_list.write_text(
                 "".join(f"file '{path.as_posix()}'\n" for path in normalized_files),
@@ -136,8 +169,38 @@ async def render_video(
                 "-i", str(concat_list),
                 "-c", "copy",
                 "-movflags", "+faststart",
-                str(output_file),
+                str(temp_path / "joined-video.mp4"),
             ])
+
+            joined_video = temp_path / "joined-video.mp4"
+            if narration_path or music_path:
+                audio_inputs = ["-i", str(joined_video)]
+                if narration_path:
+                    audio_inputs.extend(["-i", str(narration_path)])
+                if music_path:
+                    audio_inputs.extend(["-i", str(music_path)])
+
+                if narration_path and music_path:
+                    audio_filter = "[1:a]volume=1.0[narr];[2:a]volume=0.18[music];[narr][music]amix=inputs=2:duration=longest:dropout_transition=2,apad[aout]"
+                elif narration_path:
+                    audio_filter = "[1:a]volume=1.0,apad[aout]"
+                else:
+                    audio_filter = "[1:a]volume=0.18,apad[aout]"
+
+                run_ffmpeg([
+                    *audio_inputs,
+                    "-filter_complex", audio_filter,
+                    "-map", "0:v:0",
+                    "-map", "[aout]",
+                    "-c:v", "copy",
+                    "-c:a", "aac",
+                    "-b:a", "192k",
+                    "-shortest",
+                    "-movflags", "+faststart",
+                    str(output_file),
+                ])
+            else:
+                shutil.copy2(joined_video, output_file)
 
         if not output_file.exists() or output_file.stat().st_size == 0:
             raise HTTPException(status_code=500, detail="O FFmpeg não produziu o MP4 final.")
@@ -145,7 +208,7 @@ async def render_video(
             id=render_id,
             filename=f"{normalized_name}.mp4",
             download_url=f"/render/{render_id}",
-            message="Vídeo montado. O áudio e a narração ainda precisam ser adicionados em uma etapa própria.",
+            message="Vídeo montado com as cenas" + (" e áudio mixado." if narration_path or music_path else ". Você pode adicionar narração e música na montagem."),
         )
     except Exception:
         output_file.unlink(missing_ok=True)
