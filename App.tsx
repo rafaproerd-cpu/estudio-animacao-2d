@@ -6,6 +6,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
 import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { createStoryPlan, type Genre } from "./src/engine/storyEngine";
 import { ComfyUiImageProvider, type ComfyUiImageWorkflow } from "./src/engine/providers/comfyuiImageProvider";
@@ -357,6 +358,27 @@ export default function App() {
     }
   };
 
+  const exportSceneVideo = async (scene: Scene) => {
+    if (!scene.videoUri) return;
+    if (!scene.videoUri.startsWith("file://")) {
+      Alert.alert("Baixe primeiro", "Salve o clipe no iPhone antes de exportá-lo para Arquivos ou outro aplicativo.");
+      return;
+    }
+    try {
+      const available = await Sharing.isAvailableAsync();
+      if (!available) throw new Error("O compartilhamento de arquivos não está disponível neste aparelho.");
+      const extension = scene.videoUri.split("?")[0].split(".").pop()?.toLowerCase();
+      const mimeType = extension === "webm" ? "video/webm" : extension === "mov" ? "video/quicktime" : "video/mp4";
+      await Sharing.shareAsync(scene.videoUri, {
+        mimeType,
+        dialogTitle: "Exportar clipe",
+        UTI: "public.movie",
+      });
+    } catch (error) {
+      Alert.alert("Não foi possível exportar", error instanceof Error ? error.message : "Tente novamente.");
+    }
+  };
+
   const openSceneVideo = async (uri: string) => {
     try { await Linking.openURL(uri); }
     catch { Alert.alert("Não foi possível abrir", "Verifique se o endereço do vídeo está acessível no celular."); }
@@ -523,7 +545,7 @@ export default function App() {
               <Text style={styles.sceneTitle}>{scene.title}</Text>
               {scene.imageUri ? <Image source={{ uri: scene.imageUri }} style={styles.generatedImage} resizeMode="cover" /> : <View style={styles.imagePlaceholder}><Text style={styles.note}>Imagem ainda não gerada</Text></View>}\n              <TouchableOpacity style={styles.secondary} disabled={busyScene === scene.title || busyScene === `video:${scene.title}`} onPress={() => generateSceneImage(scene)}><Text style={styles.secondaryText}>{busyScene === scene.title ? "GERANDO IMAGEM…" : "GERAR IMAGEM DESTA CENA"}</Text></TouchableOpacity>
               <TouchableOpacity style={styles.primary} disabled={busyScene === scene.title || busyScene === `video:${scene.title}`} onPress={() => generateSceneVideo(scene)}><Text style={styles.primaryText}>{busyScene === `video:${scene.title}` ? "GERANDO CLIPE…" : "ANIMAR ESTA CENA · 4 SEGUNDOS"}</Text><Text style={styles.arrow}>▶</Text></TouchableOpacity>
-              {scene.videoUri ? <><SceneVideoPlayer uri={scene.videoUri} /><TouchableOpacity style={styles.secondary} disabled={busyScene === `download:${scene.title}`} onPress={() => downloadSceneVideo(scene)}><Text style={styles.secondaryText}>{busyScene === `download:${scene.title}` ? "SALVANDO NO IPHONE…" : scene.videoUri.startsWith("file://") ? "VÍDEO SALVO OFFLINE" : "BAIXAR VÍDEO PARA O IPHONE"}</Text></TouchableOpacity><TouchableOpacity style={styles.secondary} onPress={() => openSceneVideo(scene.videoRemoteUri || scene.videoUri!)}><Text style={styles.secondaryText}>ABRIR VÍDEO NO NAVEGADOR</Text></TouchableOpacity></> : null}
+              {scene.videoUri ? <><SceneVideoPlayer uri={scene.videoUri} /><TouchableOpacity style={styles.secondary} disabled={busyScene === `download:${scene.title}`} onPress={() => downloadSceneVideo(scene)}><Text style={styles.secondaryText}>{busyScene === `download:${scene.title}` ? "SALVANDO NO IPHONE…" : scene.videoUri.startsWith("file://") ? "VÍDEO SALVO OFFLINE" : "BAIXAR VÍDEO PARA O IPHONE"}</Text></TouchableOpacity><TouchableOpacity style={styles.secondary} onPress={() => openSceneVideo(scene.videoRemoteUri || scene.videoUri!)}><Text style={styles.secondaryText}>ABRIR VÍDEO NO NAVEGADOR</Text></TouchableOpacity>{scene.videoUri.startsWith("file://") ? <TouchableOpacity style={styles.secondary} onPress={() => exportSceneVideo(scene)}><Text style={styles.secondaryText}>EXPORTAR PARA ARQUIVOS / COMPARTILHAR</Text></TouchableOpacity> : null}</> : null}
               <Text style={styles.label}>AÇÃO DA CENA</Text>
               <TextInput value={scene.description} onChangeText={value => updateScene(scene.title, "description", value)} multiline textAlignVertical="top" placeholder="Descreva o que acontece nesta cena..." placeholderTextColor="#777789" style={styles.sceneInput} />
               <Text style={styles.label}>FALA / DIÁLOGO</Text>
