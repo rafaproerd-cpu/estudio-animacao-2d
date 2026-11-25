@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert, SafeAreaView, ScrollView, Share, StatusBar, StyleSheet,
-  Text, TextInput, TouchableOpacity, View
+  Text, TextInput, TouchableOpacity, View, Image
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
 import { createStoryPlan, type Genre } from "./src/engine/storyEngine";
+import { ComfyUiImageProvider, type ComfyUiImageWorkflow } from "./src/engine/providers/comfyuiImageProvider";
 
-type Scene = { title: string; description: string; dialogue: string; imagePrompt: string; videoPrompt: string; shot: string; camera: string; lighting: string };
+type Scene = { title: string; description: string; dialogue: string; imagePrompt: string; videoPrompt: string; shot: string; camera: string; lighting: string; imageUri?: string };
 type Project = {
   id: string;
   title: string;
@@ -20,6 +21,8 @@ type Project = {
 };
 
 const STORAGE_KEY = "@estudio2d/projects-v1";
+const COMFY_STORAGE_KEY = "@estudio2d/comfyui-v1";
+type ComfyConfig = { baseUrl: string; workflowText: string; positiveNode: string; negativeNode: string; widthNode: string; heightNode: string; seedNode: string };
 const genres = ["Aventura", "Comédia", "Fantasia", "Ação", "Drama", "Mistério"];
 const durations = ["30 segundos", "1 minuto", "2 minutos", "3 minutos", "5 minutos", "10 minutos"];
 
@@ -81,6 +84,10 @@ export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selected, setSelected] = useState<Project | null>(null);
   const [ready, setReady] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [comfyConfig, setComfyConfig] = useState<ComfyConfig>({ baseUrl: "", workflowText: "", positiveNode: "", negativeNode: "", widthNode: "", heightNode: "", seedNode: "" });
+  const [connectionStatus, setConnectionStatus] = useState("Não testada");
+  const [busyScene, setBusyScene] = useState<string | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
@@ -98,7 +105,7 @@ export default function App() {
     }
   }, [projects, ready]);
 
-  const currentScript = useMemo(() => selected ? projectText(selected) : "", [selected]);
+  const saveComfyConfig = async () => {\n    try { await AsyncStorage.setItem(COMFY_STORAGE_KEY, JSON.stringify(comfyConfig)); Alert.alert("Configuração salva", "As configurações do servidor foram guardadas neste aparelho."); }\n    catch { Alert.alert("Erro", "Não foi possível salvar a configuração."); }\n  };\n\n  const testComfyConnection = async () => {\n    const url = comfyConfig.baseUrl.trim().replace(/\\/+$/, "");\n    if (!/^https?:\\/\\//i.test(url)) { Alert.alert("Endereço inválido", "Informe o endereço completo do ComfyUI."); return; }\n    setConnectionStatus("Testando…");\n    try { const response = await fetch(`${url}/system_stats`); if (!response.ok) throw new Error(`HTTP ${response.status}`); await response.json(); setConnectionStatus("Conectado"); Alert.alert("Conexão confirmada", "O aplicativo conseguiu acessar o servidor ComfyUI."); }\n    catch (error) { setConnectionStatus("Falha na conexão"); Alert.alert("Não conectou", error instanceof Error ? error.message : "Verifique endereço, rede e HTTPS."); }\n  };\n\n  const generateSceneImage = async (scene: Scene) => {\n    if (!selected) return;\n    if (!comfyConfig.baseUrl.trim() || !comfyConfig.workflowText.trim() || !comfyConfig.positiveNode.trim()) { Alert.alert("Configure o ComfyUI", "Abra Configurar geração e informe servidor, workflow API e nó do prompt positivo."); setShowSettings(true); return; }\n    setBusyScene(scene.title);\n    try {\n      const workflow = JSON.parse(comfyConfig.workflowText) as ComfyUiImageWorkflow;\n      const provider = new ComfyUiImageProvider({ baseUrl: comfyConfig.baseUrl, workflow, positivePromptNodeId: comfyConfig.positiveNode.trim(), negativePromptNodeId: comfyConfig.negativeNode.trim() || undefined, widthNodeId: comfyConfig.widthNode.trim() || undefined, heightNodeId: comfyConfig.heightNode.trim() || undefined, seedNodeId: comfyConfig.seedNode.trim() || undefined });\n      const result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576 });\n      if (result.status !== "completed" || !result.outputUri) throw new Error(result.error || "A geração não retornou uma imagem.");\n      const updated = { ...selected, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, imageUri: result.outputUri } : item) };\n      saveUpdatedProject(updated);\n      Alert.alert("Imagem gerada", "A imagem desta cena foi salva no projeto.");\n    } catch (error) { Alert.alert("Erro na geração", error instanceof Error ? error.message : "Não foi possível gerar a imagem."); }\n    finally { setBusyScene(null); }\n  };\n\n  const currentScript = useMemo(() => selected ? projectText(selected) : "", [selected]);
 
   const createProject = () => {
     const cleanIdea = idea.trim();
@@ -182,7 +189,7 @@ export default function App() {
           <View style={styles.privatePill}><Text style={styles.privateText}>PESSOAL</Text></View>
         </View>
 
-        <View style={styles.hero}>
+        <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSettings(value => !value)}><Text style={styles.backText}>{showSettings ? "FECHAR CONFIGURAÇÕES" : "⚙  CONFIGURAR GERAÇÃO DE IMAGENS"}</Text></TouchableOpacity>\n        {showSettings && <View style={styles.panel}>\n          <Text style={styles.step}>MOTOR DE IMAGENS · SERVIDOR PRÓPRIO</Text>\n          <Text style={styles.panelTitle}>Conectar ComfyUI</Text>\n          <Text style={styles.note}>Este modo usa um servidor ComfyUI que você controla. O aplicativo não cobra créditos, mas precisa de um computador/servidor com modelo de imagem instalado e acessível pela rede.</Text>\n          <Text style={styles.label}>ENDEREÇO DO SERVIDOR</Text>\n          <TextInput value={comfyConfig.baseUrl} onChangeText={value => setComfyConfig(prev => ({ ...prev, baseUrl: value }))} autoCapitalize="none" placeholder="https://seu-servidor:8188" placeholderTextColor="#777789" style={styles.input} />\n          <Text style={styles.label}>WORKFLOW API JSON</Text>\n          <TextInput value={comfyConfig.workflowText} onChangeText={value => setComfyConfig(prev => ({ ...prev, workflowText: value }))} multiline textAlignVertical="top" placeholder="Cole aqui o JSON exportado em formato API pelo ComfyUI" placeholderTextColor="#777789" style={styles.workflowInput} />\n          <Text style={styles.label}>ID DO NÓ DE PROMPT POSITIVO (CLIPTextEncode)</Text>\n          <TextInput value={comfyConfig.positiveNode} onChangeText={value => setComfyConfig(prev => ({ ...prev, positiveNode: value }))} keyboardType="number-pad" placeholder="Ex.: 6" placeholderTextColor="#777789" style={styles.smallInput} />\n          <Text style={styles.label}>ID DO NÓ DE PROMPT NEGATIVO (OPCIONAL)</Text>\n          <TextInput value={comfyConfig.negativeNode} onChangeText={value => setComfyConfig(prev => ({ ...prev, negativeNode: value }))} keyboardType="number-pad" placeholder="Ex.: 7" placeholderTextColor="#777789" style={styles.smallInput} />\n          <Text style={styles.label}>ID DOS NÓS DE LARGURA / ALTURA / SEED (OPCIONAIS)</Text>\n          <View style={styles.inlineInputs}>{(["widthNode", "heightNode", "seedNode"] as const).map((key, index) => <TextInput key={key} value={comfyConfig[key]} onChangeText={value => setComfyConfig(prev => ({ ...prev, [key]: value }))} keyboardType="number-pad" placeholder={["Largura", "Altura", "Seed"][index]} placeholderTextColor="#777789" style={[styles.smallInput, { flex: 1 }]} />)}</View>\n          <Text style={styles.note}>Status: {connectionStatus}. O workflow precisa terminar em SaveImage. Os nomes de entrada padrão são text, width, height e seed.</Text>\n          <TouchableOpacity style={styles.secondary} onPress={saveComfyConfig}><Text style={styles.secondaryText}>SALVAR CONFIGURAÇÃO</Text></TouchableOpacity>\n          <TouchableOpacity style={styles.primary} onPress={testComfyConnection}><Text style={styles.primaryText}>TESTAR CONEXÃO</Text><Text style={styles.arrow}>→</Text></TouchableOpacity>\n        </View>}\n\n        <View style={styles.hero}>
           <Text style={styles.eyebrow}>IDEIAS QUE GANHAM VIDA</Text>
           <Text style={styles.heading}>Crie sua próxima{"\n"}<Text style={styles.headingAccent}>animação.</Text></Text>
           <Text style={styles.intro}>Seu espaço para desenvolver histórias, personagens e cenas.</Text>
@@ -246,7 +253,7 @@ export default function App() {
             <Text style={styles.label}>FICHA DO PERSONAGEM</Text>
             <TextInput value={selected.character} onChangeText={updateCharacter} multiline textAlignVertical="top" placeholder="Descreva aparência, roupa, personalidade e voz do personagem..." placeholderTextColor="#777789" style={styles.characterInput} />
             {selected.scenes.map(scene => <View key={scene.title} style={styles.scene}>
-              <Text style={styles.sceneTitle}>{scene.title}</Text>
+              <Text style={styles.sceneTitle}>{scene.title}</Text>\n              {scene.imageUri ? <Image source={{ uri: scene.imageUri }} style={styles.generatedImage} resizeMode="cover" /> : <View style={styles.imagePlaceholder}><Text style={styles.note}>Imagem ainda não gerada</Text></View>}\n              <TouchableOpacity style={styles.secondary} disabled={busyScene === scene.title} onPress={() => generateSceneImage(scene)}><Text style={styles.secondaryText}>{busyScene === scene.title ? "GERANDO IMAGEM…" : "GERAR IMAGEM DESTA CENA"}</Text></TouchableOpacity>
               <Text style={styles.label}>AÇÃO DA CENA</Text>
               <TextInput value={scene.description} onChangeText={value => updateScene(scene.title, "description", value)} multiline textAlignVertical="top" placeholder="Descreva o que acontece nesta cena..." placeholderTextColor="#777789" style={styles.sceneInput} />
               <Text style={styles.label}>FALA / DIÁLOGO</Text>
@@ -293,7 +300,7 @@ const styles = StyleSheet.create({
   heading: { color: "#F7F5FF", fontSize: 35, lineHeight: 42, fontWeight: "900", marginTop: 11 },
   headingAccent: { color: "#A78BFA" },
   intro: { color: "#AAA8B8", fontSize: 14, lineHeight: 22, marginTop: 11 },
-  panel: { backgroundColor: "#1A1A27", borderColor: "#303044", borderWidth: 1, borderRadius: 22, padding: 17, marginBottom: 20 },
+  settingsButton: { paddingVertical: 12, marginBottom: 8 },\n  workflowInput: { minHeight: 180, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 12, padding: 11, color: "#F7F5FF", fontSize: 10, lineHeight: 16 },\n  smallInput: { minHeight: 46, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 10, padding: 11, color: "#F7F5FF", fontSize: 12, marginBottom: 8 },\n  inlineInputs: { flexDirection: "row", gap: 7 },\n  generatedImage: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, marginTop: 10, backgroundColor: "#11111B" },\n  imagePlaceholder: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, marginTop: 10, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", alignItems: "center", justifyContent: "center" },\n  panel: { backgroundColor: "#1A1A27", borderColor: "#303044", borderWidth: 1, borderRadius: 22, padding: 17, marginBottom: 20 },
   step: { color: "#A78BFA", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
   panelTitle: { color: "#F7F5FF", fontSize: 22, fontWeight: "800", marginTop: 10, marginBottom: 13 },
   characterInput: { minHeight: 150, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 14, padding: 13, color: "#F7F5FF", fontSize: 13, lineHeight: 21 },
