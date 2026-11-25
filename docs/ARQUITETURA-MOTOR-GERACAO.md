@@ -84,3 +84,25 @@ A aplicação ainda não tem geração real de imagem, vídeo ou áudio integrad
 ### Limite importante
 
 Esses modelos não rodam no iPhone como motor local de geração. O app móvel precisará conversar com um computador/servidor que execute o modelo, ou usar outro ambiente de execução. "Sem créditos por vídeo" não significa processamento sem custo: execução própria exige hardware, energia, armazenamento e tempo. A integração só será escolhida após validar o hardware realmente disponível.
+
+
+## Primeiro adaptador real: ComfyUI para imagens
+
+Foi criado `src/engine/providers/comfyuiImageProvider.ts`, um adaptador que conversa com uma instância ComfyUI autogerenciada:
+
+1. recebe um workflow no formato API exportado pelo ComfyUI;
+2. injeta o prompt positivo/negativo e, quando configurado, largura, altura e seed;
+3. envia o workflow para `POST /prompt`;
+4. consulta `GET /history/{prompt_id}` até a tarefa terminar;
+5. retorna o endereço do arquivo produzido por `/view`.
+
+A implementação segue as rotas HTTP documentadas pelo projeto ComfyUI: https://github.com/Comfy-Org/docs/blob/main/development/comfyui-server/comms_routes.mdx
+
+### O que falta antes de gerar a primeira imagem dentro do app
+
+- Criar uma instância ComfyUI acessível pela rede.
+- Instalar um checkpoint/modelo de imagem compatível e montar um workflow de imagem com nó `SaveImage`.
+- Configurar os IDs dos nós no adaptador.
+- Ligar o adaptador à interface do aplicativo e validar a transferência/visualização do arquivo no iPhone.
+
+O adaptador não inclui nem baixa modelos automaticamente e não representa geração disponível sem servidor. Ele não usa créditos de geração, mas exige máquina, GPU, energia e armazenamento próprios. Não exponha uma instância ComfyUI sem proteção diretamente à internet; prefira rede privada/VPN e HTTPS. Em iPhone, conexões HTTP sem TLS também podem ser bloqueadas pelas regras de segurança de transporte do iOS.
