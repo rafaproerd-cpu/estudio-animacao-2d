@@ -449,7 +449,8 @@ export default function App() {
   };
 
   const loadTtsVoices = async () => {
-    const baseUrl = (comfyConfig.renderBaseUrl || "").trim().replace(/\/+$/, "");
+    let baseUrl = (comfyConfig.renderBaseUrl || "").trim();
+    while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
     const token = (comfyConfig.renderToken || "").trim();
     if (!baseUrl || !token) {
       Alert.alert("Configure a montagem", "Informe o endereço e o token do servidor nas configurações.");
@@ -474,7 +475,8 @@ export default function App() {
     const dialogue = selected.scenes.map(scene => (scene.dialogue || "").trim()).filter(Boolean).join("\n\n");
     if (!dialogue) { Alert.alert("Roteiro sem diálogos", "Adicione falas às cenas antes de gerar a narração."); return; }
     if (!selectedTtsVoice) { Alert.alert("Escolha uma voz", "Atualize a lista e selecione uma voz Piper disponível."); return; }
-    const baseUrl = (comfyConfig.renderBaseUrl || "").trim().replace(/\/+$/, "");
+    let baseUrl = (comfyConfig.renderBaseUrl || "").trim();
+    while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
     const token = (comfyConfig.renderToken || "").trim();
     if (!baseUrl || !token) { Alert.alert("Configure a montagem", "Informe o endereço e o token do servidor nas configurações."); setShowSettings(true); return; }
     setBusyScene("tts:project");
