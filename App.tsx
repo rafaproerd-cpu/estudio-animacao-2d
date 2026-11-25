@@ -204,6 +204,58 @@ export default function App() {
     }
   };
 
+  const generateAllSceneImages = async () => {
+    if (!selected) return;
+    if (!comfyConfig.workflowText.trim() || !comfyConfig.positiveNode.trim()) {
+      Alert.alert("Configure o motor de imagens", "Informe o workflow API e o nó do prompt positivo.");
+      setShowSettings(true);
+      return;
+    }
+    const pendingScenes = selected.scenes.filter(scene => !scene.imageUri);
+    if (!pendingScenes.length) {
+      Alert.alert("Imagens prontas", "Todas as cenas já possuem imagem. Você pode seguir para a animação.");
+      return;
+    }
+    let workingProject = selected;
+    let completed = 0;
+    setBatchProgress({ current: 0, total: pendingScenes.length });
+    try {
+      const workflow = JSON.parse(comfyConfig.workflowText) as ComfyUiImageWorkflow;
+      const provider = new ComfyUiImageProvider({
+        baseUrl: comfyConfig.baseUrl,
+        workflow,
+        positivePromptNodeId: comfyConfig.positiveNode.trim(),
+        negativePromptNodeId: comfyConfig.negativeNode.trim() || undefined,
+        widthNodeId: comfyConfig.widthNode.trim() || undefined,
+        heightNodeId: comfyConfig.heightNode.trim() || undefined,
+        seedNodeId: comfyConfig.seedNode.trim() || undefined,
+      });
+      for (const scene of pendingScenes) {
+        setBusyScene(scene.title);
+        const result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576 });
+        if (result.status !== "completed" || !result.outputUri) {
+          throw new Error(`${scene.title}: ${result.error || "o workflow não retornou uma imagem"}`);
+        }
+        workingProject = {
+          ...workingProject,
+          scenes: workingProject.scenes.map(item => item.title === scene.title
+            ? { ...item, imageUri: result.outputUri, videoUri: undefined, videoRemoteUri: undefined }
+            : item),
+        };
+        completed += 1;
+        setSelected(workingProject);
+        setProjects(previous => previous.map(item => item.id === workingProject.id ? workingProject : item));
+        setBatchProgress({ current: completed, total: pendingScenes.length });
+      }
+      Alert.alert("Imagens concluídas", `${completed} imagens foram geradas e salvas no projeto.`);
+    } catch (error) {
+      Alert.alert("Geração interrompida", `${completed} de ${pendingScenes.length} imagens concluídas. ${error instanceof Error ? error.message : "Falha desconhecida."}`);
+    } finally {
+      setBusyScene(null);
+      setBatchProgress(null);
+    }
+  };
+
   const generateAllSceneVideos = async () => {
     if (!selected) return;
     const missingImages = selected.scenes.filter(scene => !scene.imageUri);
@@ -482,7 +534,10 @@ export default function App() {
               <Text style={styles.step}>LINHA DO TEMPO</Text>
               <Text style={styles.panelTitle}>Animação das cenas</Text>
               <Text style={styles.body}>{selected.scenes.filter(scene => !!scene.videoUri).length} de {selected.scenes.length} clipes gerados · {selected.scenes.filter(scene => !!scene.imageUri).length} imagens prontas</Text>
-              {batchProgress ? <Text style={styles.note}>Gerando clipe {batchProgress.current + 1} de {batchProgress.total}…</Text> : null}
+              <TouchableOpacity style={styles.secondary} disabled={!!busyScene || !!batchProgress} onPress={generateAllSceneImages}>
+                <Text style={styles.secondaryText}>{batchProgress ? "GERANDO IMAGENS…" : "GERAR IMAGENS DE TODAS AS CENAS"}</Text>
+              </TouchableOpacity>
+              {batchProgress ? <Text style={styles.note}>Processando {batchProgress.current + 1} de {batchProgress.total}…</Text> : null}
               <TouchableOpacity style={styles.primary} disabled={!!busyScene || !!batchProgress} onPress={generateAllSceneVideos}>
                 <Text style={styles.primaryText}>{batchProgress ? "GERANDO TODAS AS CENAS…" : "GERAR VÍDEOS DE TODAS AS CENAS"}</Text><Text style={styles.arrow}>▶</Text>
               </TouchableOpacity>
