@@ -6,6 +6,7 @@ Este serviço opcional transforma os clipes gerados no app em um único MP4. Ele
 
 - Python 3.10 ou superior
 - FFmpeg instalado e disponível no PATH
+- Piper instalado no servidor (opcional, para voz local) e modelos de voz `.onnx` licenciados para uso
 - Rede privada/VPN; não exponha este serviço diretamente à internet pública
 
 ## Instalação
@@ -34,7 +35,23 @@ export ESTUDIO_RENDER_TOKEN="coloque-seu-token-longo-aqui"
 uvicorn main:app --host 0.0.0.0 --port 8765
 ```
 
-O app deve usar `http://IP-DA-MAQUINA:8765` em rede local, ou um endereço HTTPS protegido por VPN/reverse proxy. O endpoint `/health` exige o mesmo token Bearer e permite verificar se o FFmpeg foi encontrado. O endpoint `POST /render` exige `Authorization: Bearer TOKEN` e recebe vários arquivos no campo multipart `clips`, na ordem desejada. O serviço normaliza resolução para 1024×576, 30 FPS e H.264, concatena os segmentos e retorna uma URL para baixar o MP4.
+O app deve usar `http://IP-DA-MAQUINA:8765` em rede local, ou um endereço HTTPS protegido por VPN/reverse proxy. O endpoint `/health` exige o mesmo token Bearer e permite verificar se o FFmpeg foi encontrado. O endpoint `POST /render` exige `Authorization: Bearer TOKEN` e recebe vários arquivos no campo multipart `clips`, na ordem desejada. O serviço normaliza resolução para 1024×576, 30 FPS e H.264, concatena os segmentos e retorna uma URL para baixar o MP4. Também aceita narração e música opcionais e faz a mixagem no MP4 final.
+
+## Voz por IA local (Piper)
+
+A geração de voz não usa API paga nem créditos externos: quando o Piper está instalado no mesmo servidor, o serviço pode sintetizar texto localmente. Configure `PIPER_PATH` se o executável não estiver no PATH e `PIPER_VOICES_DIR` se os modelos estiverem em outra pasta. Por padrão, os modelos `.onnx` ficam em `render-server/voices/`. Coloque nessa pasta apenas modelos Piper e arquivos de configuração correspondentes obtidos de uma fonte confiável, respeitando a licença de cada voz.
+
+- `GET /tts/voices` lista os modelos `.onnx` disponíveis (requer Bearer token).
+- `POST /tts` recebe JSON com `text` e `voice` (nome do modelo sem `.onnx`) e devolve WAV.
+- O texto tem limite padrão de 6.000 caracteres; a geração tem timeout de 3 minutos.
+- Sem Piper ou sem um modelo instalado, o endpoint informa claramente que a função não está disponível; não usa um serviço pago como fallback.
+
+Exemplo de variáveis opcionais:
+```bash
+PIPER_PATH=piper
+PIPER_VOICES_DIR=./voices
+MAX_TTS_CHARACTERS=6000
+```
 
 ## Limites atuais
 
