@@ -174,3 +174,8 @@ Isso é download de clipes individuais, não montagem. A criação de um único 
 ## Geração sequencial de todas as cenas
 
 A tela do projeto agora mostra um resumo da linha do tempo: quantidade de imagens prontas e clipes de vídeo gerados. O botão de geração em lote verifica se todas as cenas possuem imagem de referência e, em seguida, executa os workflows de vídeo em sequência para evitar sobrecarregar o servidor com várias tarefas simultâneas. Cada clipe concluído é salvo no projeto imediatamente; se uma cena falhar, os clipes anteriores permanecem registrados e a mensagem informa quantos foram concluídos. A função não monta os clipes em um único arquivo: concatenação, transições, mixagem de áudio e exportação MP4 final ainda exigem um motor de pós-produção.
+
+
+## Geração sequencial de imagens
+
+A tela de linha do tempo também oferece geração em lote das imagens que ainda não existem. O aplicativo percorre as cenas pendentes em sequência, usa o prompt visual de cada uma e salva a URI assim que a geração termina. Se o processo falhar, as imagens já concluídas permanecem salvas e o usuário pode retomar sem gerar novamente as cenas que já possuem imagem. Ao substituir uma imagem, o vínculo do clipe antigo daquela cena é limpo para evitar que um vídeo desatualizado seja confundido com a nova referência.
