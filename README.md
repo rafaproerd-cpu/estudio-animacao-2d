@@ -1,39 +1,40 @@
 # Estúdio de Animação 2D
 
-Aplicativo mobile multiplataforma, desenvolvido com Expo e React Native.
+Aplicativo mobile multiplataforma desenvolvido com Expo e React Native, pensado para uso pessoal em iPhone e Android.
 
-## Plataformas
-- iPhone (iOS)
-- Android
+## O que já funciona
+- Criação local de projetos a partir de uma ideia, com gênero e duração.
+- Planejamento de cenas, enquadramentos, movimentos de câmera, iluminação e prompts visuais.
+- Edição da ficha do personagem, ações, diálogos e prompts de cada cena.
+- Salvamento automático de projetos no aparelho.
+- Cópia e compartilhamento do roteiro e dos prompts.
+- Integração opcional com um servidor ComfyUI próprio para gerar imagens de cenas.
+- Salvamento local das configurações do ComfyUI, incluindo recarregamento ao abrir o aplicativo.
 
-O mesmo código-fonte atende às duas plataformas. Este projeto é um aplicativo mobile; não estamos desenvolvendo um site como produto final.
+## Estado real da geração
+O planejador de cenas funciona localmente, mas não é um modelo generativo. A geração de imagens só funciona depois que o usuário conecta um servidor ComfyUI acessível pela rede, instala um modelo compatível e configura um workflow exportado em formato API que termine em `SaveImage`.
 
-## Estado atual
-- Interface nativa para celular.
-- Campo para descrever uma ideia.
-- Seleção de gênero e duração.
-- Estrutura inicial de personagem e cenas.
-- Configuração Expo/EAS para builds iOS e Android.
+A geração de vídeo, voz, montagem e exportação final em MP4 ainda não estão implementadas. O aplicativo não simula que essas etapas foram concluídas.
 
-## Rodar em desenvolvimento
-`npm install`
-`npx expo start`
+## Custos e infraestrutura
+A integração ComfyUI não cobra créditos por geração do aplicativo e não exige uma chave de API. Entretanto, o servidor e o hardware são do proprietário: GPU, energia, armazenamento, rede e manutenção podem ter custos. Modelos de vídeo de alta qualidade normalmente exigem uma máquina com GPU; não rodam diretamente no iPhone.
 
-## Gerar instaladores
-É possível gerar builds na nuvem com Expo Application Services (EAS):
-- iOS: `eas build --platform ios --profile preview`
-- Android: `eas build --platform android --profile preview`
+Não exponha uma instância ComfyUI sem proteção à internet pública. Prefira rede privada ou VPN e HTTPS. Em iOS, conexões HTTP sem TLS podem ser bloqueadas pelas políticas de segurança da plataforma.
 
-A instalação em iPhone requer provisionamento Apple. Distribuição pela App Store exige uma conta Apple Developer. O Android pode gerar um APK/AAB para instalação ou publicação, conforme o perfil de build.
+## Desenvolvimento
+```bash
+npm install
+npx expo start
+```
+
+O projeto usa Expo SDK 54, React Native 0.81 e TypeScript. A checagem de tipos é executada pelo GitHub Actions com `npm run typecheck`.
+
+## Builds
+É possível configurar builds com Expo Application Services (EAS). A instalação direta em iPhone depende de assinatura/provisionamento Apple; a distribuição pela App Store exige conta Apple Developer. No Android, é possível gerar APK/AAB conforme o perfil de build.
 
 ## Próximas etapas
-1. Testar e validar o app nos dois sistemas.
-2. Salvar projetos no próprio aparelho.
-3. Integrar geração de roteiro com IA.
-4. Integrar imagens, vozes, animação e exportação MP4.
-5. Implementar acesso privado.
-
-## Limitações
-A criação atual é uma estrutura inicial local, não uma geração completa por IA. Nenhum serviço pago ou chave de API foi conectado ainda.
-
-Documentação: https://docs.expo.dev/build/introduction/
+1. Validar a conexão ComfyUI e a geração de uma imagem real em um iPhone.
+2. Integrar um workflow de imagem-para-vídeo e pré-visualização do resultado.
+3. Integrar geração de voz e sincronização com as cenas.
+4. Montar e exportar o vídeo final em MP4.
+5. Reforçar o acesso privado e a gestão segura das conexões.
