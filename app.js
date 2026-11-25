@@ -52,6 +52,7 @@ function renderScript(script) {
     <div class="story-block"><h3>PERSONAGENS</h3><ul>${chars}</ul></div>
     <div class="story-block"><h3>ROTEIRO E CENAS</h3>${scenes}</div>
     <div class="story-block"><h3>PRÓXIMA ETAPA</h3><p>Definir aparência visual fixa dos personagens, criar imagens de referência e depois planejar movimentos, vozes e montagem do vídeo.</p></div>`;
+  renderCharacterBible();
 }
 function scriptAsText(s) {
   return [s.title, `Gênero: ${s.genre} | Duração: ${s.duration}`, "", "IDEIA", s.idea, "", "PERSONAGENS", ...s.characters.map(c => `- ${c.name}: ${c.description}`), "", "CENAS", ...s.scenes.flatMap((c,i) => [`CENA ${i+1} — ${c.name}`, `Visual: ${c.visual}`, `Áudio: ${c.dialogue}`, ""]), "Próxima etapa: definir referências visuais, movimentos, vozes e montagem."].join("\n");
@@ -86,3 +87,71 @@ document.querySelector("#download-button").addEventListener("click", () => {
   link.click();
   URL.revokeObjectURL(url);
 });
+function loadCharacterBible() {
+  try { return JSON.parse(localStorage.getItem("estudio2d-character-bible") || "{}"); }
+  catch { return {}; }
+}
+function renderCharacterBible() {
+  const saved = loadCharacterBible();
+  const values = {
+    appearance: saved.appearance || "",
+    personality: saved.personality || "",
+    voice: saved.voice || "",
+    continuity: saved.continuity || "Manter exatamente o mesmo rosto, cabelo, roupa, cores, proporções e acessórios em todas as cenas."
+  };
+  const section = document.createElement("div");
+  section.className = "story-block bible";
+  section.innerHTML = `
+    <h3>BÍBLIA VISUAL DO PERSONAGEM</h3>
+    <p>Defina os detalhes que não podem mudar entre as cenas. Essas informações ficam salvas neste navegador.</p>
+    <label for="char-appearance">Aparência física e roupa</label>
+    <textarea id="char-appearance" rows="3" placeholder="Ex.: jovem de cabelo castanho, camiseta amarela, bermuda azul...">${escapeHtml(values.appearance)}</textarea>
+    <label for="char-personality">Personalidade</label>
+    <textarea id="char-personality" rows="2" placeholder="Ex.: curioso, corajoso e um pouco atrapalhado...">${escapeHtml(values.personality)}</textarea>
+    <label for="char-voice">Voz e jeito de falar</label>
+    <textarea id="char-voice" rows="2" placeholder="Ex.: voz jovem, animada, fala simples e natural...">${escapeHtml(values.voice)}</textarea>
+    <label for="char-continuity">Regra de continuidade</label>
+    <textarea id="char-continuity" rows="2">${escapeHtml(values.continuity)}</textarea>
+    <div class="bible-actions">
+      <button id="save-bible" class="secondary-button" type="button">Salvar personagem</button>
+      <button id="copy-bible-prompt" class="secondary-button" type="button">Copiar descrição para IA</button>
+    </div>
+    <p id="bible-status" class="bible-status" aria-live="polite">Preencha os campos para criar uma referência consistente.</p>`;
+  output.appendChild(section);
+  section.querySelector("#save-bible").addEventListener("click", () => {
+    const profile = {
+      appearance: section.querySelector("#char-appearance").value.trim(),
+      personality: section.querySelector("#char-personality").value.trim(),
+      voice: section.querySelector("#char-voice").value.trim(),
+      continuity: section.querySelector("#char-continuity").value.trim()
+    };
+    try {
+      localStorage.setItem("estudio2d-character-bible", JSON.stringify(profile));
+      section.querySelector("#bible-status").textContent = "Personagem salvo neste aparelho ✓";
+    } catch {
+      section.querySelector("#bible-status").textContent = "Não foi possível salvar neste navegador.";
+    }
+  });
+  section.querySelector("#copy-bible-prompt").addEventListener("click", async () => {
+    const profile = {
+      appearance: section.querySelector("#char-appearance").value.trim(),
+      personality: section.querySelector("#char-personality").value.trim(),
+      voice: section.querySelector("#char-voice").value.trim(),
+      continuity: section.querySelector("#char-continuity").value.trim()
+    };
+    const prompt = [
+      "REFERÊNCIA FIXA DO PERSONAGEM",
+      "Aparência e roupa: " + (profile.appearance || "Definir"),
+      "Personalidade: " + (profile.personality || "Definir"),
+      "Voz e fala: " + (profile.voice || "Definir"),
+      "Regra de continuidade: " + profile.continuity,
+      "Não inventar mudanças no design entre cenas. Preservar identidade, proporções, cores, roupa e acessórios."
+    ].join("\n");
+    try {
+      await navigator.clipboard.writeText(prompt);
+      section.querySelector("#bible-status").textContent = "Descrição copiada. Você já pode usar no gerador de imagens.";
+    } catch {
+      section.querySelector("#bible-status").textContent = "Não foi possível copiar. Tente novamente.";
+    }
+  });
+}
