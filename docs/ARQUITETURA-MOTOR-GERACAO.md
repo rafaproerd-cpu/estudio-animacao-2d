@@ -13,7 +13,9 @@ O aplicativo não deve fingir que um roteiro ou prompt é um vídeo gerado. Cada
 - Aplicativo Expo / React Native.
 - Criação e armazenamento local de projetos.
 - Planejamento local de histórias com quantidade variável de cenas, estimada pela duração escolhida (aproximadamente uma cena a cada oito segundos).
-- Prompts de imagem e animação por cena.\n- Quantidade de cenas variável conforme a duração (30 segundos a 10 minutos na interface).\n- Contratos TypeScript para conectar provedores reais de imagem, vídeo e áudio, sem simular geração.
+- Prompts de imagem e animação por cena.
+- Quantidade de cenas variável conforme a duração (30 segundos a 10 minutos na interface).
+- Contratos TypeScript para conectar provedores reais de imagem, vídeo e áudio, sem simular geração.
 - Direção de enquadramento, câmera e iluminação.
 - Regras de continuidade visual.
 - Cópia do roteiro e dos prompts.
@@ -103,7 +105,8 @@ A implementação segue as rotas HTTP documentadas pelo projeto ComfyUI: https:/
 - Criar uma instância ComfyUI acessível pela rede.
 - Instalar um checkpoint/modelo de imagem compatível e montar um workflow de imagem com nó `SaveImage`.
 - Configurar os IDs dos nós no adaptador.
-- Adaptador já ligado à interface do aplicativo: há configuração local do servidor/workflow, teste de conexão e botão por cena para gerar e visualizar a imagem retornada.\n- Ainda falta validar a integração com uma instância ComfyUI real e um workflow/modelo concreto no iPhone.
+- Adaptador já ligado à interface do aplicativo: há configuração local do servidor/workflow, teste de conexão e botão por cena para gerar e visualizar a imagem retornada.
+- Ainda falta validar a integração com uma instância ComfyUI real e um workflow/modelo concreto no iPhone.
 
 O adaptador não inclui nem baixa modelos automaticamente e não representa geração disponível sem servidor. Ele não usa créditos de geração, mas exige máquina, GPU, energia e armazenamento próprios. Não exponha uma instância ComfyUI sem proteção diretamente à internet; prefira rede privada/VPN e HTTPS. Em iPhone, conexões HTTP sem TLS também podem ser bloqueadas pelas regras de segurança de transporte do iOS.
 
@@ -141,7 +144,7 @@ O adaptador:
 5. envia o workflow para `POST /prompt` e acompanha `GET /history/{prompt_id}`;
 6. procura um artefato de vídeo MP4, WebM, MOV ou MKV na saída e monta a URL `/view`.
 
-A interface agora permite colar um workflow de vídeo separado, configurar IDs de nós e solicitar um clipe de quatro segundos a 16 FPS por cena. O player nativo usa os controles de reprodução da plataforma. O vídeo gerado fica registrado no projeto e já pode ser reproduzido na própria tela do aplicativo por meio do pacote `expo-video`. Também há opção para abrir o endereço retornado pelo servidor. O download/exportação local ainda não está concluído.
+A interface agora permite colar um workflow de vídeo separado, configurar IDs de nós e solicitar um clipe de quatro segundos a 16 FPS por cena. O player nativo usa os controles de reprodução da plataforma. O vídeo gerado fica registrado no projeto e já pode ser reproduzido na própria tela do aplicativo por meio do pacote `expo-video`. Também há opção para abrir o endereço retornado pelo servidor. O app agora permite baixar cada clipe para o diretório privado do aplicativo usando `expo-file-system`. O URI local é salvo no projeto e o player passa a reproduzir o arquivo baixado mesmo sem conexão com o servidor. A exportação final de um único vídeo com todas as cenas ainda não está concluída.
 
 ### Requisitos do workflow de vídeo
 
@@ -159,3 +162,10 @@ O endpoint oficial de upload de imagem é documentado nas rotas do ComfyUI: http
 ## Player de vídeo no aplicativo
 
 Foi adicionada a dependência `expo-video` compatível com Expo SDK 54 (`~3.0.11`). Cada cena com `videoUri` persistido exibe um player nativo com controles, sem exigir que o usuário saia do aplicativo. O arquivo ainda é servido pelo ComfyUI; para reprodução, o iPhone precisa continuar alcançando o servidor. O armazenamento/download offline no aparelho será implementado em uma etapa posterior.
+
+
+## Download local de clipes
+
+Foi adicionada a dependência `expo-file-system` (módulo de compatibilidade `expo-file-system/legacy`) para baixar cada vídeo do endpoint `/view` do ComfyUI ao armazenamento privado do aplicativo. O nome do arquivo preserva a extensão retornada pelo servidor (MP4, WebM, MOV ou MKV). O projeto guarda o URI local e mantém também a URL remota original; assim, o player usa o arquivo local depois do download e o usuário ainda pode abrir a origem remota. Os arquivos ficam no diretório privado do app e são removidos se o aplicativo for desinstalado ou os dados forem apagados.
+
+Isso é download de clipes individuais, não montagem. A criação de um único MP4 contínuo exige uma etapa de concatenação/transcodificação, com suporte a codec, resolução, FPS e áudio sincronizados; não deve ser simulada concatenando URLs.
