@@ -203,8 +203,13 @@ def generate_tts_batch(payload: TTSBatchRequest, authorization: Annotated[str | 
         ffmpeg_args: list[str] = []
         for audio_file in audio_files:
             ffmpeg_args.extend(["-i", str(audio_file)])
-        inputs = "".join(f"[{index}:a]" for index in range(len(audio_files)))
-        ffmpeg_args.extend(["-filter_complex", f"{inputs}concat=n={len(audio_files)}:v=0:a=1[out]", "-map", "[out]", str(output_file)])
+        filters = []
+        inputs = ""
+        for index in range(len(audio_files)):
+            filters.append(f"[{index}:a]aresample=22050,aformat=sample_fmts=s16:channel_layouts=mono[a{index}]")
+            inputs += f"[a{index}]"
+        filters.append(f"{inputs}concat=n={len(audio_files)}:v=0:a=1[out]")
+        ffmpeg_args.extend(["-filter_complex", ";".join(filters), "-map", "[out]", str(output_file)])
         run_ffmpeg(ffmpeg_args)
         return TTSResponse(id=batch_id, download_url="/tts/" + batch_id, voice="multiple")
     finally:
