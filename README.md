@@ -15,12 +15,13 @@ Aplicativo mobile multiplataforma desenvolvido com Expo e React Native, pensado 
 - Download dos clipes para o armazenamento do iPhone, permitindo reprodução offline.
 - Exportação de clipes baixados pela folha de compartilhamento do iOS/Android, incluindo opção de salvar em Arquivos.
 - Montagem dos clipes de um projeto em um único MP4 por um serviço FFmpeg próprio, com prévia e exportação no iPhone.
+- Geração de narração por texto usando Piper local no servidor próprio, com lista de vozes instaladas, escolha de voz e salvamento do WAV no projeto; sem API paga ou créditos externos.
 - Geração sequencial de imagens e clipes de todas as cenas em lote, com salvamento do progresso após cada cena.
 
 ## Estado real da geração
 O planejador de cenas funciona localmente, mas não é um modelo generativo. A geração de imagens só funciona depois que o usuário conecta um servidor ComfyUI acessível pela rede, instala um modelo compatível e configura um workflow exportado em formato API que termine em `SaveImage`.
 
-A geração de clipes de vídeo está implementada por workflow ComfyUI, mas ainda depende de configuração e validação com servidor/modelo reais. Os clipes retornados podem ser reproduzidos na própria tela do app e baixados para o armazenamento do aparelho. A montagem de várias cenas em um MP4 está integrada ao serviço opcional `render-server`, que precisa ser iniciado em um computador/servidor próprio com FFmpeg. O serviço agora aceita arquivos opcionais de narração e música e consegue mixá-los ao MP4 final (voz em volume normal e música em volume reduzido). O aplicativo já permite selecionar narração e música na biblioteca de arquivos do aparelho e copiar os áudios para armazenamento persistente do projeto antes de enviá-los à montagem. Transições ainda continuam pendentes. O aplicativo não simula que essas etapas foram concluídas.
+A geração de clipes de vídeo está implementada por workflow ComfyUI, mas ainda depende de configuração e validação com servidor/modelo reais. Os clipes retornados podem ser reproduzidos na própria tela do app e baixados para o armazenamento do aparelho. A montagem de várias cenas em um MP4 está integrada ao serviço opcional `render-server`, que precisa ser iniciado em um computador/servidor próprio com FFmpeg. O serviço aceita arquivos opcionais de narração e música e consegue mixá-los ao MP4 final (voz em volume normal e música em volume reduzido). O aplicativo permite selecionar narração e música na biblioteca de arquivos do aparelho e também gerar uma narração a partir dos diálogos com Piper local, desde que o servidor tenha o executável e modelos de voz instalados. O WAV gerado é guardado no projeto e segue para a montagem. Transições ainda continuam pendentes. O aplicativo não simula que essas etapas foram concluídas.
 
 ## Custos e infraestrutura
 A integração ComfyUI não cobra créditos por geração do aplicativo e não exige uma chave de API. Entretanto, o servidor e o hardware são do proprietário: GPU, energia, armazenamento, rede e manutenção podem ter custos. Modelos de vídeo de alta qualidade normalmente exigem uma máquina com GPU; não rodam diretamente no iPhone.
@@ -40,6 +41,6 @@ O projeto usa Expo SDK 54, React Native 0.81 e TypeScript. A checagem de tipos �
 
 ## Próximas etapas
 1. Validar os workflows reais de imagem e vídeo e o serviço FFmpeg em um iPhone conectado aos servidores próprios.
-2. Integrar geração de voz, trilha sonora e sincronização labial.
+2. Adicionar vozes diferentes por personagem, sincronização labial e alinhamento temporal das falas.
 3. Adicionar transições, títulos e controles de edição da linha do tempo.
 4. Reforçar o acesso privado e a gestão segura das conexões.
