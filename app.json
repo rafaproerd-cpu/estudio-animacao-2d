@@ -8,7 +8,13 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.rafaproerd.estudioanimacao2d"
+      "bundleIdentifier": "com.rafaproerd.estudioanimacao2d",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "O Estúdio 2D acessa seus servidores ComfyUI e FFmpeg na rede local para gerar e montar vídeos.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
     },
     "android": {
       "package": "com.rafaproerd.estudioanimacao2d"
