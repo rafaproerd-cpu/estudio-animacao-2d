@@ -111,6 +111,38 @@ class RenderServerTests(unittest.TestCase):
             main.API_TOKEN = original_token
             main.PIPER_VOICES_DIR = original_voices
             main.OUTPUT_DIR = original_output
+    def test_tts_batch_generates_combined_audio_with_multiple_voices(self):
+        original_token = main.API_TOKEN
+        original_voices = main.PIPER_VOICES_DIR
+        original_output = main.OUTPUT_DIR
+        try:
+            main.API_TOKEN = "integration-test-token"
+            with tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                voices = root / "voices"
+                voices.mkdir()
+                (voices / "voice-a.onnx").write_bytes(b"model-a")
+                (voices / "voice-b.onnx").write_bytes(b"model-b")
+                main.PIPER_VOICES_DIR = voices
+                main.OUTPUT_DIR = root / "outputs"
+                def fake_piper(command, **kwargs):
+                    Path(command[command.index("--output_file") + 1]).write_bytes(b"RIFFfake-wav")
+                    class Result:
+                        returncode = 0
+                        stderr = ""
+                    return Result()
+                def fake_ffmpeg(arguments):
+                    Path(arguments[-1]).write_bytes(b"RIFFcombined-wav")
+                segments = [main.TTSRequest(text="Olá", voice="voice-a"), main.TTSRequest(text="Tudo bem?", voice="voice-b")]
+                with patch.object(main.shutil, "which", return_value="/usr/bin/piper"), patch.object(main.subprocess, "run", side_effect=fake_piper), patch.object(main, "run_ffmpeg", side_effect=fake_ffmpeg) as ffmpeg:
+                    result = main.generate_tts_batch(main.TTSBatchRequest(segments=segments), "Bearer integration-test-token")
+                self.assertEqual(result.voice, "multiple")
+                self.assertEqual(ffmpeg.call_count, 1)
+                self.assertTrue((main.OUTPUT_DIR / ("tts-" + result.id + ".wav")).is_file())
+        finally:
+            main.API_TOKEN = original_token
+            main.PIPER_VOICES_DIR = original_voices
+            main.OUTPUT_DIR = original_output
     def test_render_endpoint_normalizes_clips_and_returns_download_path(self):
         original_token = main.API_TOKEN
         original_output = main.OUTPUT_DIR
