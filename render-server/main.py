@@ -18,6 +18,9 @@ APP_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = Path(os.getenv("RENDER_OUTPUT_DIR", str(APP_DIR / "outputs"))).resolve()
 API_TOKEN = os.getenv("ESTUDIO_RENDER_TOKEN", "").strip()
 FFMPEG = os.getenv("FFMPEG_PATH", "ffmpeg")
+PIPER = os.getenv("PIPER_PATH", "piper")
+PIPER_VOICES_DIR = Path(os.getenv("PIPER_VOICES_DIR", str(APP_DIR / "voices"))).resolve()
+MAX_TTS_CHARACTERS = int(os.getenv("MAX_TTS_CHARACTERS", "6000"))
 MAX_CLIPS = int(os.getenv("MAX_CLIPS", "80"))
 MAX_CLIP_BYTES = int(os.getenv("MAX_CLIP_BYTES", str(500 * 1024 * 1024)))
 ALLOWED_EXTENSIONS = {".mp4", ".mov", ".mkv", ".webm"}
@@ -31,6 +34,11 @@ class RenderResponse(BaseModel):
     filename: str
     download_url: str
     message: str
+
+
+class TTSRequest(BaseModel):
+    text: str
+    voice: str
 
 
 def require_token(authorization: str | None) -> None:
@@ -98,6 +106,52 @@ def run_ffmpeg(arguments: list[str]) -> None:
 def health(authorization: Annotated[str | None, Header()] = None) -> dict[str, str | bool]:
     require_token(authorization)
     return {"ok": True, "ffmpeg_available": shutil.which(FFMPEG) is not None, "token_configured": True}
+
+
+def available_piper_voices() -> list[str]:
+    if not PIPER_VOICES_DIR.is_dir():
+        return []
+    return sorted(path.stem for path in PIPER_VOICES_DIR.glob("*.onnx") if path.is_file())
+
+
+@app.get("/tts/voices")
+def list_tts_voices(authorization: Annotated[str | None, Header()] = None) -> dict[str, list[str]]:
+    require_token(authorization)
+    return {"voices": available_piper_voices(), "engine": "Piper local"}
+
+
+@app.post("/tts")
+def generate_tts(payload: TTSRequest, authorization: Annotated[str | None, Header()] = None) -> FileResponse:
+    require_token(authorization)
+    text = payload.text.strip()
+    voice = payload.voice.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Informe o texto que será narrado.")
+    if len(text) > MAX_TTS_CHARACTERS:
+        raise HTTPException(status_code=413, detail=f"O texto excede o limite de {MAX_TTS_CHARACTERS} caracteres.")
+    if not re.fullmatch(r"[a-zA-Z0-9_-]{1,100}", voice):
+        raise HTTPException(status_code=400, detail="Identificador de voz inválido.")
+    model = (PIPER_VOICES_DIR / (voice + ".onnx")).resolve()
+    if model.parent != PIPER_VOICES_DIR or not model.is_file():
+        raise HTTPException(status_code=404, detail="Voz não encontrada. Adicione o modelo Piper correspondente à pasta de vozes.")
+    executable = shutil.which(PIPER)
+    if not executable:
+        raise HTTPException(status_code=503, detail="O motor Piper não está instalado neste servidor.")
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    output_file = OUTPUT_DIR / ("tts-" + uuid.uuid4().hex + ".wav")
+    try:
+        result = subprocess.run(
+            [executable, "--model", str(model), "--output_file", str(output_file)],
+            input=text, capture_output=True, text=True, timeout=180, check=False,
+        )
+    except subprocess.TimeoutExpired as error:
+        output_file.unlink(missing_ok=True)
+        raise HTTPException(status_code=504, detail="A geração de voz excedeu três minutos.") from error
+    if result.returncode != 0 or not output_file.is_file() or output_file.stat().st_size == 0:
+        output_file.unlink(missing_ok=True)
+        detail = (result.stderr or "Falha desconhecida no Piper")[-1200:]
+        raise HTTPException(status_code=422, detail="Não foi possível gerar a voz: " + detail)
+    return FileResponse(output_file, media_type="audio/wav", filename=voice + ".wav")
 
 
 @app.post("/render", response_model=RenderResponse)
