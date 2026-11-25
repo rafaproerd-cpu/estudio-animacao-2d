@@ -840,7 +840,7 @@ export default function App() {
               <Text style={styles.note}>Gera os clipes em sequência usando as imagens já criadas.</Text>
               <Text style={styles.step}>ÁUDIO DO PROJETO</Text>
               <Text style={styles.note}>Adicione uma narração e/ou música de fundo. A voz será mixada em volume normal e a música em volume reduzido.</Text>
-              <Text style={styles.note}>Gere uma narração a partir dos diálogos usando o motor Piper instalado no seu próprio servidor. Não usa créditos nem API paga.</Text>
+              <Text style={styles.note}>Gere a narração com uma voz por cena. O áudio respeita a duração de cada clipe, mantém pausas nas cenas sem fala e avisa quando um diálogo está longo demais. Requer Piper instalado no seu servidor; não usa créditos nem API paga.</Text>
               <TouchableOpacity style={styles.secondary} onPress={loadTtsVoices} disabled={!!busyScene || !!batchProgress}><Text style={styles.secondaryText}>ATUALIZAR VOZES DISPONÍVEIS</Text></TouchableOpacity>
               {ttsVoices.length ? <View style={styles.chips}>{ttsVoices.map(voice => <TouchableOpacity key={voice} style={[styles.chip, selectedTtsVoice === voice && styles.chipActive]} onPress={() => setSelectedTtsVoice(voice)}><Text style={[styles.chipText, selectedTtsVoice === voice && styles.chipTextActive]}>{voice}</Text></TouchableOpacity>)}</View> : null}
               <TouchableOpacity style={styles.primary} onPress={generateAiNarration} disabled={!!busyScene || !!batchProgress || !selectedTtsVoice}>
