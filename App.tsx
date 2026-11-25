@@ -499,7 +499,8 @@ export default function App() {
       Alert.alert("Falha na geração de voz", error instanceof Error ? error.message : "Não foi possível gerar a narração.");
     } finally {
       setBusyScene(null);
-    }\n  };
+    }
+  };
 
   const renderFinalVideo = async () => {
     if (!selected) return;
