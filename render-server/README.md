@@ -43,7 +43,7 @@ A geração de voz não usa API paga nem créditos externos: quando o Piper est�
 
 - `GET /tts/voices` lista os modelos `.onnx` disponíveis (requer Bearer token).
 - `POST /tts` recebe JSON com `text` e `voice` (nome do modelo sem `.onnx`) e devolve WAV.
-- `POST /tts/batch` recebe `segments`, uma lista ordenada de `{ "text": "...", "voice": "nome-do-modelo" }`; gera cada fala com sua voz e concatena os WAVs na ordem, permitindo vozes diferentes por cena.
+- `POST /tts/batch` recebe `segments`, uma lista ordenada de `{ "text": "...", "voice": "nome-do-modelo", "duration_seconds": 4 }`; gera cada fala com sua voz, ajusta o áudio ao tempo da cena e preenche cenas sem diálogo com silêncio. O campo `duration_seconds` aceita de 0,5 a 60 segundos e assume 4 segundos quando omitido.
 - O texto tem limite padrão de 6.000 caracteres; a geração tem timeout de 3 minutos.
 - Sem Piper ou sem um modelo instalado, o endpoint informa claramente que a função não está disponível; não usa um serviço pago como fallback.
 
