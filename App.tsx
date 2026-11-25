@@ -187,7 +187,7 @@ export default function App() {
       const provider = new ComfyUiImageProvider({ baseUrl: comfyConfig.baseUrl, workflow, positivePromptNodeId: comfyConfig.positiveNode.trim(), negativePromptNodeId: comfyConfig.negativeNode.trim() || undefined, widthNodeId: comfyConfig.widthNode.trim() || undefined, heightNodeId: comfyConfig.heightNode.trim() || undefined, seedNodeId: comfyConfig.seedNode.trim() || undefined });
       const result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576 });
       if (result.status !== "completed" || !result.outputUri) throw new Error(result.error || "A geração não retornou uma imagem.");
-      const updated = { ...selected, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, imageUri: result.outputUri, videoUri: undefined, videoRemoteUri: undefined } : item) };
+      const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, imageUri: result.outputUri, videoUri: undefined, videoRemoteUri: undefined } : item) };
       saveUpdatedProject(updated);
       Alert.alert("Imagem gerada", "A imagem desta cena foi salva no projeto.");
     } catch (error) { Alert.alert("Erro na geração", error instanceof Error ? error.message : "Não foi possível gerar a imagem."); }
@@ -229,7 +229,7 @@ export default function App() {
         fps: 16,
       });
       if (result.status !== "completed" || !result.outputUri) throw new Error(result.error || "O workflow não retornou um vídeo.");
-      const updated = { ...selected, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, videoUri: result.outputUri, videoRemoteUri: undefined } : item) };
+      const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, videoUri: result.outputUri, videoRemoteUri: undefined } : item) };
       saveUpdatedProject(updated);
       Alert.alert("Clipe concluído", "O vídeo desta cena foi salvo no projeto.");
     } catch (error) {
@@ -273,6 +273,8 @@ export default function App() {
         }
         workingProject = {
           ...workingProject,
+          finalVideoUri: undefined,
+          finalVideoRemoteUri: undefined,
           scenes: workingProject.scenes.map(item => item.title === scene.title
             ? { ...item, imageUri: result.outputUri, videoUri: undefined, videoRemoteUri: undefined }
             : item),
@@ -340,6 +342,8 @@ export default function App() {
         }
         workingProject = {
           ...workingProject,
+          finalVideoUri: undefined,
+          finalVideoRemoteUri: undefined,
           scenes: workingProject.scenes.map(item => item.title === scene.title
             ? { ...item, videoUri: result.outputUri, videoRemoteUri: undefined }
             : item),
@@ -555,6 +559,8 @@ export default function App() {
     const updated: Project = {
       ...selected,
       character: value,
+      finalVideoUri: undefined,
+      finalVideoRemoteUri: undefined,
       scenes: selected.scenes.map(scene => ({
         ...scene,
         imagePrompt: updateCharacterInPrompt(scene.imagePrompt || "", selected.character, value),
@@ -568,6 +574,8 @@ export default function App() {
     if (!selected) return;
     saveUpdatedProject({
       ...selected,
+      finalVideoUri: undefined,
+      finalVideoRemoteUri: undefined,
       scenes: selected.scenes.map(scene => scene.title === sceneTitle ? { ...scene, [field]: value } : scene)
     });
   };
