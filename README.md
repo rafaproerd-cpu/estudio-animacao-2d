@@ -14,7 +14,7 @@ Aplicativo mobile multiplataforma desenvolvido com Expo e React Native, pensado 
 ## Estado real da geração
 O planejador de cenas funciona localmente, mas não é um modelo generativo. A geração de imagens só funciona depois que o usuário conecta um servidor ComfyUI acessível pela rede, instala um modelo compatível e configura um workflow exportado em formato API que termine em `SaveImage`.
 
-A geração de vídeo, voz, montagem e exportação final em MP4 ainda não estão implementadas. O aplicativo não simula que essas etapas foram concluídas.
+A geração de clipes de vídeo está implementada por workflow ComfyUI, mas ainda depende de configuração e validação com servidor/modelo reais. A reprodução embutida no app, geração de voz, montagem de várias cenas e exportação final de um único MP4 ainda não estão implementadas. O aplicativo não simula que essas etapas foram concluídas.
 
 ## Custos e infraestrutura
 A integração ComfyUI não cobra créditos por geração do aplicativo e não exige uma chave de API. Entretanto, o servidor e o hardware são do proprietário: GPU, energia, armazenamento, rede e manutenção podem ter custos. Modelos de vídeo de alta qualidade normalmente exigem uma máquina com GPU; não rodam diretamente no iPhone.
