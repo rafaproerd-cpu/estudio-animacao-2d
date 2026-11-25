@@ -169,3 +169,8 @@ Foi adicionada a dependência `expo-video` compatível com Expo SDK 54 (`~3.0.11
 Foi adicionada a dependência `expo-file-system` (módulo de compatibilidade `expo-file-system/legacy`) para baixar cada vídeo do endpoint `/view` do ComfyUI ao armazenamento privado do aplicativo. O nome do arquivo preserva a extensão retornada pelo servidor (MP4, WebM, MOV ou MKV). O projeto guarda o URI local e mantém também a URL remota original; assim, o player usa o arquivo local depois do download e o usuário ainda pode abrir a origem remota. Os arquivos ficam no diretório privado do app e são removidos se o aplicativo for desinstalado ou os dados forem apagados.
 
 Isso é download de clipes individuais, não montagem. A criação de um único MP4 contínuo exige uma etapa de concatenação/transcodificação, com suporte a codec, resolução, FPS e áudio sincronizados; não deve ser simulada concatenando URLs.
+
+
+## Geração sequencial de todas as cenas
+
+A tela do projeto agora mostra um resumo da linha do tempo: quantidade de imagens prontas e clipes de vídeo gerados. O botão de geração em lote verifica se todas as cenas possuem imagem de referência e, em seguida, executa os workflows de vídeo em sequência para evitar sobrecarregar o servidor com várias tarefas simultâneas. Cada clipe concluído é salvo no projeto imediatamente; se uma cena falhar, os clipes anteriores permanecem registrados e a mensagem informa quantos foram concluídos. A função não monta os clipes em um único arquivo: concatenação, transições, mixagem de áudio e exportação MP4 final ainda exigem um motor de pós-produção.
