@@ -161,7 +161,7 @@ export default function App() {
   };
 
   const testRenderConnection = async () => {
-    const url = (comfyConfig.renderBaseUrl || "").trim().replace(/\\/+$/, "");
+    const url = (comfyConfig.renderBaseUrl || "").trim().replace(/\/+$/, "");
     if (!/^https?:\\/\\//i.test(url)) {
       Alert.alert("Endereço inválido", "Informe o endereço do servidor de montagem, incluindo http:// ou https://.");
       return;
@@ -424,7 +424,7 @@ export default function App() {
       Alert.alert("Faltam animações", `Ainda faltam ${missingClips.length} clipes. Gere todas as cenas antes de montar o MP4.`);
       return;
     }
-    const renderBaseUrl = (comfyConfig.renderBaseUrl || "").trim().replace(/\\/+$/, "");
+    const renderBaseUrl = (comfyConfig.renderBaseUrl || "").trim().replace(/\/+$/, "");
     const renderToken = (comfyConfig.renderToken || "").trim();
     if (!renderBaseUrl || !renderToken) {
       Alert.alert("Configure a montagem", "Informe o endereço e o token do servidor de montagem nas configurações.");
@@ -448,7 +448,7 @@ export default function App() {
           const sourceUri = scene.videoRemoteUri || localUri;
           const filenameParam = sourceUri.match(/[?&]filename=([^&]+)/)?.[1];
           const sourceFilename = filenameParam ? decodeURIComponent(filenameParam) : "";
-          const extension = sourceFilename.match(/\\.(mp4|webm|mov|mkv)$/i)?.[1] || "mp4";
+          const extension = sourceFilename.match(/\.(mp4|webm|mov|mkv)$/i)?.[1] || "mp4";
           const localPath = `${directory}${selected.id}-scene-${String(index + 1).padStart(2, "0")}-${Date.now()}.${extension}`;
           const download = await FileSystem.downloadAsync(sourceUri, localPath);
           if (download.status < 200 || download.status >= 300) throw new Error(`Não foi possível baixar o clipe ${index + 1} (HTTP ${download.status}).`);
