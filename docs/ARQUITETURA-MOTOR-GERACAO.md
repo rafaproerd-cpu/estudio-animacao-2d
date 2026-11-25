@@ -184,3 +184,16 @@ A tela de linha do tempo também oferece geração em lote das imagens que ainda
 ## Exportar um clipe para Arquivos ou outro aplicativo
 
 Foi adicionada a dependência `expo-sharing` compatível com SDK 54 (`~14.0.8`). Depois de baixar um clipe para o armazenamento privado do aplicativo, o botão **Exportar para Arquivos / Compartilhar** abre a folha nativa de compartilhamento. No iPhone, o usuário pode escolher Salvar em Arquivos ou outro destino compatível. O compartilhamento não move nem apaga a cópia interna do projeto. A exportação é por clipe; ainda não cria um único MP4 com todas as cenas.
+
+
+## Montagem final em MP4 com FFmpeg
+
+Foi criado o serviço opcional `render-server/`, independente do ComfyUI, para montar os clipes em um único arquivo MP4. O servidor FastAPI recebe os clipes por multipart em ordem, exige token Bearer, normaliza cada segmento para 1024×576, 30 FPS e H.264 e concatena os segmentos. O app envia os clipes em ordem, baixa o MP4 final para o armazenamento privado do iPhone, salva o URI no projeto, exibe um player e oferece exportação para Arquivos/compartilhamento.
+
+### Instalação e segurança
+
+O serviço exige Python, dependências listadas em `render-server/requirements.txt` e FFmpeg instalado na máquina. O passo a passo está em `render-server/README.md`. O endereço e token são configurados na tela do aplicativo. O token fica no Keychain do iOS / Keystore do Android por meio de `expo-secure-store`; os demais parâmetros permanecem em AsyncStorage. O endpoint `/health` confirma que FFmpeg está disponível e que o token foi configurado. O token protege os endpoints de renderização/download; ainda assim, o servidor deve ficar em rede privada/VPN ou atrás de HTTPS autenticado, nunca exposto sem proteção à internet pública.
+
+### Limitações atuais da montagem
+
+A montagem atual concatena os clipes sem transições e remove áudio de origem para manter a compatibilidade dos segmentos. O MP4 resultante contém vídeo, mas ainda não inclui narração, música, efeitos ou sincronização labial. O servidor limita cada clipe a 500 MB por padrão e cada projeto a 80 clipes. Os arquivos renderizados permanecem no diretório `render-server/outputs` até que o proprietário faça a limpeza. O workflow foi integrado no app, mas ainda precisa ser testado com arquivos reais em uma máquina do usuário.
