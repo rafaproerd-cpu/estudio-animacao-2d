@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Estúdio 2D",
+    "slug": "estudio-animacao-2d",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.rafaproerd.estudioanimacao2d"
+    },
+    "android": {
+      "package": "com.rafaproerd.estudioanimacao2d",
+      "adaptiveIcon": {
+        "backgroundColor": "#11111B"
+      }
+    },
+    "plugins": [
+      "expo-status-bar"
+    ]
+  }
+}
