@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { createStoryPlan, type Genre } from "./src/engine/storyEngine";
 import { ComfyUiImageProvider, type ComfyUiImageWorkflow } from "./src/engine/providers/comfyuiImageProvider";
 import { ComfyUiVideoProvider, type ComfyUiVideoWorkflow } from "./src/engine/providers/comfyuiVideoProvider";
@@ -82,6 +83,13 @@ function projectText(project: Project) {
     "",
     ...project.scenes.flatMap(scene => [scene.title, scene.description, scene.dialogue, "ENQUADRAMENTO: " + (scene.shot || "plano médio"), "CÂMERA: " + (scene.camera || "movimento suave"), "ILUMINAÇÃO: " + (scene.lighting || "luz cinematográfica"), "PROMPT DE IMAGEM: " + (scene.imagePrompt || ""), "PROMPT DE ANIMAÇÃO: " + (scene.videoPrompt || ""), ""])
   ].join("\n");
+}
+
+function SceneVideoPlayer({ uri }: { uri: string }) {
+  const player = useVideoPlayer(uri, instance => {
+    instance.loop = true;
+  });
+  return <VideoView player={player} style={styles.videoPlayer} nativeControls contentFit="contain" />;
 }
 
 export default function App() {
@@ -359,7 +367,7 @@ export default function App() {
             {selected.scenes.map(scene => <View key={scene.title} style={styles.scene}>
               <Text style={styles.sceneTitle}>{scene.title}</Text>\n              {scene.imageUri ? <Image source={{ uri: scene.imageUri }} style={styles.generatedImage} resizeMode="cover" /> : <View style={styles.imagePlaceholder}><Text style={styles.note}>Imagem ainda não gerada</Text></View>}\n              <TouchableOpacity style={styles.secondary} disabled={busyScene === scene.title || busyScene === `video:${scene.title}`} onPress={() => generateSceneImage(scene)}><Text style={styles.secondaryText}>{busyScene === scene.title ? "GERANDO IMAGEM…" : "GERAR IMAGEM DESTA CENA"}</Text></TouchableOpacity>
               <TouchableOpacity style={styles.primary} disabled={busyScene === scene.title || busyScene === `video:${scene.title}`} onPress={() => generateSceneVideo(scene)}><Text style={styles.primaryText}>{busyScene === `video:${scene.title}` ? "GERANDO CLIPE…" : "ANIMAR ESTA CENA · 4 SEGUNDOS"}</Text><Text style={styles.arrow}>▶</Text></TouchableOpacity>
-              {scene.videoUri ? <TouchableOpacity style={styles.secondary} onPress={() => openSceneVideo(scene.videoUri!)}><Text style={styles.secondaryText}>ABRIR VÍDEO GERADO</Text></TouchableOpacity> : null}
+              {scene.videoUri ? <><SceneVideoPlayer uri={scene.videoUri} /><TouchableOpacity style={styles.secondary} onPress={() => openSceneVideo(scene.videoUri!)}><Text style={styles.secondaryText}>ABRIR VÍDEO NO NAVEGADOR</Text></TouchableOpacity></> : null}
               <Text style={styles.label}>AÇÃO DA CENA</Text>
               <TextInput value={scene.description} onChangeText={value => updateScene(scene.title, "description", value)} multiline textAlignVertical="top" placeholder="Descreva o que acontece nesta cena..." placeholderTextColor="#777789" style={styles.sceneInput} />
               <Text style={styles.label}>FALA / DIÁLOGO</Text>
@@ -411,6 +419,7 @@ const styles = StyleSheet.create({
   smallInput: { minHeight: 46, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 10, padding: 11, color: "#F7F5FF", fontSize: 12, marginBottom: 8 },
   inlineInputs: { flexDirection: "row", gap: 7 },
   generatedImage: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, marginTop: 10, backgroundColor: "#11111B" },
+  videoPlayer: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, marginTop: 10, backgroundColor: "#000" },
   imagePlaceholder: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, marginTop: 10, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", alignItems: "center", justifyContent: "center" },
   panel: { backgroundColor: "#1A1A27", borderColor: "#303044", borderWidth: 1, borderRadius: 22, padding: 17, marginBottom: 20 },
   step: { color: "#A78BFA", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
