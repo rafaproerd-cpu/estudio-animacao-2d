@@ -780,7 +780,7 @@ export default function App() {
               {selected.narrationUri ? <TouchableOpacity style={styles.secondary} onPress={() => saveUpdatedProject({ ...selected, narrationUri: undefined, finalVideoUri: undefined, finalVideoRemoteUri: undefined })}><Text style={styles.secondaryText}>REMOVER NARRAÇÃO</Text></TouchableOpacity> : null}
               <TouchableOpacity style={styles.secondary} onPress={() => pickProjectAudio("musicUri")} disabled={!!busyScene || !!batchProgress}><Text style={styles.secondaryText}>{selected.musicUri ? "MÚSICA SELECIONADA · " + selected.musicUri.split("/").pop() : "ESCOLHER MÚSICA DE FUNDO"}</Text></TouchableOpacity>
               {selected.musicUri ? <TouchableOpacity style={styles.secondary} onPress={() => saveUpdatedProject({ ...selected, musicUri: undefined, finalVideoUri: undefined, finalVideoRemoteUri: undefined })}><Text style={styles.secondaryText}>REMOVER MÚSICA</Text></TouchableOpacity> : null}
-              <TouchableOpacity style={styles.primary} disabled={!!busyScene || !!batchProgress} onPress={renderFinalVideo}><Text style={styles.primaryText}>{busyScene === "render:final" ? "MONTANDO MP4 FINAL…" : "MONTAR TODAS AS CENAS EM UM MP4"}</Text><Text style={styles.arrow}>▣</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.primary} disabled={!!busyScene || !!batchProgress} onPress={renderFinalVideo}>
                 <Text style={styles.primaryText}>{busyScene === "render:final" ? "MONTANDO MP4 FINAL…" : "MONTAR TODAS AS CENAS EM UM MP4"}</Text><Text style={styles.arrow}>▣</Text>
               </TouchableOpacity>
               {selected.finalVideoUri ? <>
