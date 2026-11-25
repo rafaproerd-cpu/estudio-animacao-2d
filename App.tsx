@@ -111,8 +111,8 @@ export default function App() {
   };
 
   const testComfyConnection = async () => {
-    const url = comfyConfig.baseUrl.trim().replace(/\\/+$/, "");
-    if (!/^https?:\\/\\//i.test(url)) { Alert.alert("Endereço inválido", "Informe o endereço completo do ComfyUI."); return; }
+    const url = comfyConfig.baseUrl.trim().replace(/\/+$/, "");
+    if (!/^https?:\/\//i.test(url)) { Alert.alert("Endereço inválido", "Informe o endereço completo do ComfyUI."); return; }
     setConnectionStatus("Testando…");
     try { const response = await fetch(`${url}/system_stats`); if (!response.ok) throw new Error(`HTTP ${response.status}`); await response.json(); setConnectionStatus("Conectado"); Alert.alert("Conexão confirmada", "O aplicativo conseguiu acessar o servidor ComfyUI."); }
     catch (error) { setConnectionStatus("Falha na conexão"); Alert.alert("Não conectou", error instanceof Error ? error.message : "Verifique endereço, rede e HTTPS."); }
