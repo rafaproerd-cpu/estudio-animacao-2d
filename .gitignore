@@ -12,3 +12,8 @@ web-build/
 *.mobileprovision
 *.orig.*
 .DS_Store
+# Self-hosted video render service
+render-server/.venv/
+render-server/__pycache__/
+render-server/outputs/
+render-server/.env
