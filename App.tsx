@@ -31,7 +31,7 @@ function buildProject(idea: string, genre: string, duration: string): Project {
     idea: plan.premise,
     genre,
     duration,
-    character: "Personagem principal\\nNome: a definir\\nAparência: a definir\\nRoupa: a definir\\nPersonalidade: a definir\\nVoz: a definir\\nRegra de continuidade: manter o mesmo rosto, cabelo, roupa, cores e proporções em todas as cenas.",
+    character: "Personagem principal\nNome: a definir\nAparência: a definir\nRoupa: a definir\nPersonalidade: a definir\nVoz: a definir\nRegra de continuidade: manter o mesmo rosto, cabelo, roupa, cores e proporções em todas as cenas.",
     scenes: plan.scenes.map(scene => ({
       title: scene.title,
       description: scene.action,
@@ -220,7 +220,8 @@ export default function App() {
             <TouchableOpacity style={styles.primary} onPress={copyScript}>
               <Text style={styles.primaryText}>COPIAR ROTEIRO</Text><Text style={styles.arrow}>⧉</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.secondary} onPress={async () => { const prompts = selected.scenes.map(scene => scene.imagePrompt + "\\n\\n" + scene.videoPrompt).join("\\n\\n---\\n\\n"); await Clipboard.setStringAsync(prompts); Alert.alert("Prompts copiados", "Os prompts visuais e de animação foram copiados."); }}>\n              <Text style={styles.secondaryText}>COPIAR PROMPTS VISUAIS</Text>\n            </TouchableOpacity>\n            <TouchableOpacity style={styles.secondary} onPress={shareScript}>
+            <TouchableOpacity style={styles.secondary} onPress={async () => { const prompts = selected.scenes.map(scene => scene.imagePrompt + "\n\n" + scene.videoPrompt).join("\n\n---\n\n"); await Clipboard.setStringAsync(prompts); Alert.alert("Prompts copiados", "Os prompts visuais e de animação foram copiados."); }}>
+              <Text style={styles.secondaryText}>COPIAR PROMPTS VISUAIS</Text>\n            </TouchableOpacity>\n            <TouchableOpacity style={styles.secondary} onPress={shareScript}>
               <Text style={styles.secondaryText}>COMPARTILHAR / EXPORTAR TEXTO</Text>
             </TouchableOpacity>
           </View>
