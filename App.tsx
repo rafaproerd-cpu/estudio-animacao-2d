@@ -165,7 +165,7 @@ export default function App() {
       Alert.alert("Imagem necessária", "Gere primeiro a imagem desta cena para usá-la como referência do vídeo.");
       return;
     }
-    if (!comfyConfig.videoWorkflowText?.trim() || !comfyConfig.videoImageNode?.trim() || !comfyConfig.videoPositiveNode?.trim()) {
+    if (!comfyConfig.baseUrl.trim() || !comfyConfig.videoWorkflowText?.trim() || !comfyConfig.videoImageNode?.trim() || !comfyConfig.videoPositiveNode?.trim()) {
       Alert.alert("Configure o motor de vídeo", "Abra Configurar geração e informe o workflow de vídeo, o nó LoadImage e o nó do prompt positivo.");
       setShowSettings(true);
       return;
@@ -206,7 +206,7 @@ export default function App() {
 
   const generateAllSceneImages = async () => {
     if (!selected) return;
-    if (!comfyConfig.workflowText.trim() || !comfyConfig.positiveNode.trim()) {
+    if (!comfyConfig.baseUrl.trim() || !comfyConfig.workflowText.trim() || !comfyConfig.positiveNode.trim()) {
       Alert.alert("Configure o motor de imagens", "Informe o workflow API e o nó do prompt positivo.");
       setShowSettings(true);
       return;
@@ -263,14 +263,19 @@ export default function App() {
       Alert.alert("Faltam imagens", `Gere primeiro as imagens de todas as cenas. Ainda faltam ${missingImages.length}.`);
       return;
     }
-    if (!comfyConfig.videoWorkflowText?.trim() || !comfyConfig.videoImageNode?.trim() || !comfyConfig.videoPositiveNode?.trim()) {
+    const pendingScenes = selected.scenes.filter(scene => !scene.videoUri);
+    if (!pendingScenes.length) {
+      Alert.alert("Animações prontas", "Todas as cenas já possuem clipe. Baixe os vídeos ou avance para a montagem final.");
+      return;
+    }
+    if (!comfyConfig.baseUrl.trim() || !comfyConfig.videoWorkflowText?.trim() || !comfyConfig.videoImageNode?.trim() || !comfyConfig.videoPositiveNode?.trim()) {
       Alert.alert("Configure o motor de vídeo", "Informe o workflow de vídeo e os nós LoadImage e prompt positivo.");
       setShowSettings(true);
       return;
     }
     let workingProject = selected;
     let completed = 0;
-    setBatchProgress({ current: 0, total: selected.scenes.length });
+    setBatchProgress({ current: 0, total: pendingScenes.length });
     try {
       const workflow = JSON.parse(comfyConfig.videoWorkflowText) as ComfyUiVideoWorkflow;
       const provider = new ComfyUiVideoProvider({
@@ -285,7 +290,7 @@ export default function App() {
         fpsNodeId: comfyConfig.videoFpsNode?.trim() || undefined,
         seedNodeId: comfyConfig.videoSeedNode?.trim() || undefined,
       });
-      for (const scene of selected.scenes) {
+      for (const scene of pendingScenes) {
         setBusyScene(`video:${scene.title}`);
         const result = await provider.generate({
           prompt: scene.videoPrompt || scene.description,
@@ -307,11 +312,11 @@ export default function App() {
         completed += 1;
         setSelected(workingProject);
         setProjects(previous => previous.map(item => item.id === workingProject.id ? workingProject : item));
-        setBatchProgress({ current: completed, total: selected.scenes.length });
+        setBatchProgress({ current: completed, total: pendingScenes.length });
       }
-      Alert.alert("Animação concluída", `${completed} clipes foram gerados e salvos no projeto.`);
+      Alert.alert("Animação concluída", `${completed} novos clipes foram gerados. ${selected.scenes.length - pendingScenes.length} cenas já tinham vídeo.`);
     } catch (error) {
-      Alert.alert("Geração interrompida", `${completed} de ${selected.scenes.length} clipes concluídos. ${error instanceof Error ? error.message : "Falha desconhecida."}`);
+      Alert.alert("Geração interrompida", `${completed} de ${pendingScenes.length} clipes pendentes concluídos. ${error instanceof Error ? error.message : "Falha desconhecida."}`);
     } finally {
       setBusyScene(null);
       setBatchProgress(null);
@@ -535,11 +540,11 @@ export default function App() {
               <Text style={styles.panelTitle}>Animação das cenas</Text>
               <Text style={styles.body}>{selected.scenes.filter(scene => !!scene.videoUri).length} de {selected.scenes.length} clipes gerados · {selected.scenes.filter(scene => !!scene.imageUri).length} imagens prontas</Text>
               <TouchableOpacity style={styles.secondary} disabled={!!busyScene || !!batchProgress} onPress={generateAllSceneImages}>
-                <Text style={styles.secondaryText}>{batchProgress ? "GERANDO IMAGENS…" : "GERAR IMAGENS DE TODAS AS CENAS"}</Text>
+                <Text style={styles.secondaryText}>{batchProgress ? "PROCESSANDO IMAGENS…" : "GERAR IMAGENS PENDENTES"}</Text>
               </TouchableOpacity>
-              {batchProgress ? <Text style={styles.note}>Processando {batchProgress.current + 1} de {batchProgress.total}…</Text> : null}
+              {batchProgress ? <Text style={styles.note}>Concluídas {batchProgress.current} de {batchProgress.total}…</Text> : null}
               <TouchableOpacity style={styles.primary} disabled={!!busyScene || !!batchProgress} onPress={generateAllSceneVideos}>
-                <Text style={styles.primaryText}>{batchProgress ? "GERANDO TODAS AS CENAS…" : "GERAR VÍDEOS DE TODAS AS CENAS"}</Text><Text style={styles.arrow}>▶</Text>
+                <Text style={styles.primaryText}>{batchProgress ? "PROCESSANDO VÍDEOS…" : "ANIMAR CENAS PENDENTES"}</Text><Text style={styles.arrow}>▶</Text>
               </TouchableOpacity>
               <Text style={styles.note}>Gera os clipes em sequência usando as imagens já criadas. A montagem em um único MP4 com transições e áudio ainda será uma etapa separada.</Text>
             </View>
