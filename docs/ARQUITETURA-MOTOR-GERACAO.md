@@ -197,3 +197,8 @@ O serviço exige Python, dependências listadas em `render-server/requirements.t
 ### Limitações atuais da montagem
 
 A montagem atual concatena os clipes sem transições e remove áudio de origem para manter a compatibilidade dos segmentos. O MP4 resultante contém vídeo, mas ainda não inclui narração, música, efeitos ou sincronização labial. O servidor limita cada clipe a 500 MB por padrão e cada projeto a 80 clipes. Os arquivos renderizados permanecem no diretório `render-server/outputs` até que o proprietário faça a limpeza. O workflow foi integrado no app, mas ainda precisa ser testado com arquivos reais em uma máquina do usuário.
+
+
+## Permissão de rede local no iOS
+
+O `app.json` declara `NSLocalNetworkUsageDescription` e `NSAppTransportSecurity.NSAllowsLocalNetworking` para que o iPhone possa solicitar acesso à rede local e alcançar ComfyUI/FFmpeg na LAN. Alterações em `ios.infoPlist` só entram em um binário nativo novo; uma atualização JavaScript isolada não altera essas permissões. Para endereços externos, use HTTPS e mantenha a rede privada/VPN protegida.
