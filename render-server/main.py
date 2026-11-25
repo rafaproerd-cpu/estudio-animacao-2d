@@ -67,8 +67,9 @@ def run_ffmpeg(arguments: list[str]) -> None:
 
 
 @app.get("/health")
-def health() -> dict[str, str | bool]:
-    return {"ok": True, "ffmpeg_available": shutil.which(FFMPEG) is not None, "token_configured": bool(API_TOKEN)}
+def health(authorization: Annotated[str | None, Header()] = None) -> dict[str, str | bool]:
+    require_token(authorization)
+    return {"ok": True, "ffmpeg_available": shutil.which(FFMPEG) is not None, "token_configured": True}
 
 
 @app.post("/render", response_model=RenderResponse)
