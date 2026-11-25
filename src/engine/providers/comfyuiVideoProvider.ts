@@ -46,8 +46,8 @@ type ComfyHistoryEntry = {
 };
 
 function normalizeBaseUrl(value: string): string {
-  const trimmed = value.trim().replace(/\\/+$/, "");
-  if (!/^https?:\\/\\//i.test(trimmed)) {
+  const trimmed = value.trim().replace(/\/+$/, "");
+  if (!/^https?:\/\//i.test(trimmed)) {
     throw new Error("Informe o endereço completo do servidor ComfyUI (http:// ou https://).");
   }
   return trimmed;
@@ -168,7 +168,7 @@ export class ComfyUiVideoProvider implements VideoGenerationProvider {
           ...(output.gifs ?? []),
           ...(output.images ?? []),
         ]);
-        const video = artifacts.find(item => item.filename && /\\.(mp4|webm|mov|mkv)$/i.test(item.filename));
+        const video = artifacts.find(item => item.filename && /\.(mp4|webm|mov|mkv)$/i.test(item.filename));
         if (entry.status?.completed || entry.status?.status_str === "success") {
           if (!video?.filename) {
             throw new Error("O workflow terminou, mas não retornou um arquivo de vídeo. Verifique o nó SaveVideo.");
