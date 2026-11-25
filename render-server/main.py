@@ -41,6 +41,12 @@ class TTSRequest(BaseModel):
     voice: str
 
 
+class TTSResponse(BaseModel):
+    id: str
+    download_url: str
+    voice: str
+
+
 def require_token(authorization: str | None) -> None:
     if not API_TOKEN:
         raise HTTPException(status_code=503, detail="Configure ESTUDIO_RENDER_TOKEN antes de iniciar o servidor.")
@@ -121,7 +127,7 @@ def list_tts_voices(authorization: Annotated[str | None, Header()] = None) -> di
 
 
 @app.post("/tts")
-def generate_tts(payload: TTSRequest, authorization: Annotated[str | None, Header()] = None) -> FileResponse:
+def generate_tts(payload: TTSRequest, authorization: Annotated[str | None, Header()] = None) -> TTSResponse:
     require_token(authorization)
     text = payload.text.strip()
     voice = payload.voice.strip()
@@ -138,7 +144,8 @@ def generate_tts(payload: TTSRequest, authorization: Annotated[str | None, Heade
     if not executable:
         raise HTTPException(status_code=503, detail="O motor Piper não está instalado neste servidor.")
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    output_file = OUTPUT_DIR / ("tts-" + uuid.uuid4().hex + ".wav")
+    tts_id = uuid.uuid4().hex
+    output_file = OUTPUT_DIR / ("tts-" + tts_id + ".wav")
     try:
         result = subprocess.run(
             [executable, "--model", str(model), "--output_file", str(output_file)],
@@ -151,7 +158,18 @@ def generate_tts(payload: TTSRequest, authorization: Annotated[str | None, Heade
         output_file.unlink(missing_ok=True)
         detail = (result.stderr or "Falha desconhecida no Piper")[-1200:]
         raise HTTPException(status_code=422, detail="Não foi possível gerar a voz: " + detail)
-    return FileResponse(output_file, media_type="audio/wav", filename=voice + ".wav")
+    return TTSResponse(id=tts_id, download_url="/tts/" + tts_id, voice=voice)
+
+
+@app.get("/tts/{tts_id}")
+def download_tts(tts_id: str, authorization: Annotated[str | None, Header()] = None) -> FileResponse:
+    require_token(authorization)
+    if not re.fullmatch(r"[a-f0-9]{32}", tts_id):
+        raise HTTPException(status_code=404, detail="Áudio não encontrado.")
+    audio_file = OUTPUT_DIR / ("tts-" + tts_id + ".wav")
+    if not audio_file.is_file():
+        raise HTTPException(status_code=404, detail="Áudio não encontrado ou já removido.")
+    return FileResponse(audio_file, media_type="audio/wav", filename="narracao-" + tts_id + ".wav")
 
 
 @app.post("/render", response_model=RenderResponse)
