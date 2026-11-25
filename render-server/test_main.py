@@ -105,8 +105,8 @@ class RenderServerTests(unittest.TestCase):
                     return Result()
                 with patch.object(main.shutil, "which", return_value="/usr/bin/piper"), patch.object(main.subprocess, "run", side_effect=fake_run):
                     result = main.generate_tts(main.TTSRequest(text="Olá, mundo!", voice="pt_BR-test"), "Bearer integration-test-token")
-                self.assertEqual(result.media_type, "audio/wav")
-                self.assertTrue(Path(result.path).is_file())
+                self.assertTrue(result.download_url.startswith("/tts/"))
+                self.assertTrue((main.OUTPUT_DIR / ("tts-" + result.id + ".wav")).is_file())
         finally:
             main.API_TOKEN = original_token
             main.PIPER_VOICES_DIR = original_voices
