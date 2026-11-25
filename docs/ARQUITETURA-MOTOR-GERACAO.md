@@ -12,8 +12,8 @@ O aplicativo não deve fingir que um roteiro ou prompt é um vídeo gerado. Cada
 
 - Aplicativo Expo / React Native.
 - Criação e armazenamento local de projetos.
-- Planejamento local de uma história em quatro cenas.
-- Prompts de imagem e animação por cena.
+- Planejamento local de histórias com quantidade variável de cenas, estimada pela duração escolhida (aproximadamente uma cena a cada oito segundos).
+- Prompts de imagem e animação por cena.\n- Quantidade de cenas variável conforme a duração (30 segundos a 10 minutos na interface).\n- Contratos TypeScript para conectar provedores reais de imagem, vídeo e áudio, sem simular geração.
 - Direção de enquadramento, câmera e iluminação.
 - Regras de continuidade visual.
 - Cópia do roteiro e dos prompts.
