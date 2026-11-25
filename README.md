@@ -14,12 +14,13 @@ Aplicativo mobile multiplataforma desenvolvido com Expo e React Native, pensado 
 - Cada cena pode solicitar um clipe de referência de quatro segundos a 16 FPS e reproduzi-lo dentro do app.
 - Download dos clipes para o armazenamento do iPhone, permitindo reprodução offline.
 - Exportação de clipes baixados pela folha de compartilhamento do iOS/Android, incluindo opção de salvar em Arquivos.
+- Montagem dos clipes de um projeto em um único MP4 por um serviço FFmpeg próprio, com prévia e exportação no iPhone.
 - Geração sequencial de imagens e clipes de todas as cenas em lote, com salvamento do progresso após cada cena.
 
 ## Estado real da geração
 O planejador de cenas funciona localmente, mas não é um modelo generativo. A geração de imagens só funciona depois que o usuário conecta um servidor ComfyUI acessível pela rede, instala um modelo compatível e configura um workflow exportado em formato API que termine em `SaveImage`.
 
-A geração de clipes de vídeo está implementada por workflow ComfyUI, mas ainda depende de configuração e validação com servidor/modelo reais. Os clipes retornados podem ser reproduzidos na própria tela do app e baixados para o armazenamento do aparelho. Geração de voz, montagem de várias cenas e exportação final de um único MP4 ainda não estão implementadas. O aplicativo não simula que essas etapas foram concluídas.
+A geração de clipes de vídeo está implementada por workflow ComfyUI, mas ainda depende de configuração e validação com servidor/modelo reais. Os clipes retornados podem ser reproduzidos na própria tela do app e baixados para o armazenamento do aparelho. A montagem de várias cenas em um MP4 está integrada ao serviço opcional `render-server`, que precisa ser iniciado em um computador/servidor próprio com FFmpeg. A montagem atual não inclui narração, música ou transições; esses recursos continuam pendentes. O aplicativo não simula que essas etapas foram concluídas.
 
 ## Custos e infraestrutura
 A integração ComfyUI não cobra créditos por geração do aplicativo e não exige uma chave de API. Entretanto, o servidor e o hardware são do proprietário: GPU, energia, armazenamento, rede e manutenção podem ter custos. Modelos de vídeo de alta qualidade normalmente exigem uma máquina com GPU; não rodam diretamente no iPhone.
@@ -38,7 +39,7 @@ O projeto usa Expo SDK 54, React Native 0.81 e TypeScript. A checagem de tipos �
 É possível configurar builds com Expo Application Services (EAS). A instalação direta em iPhone depende de assinatura/provisionamento Apple; a distribuição pela App Store exige conta Apple Developer. No Android, é possível gerar APK/AAB conforme o perfil de build.
 
 ## Próximas etapas
-1. Validar os workflows reais de imagem e vídeo em um iPhone conectado ao servidor ComfyUI.
-2. Implementar montagem dos clipes em um único MP4 final.
-3. Integrar geração de voz e sincronização com as cenas.
+1. Validar os workflows reais de imagem e vídeo e o serviço FFmpeg em um iPhone conectado aos servidores próprios.
+2. Integrar geração de voz, trilha sonora e sincronização labial.
+3. Adicionar transições, títulos e controles de edição da linha do tempo.
 4. Reforçar o acesso privado e a gestão segura das conexões.
