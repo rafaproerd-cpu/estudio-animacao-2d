@@ -13,7 +13,7 @@ Aplicativo mobile multiplataforma desenvolvido com Expo e React Native, pensado 
 - Configuração separada de workflow e IDs dos nós de vídeo, salva no aparelho e recarregada ao abrir o aplicativo.
 - Cada cena pode solicitar um clipe de referência de quatro segundos a 16 FPS e reproduzi-lo dentro do app.
 - Download dos clipes para o armazenamento do iPhone, permitindo reprodução offline.
-- Geração sequencial dos clipes de todas as cenas em lote, com salvamento do progresso cena a cena.
+- Geração sequencial de imagens e clipes de todas as cenas em lote, com salvamento do progresso após cada cena.
 
 ## Estado real da geração
 O planejador de cenas funciona localmente, mas não é um modelo generativo. A geração de imagens só funciona depois que o usuário conecta um servidor ComfyUI acessível pela rede, instala um modelo compatível e configura um workflow exportado em formato API que termine em `SaveImage`.
