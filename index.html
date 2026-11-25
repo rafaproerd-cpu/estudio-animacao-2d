@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#11111b">
+  <meta name="description" content="Crie histórias e roteiros para animações 2D em um só lugar.">
+  <title>Estúdio 2D — Crie seu universo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Estúdio 2D início"><span class="brand-mark">✦</span><span>ESTÚDIO <b>2D</b></span></a>
+    <span class="top-note"><i></i> Seu espaço de criação</span>
+  </header>
+  <main class="shell">
+    <section class="hero">
+      <div class="eyebrow">IDEIAS QUE GANHAM VIDA</div>
+      <h1>Seu próximo universo<br><span>começa aqui.</span></h1>
+      <p>Transforme uma ideia em uma história animada. Primeiro vamos criar o roteiro, os personagens e as cenas.</p>
+    </section>
+    <section class="workspace">
+      <div class="section-heading"><div><span class="step">01</span><h2>Vamos criar sua história</h2></div><span class="private-tag">✧ Rascunho</span></div>
+      <form id="creator-form">
+        <label for="idea">Qual é a sua ideia?</label>
+        <textarea id="idea" maxlength="700" placeholder="Ex.: Um garoto encontra um portal secreto no quintal e conhece um pequeno dragão..." required></textarea>
+        <div class="field-meta"><span>Conte do seu jeito. Não precisa estar perfeito.</span><span id="char-count">0/700</span></div>
+        <div class="form-grid">
+          <div class="field">
+            <label for="genre">Estilo da história</label>
+            <select id="genre">
+              <option value="Aventura">Aventura</option>
+              <option value="Comédia">Comédia</option>
+              <option value="Fantasia">Fantasia</option>
+              <option value="Ação">Ação</option>
+              <option value="Drama">Drama</option>
+              <option value="Mistério">Mistério</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="duration">Duração desejada</label>
+            <select id="duration">
+              <option value="30 segundos">30 segundos</option>
+              <option value="1 minuto" selected>1 minuto</option>
+              <option value="2 minutos">2 minutos</option>
+              <option value="3 minutos">3 minutos</option>
+            </select>
+          </div>
+        </div>
+        <button class="primary-button" type="submit"><span>✦</span> Criar meu roteiro <span class="button-arrow">→</span></button>
+        <p class="disclaimer">Esta primeira versão monta um roteiro-base no próprio navegador. A geração real de imagens, vozes e vídeos será conectada nas próximas etapas.</p>
+      </form>
+    </section>
+    <section id="result" class="result hidden" aria-live="polite">
+      <div class="section-heading result-heading"><div><span class="step">02</span><h2>Seu projeto</h2></div><span class="private-tag">✧ Editável</span></div>
+      <div id="story-output"></div>
+      <div class="result-actions">
+        <button id="copy-button" class="secondary-button" type="button">Copiar roteiro</button>
+        <button id="download-button" class="secondary-button" type="button">Baixar .txt ↓</button>
+      </div>
+    </section>
+    <footer><span>ESTÚDIO 2D</span><span>Feito para transformar ideias em histórias.</span></footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
