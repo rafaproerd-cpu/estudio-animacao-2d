@@ -1,14 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  Alert, SafeAreaView, ScrollView, Share, StatusBar, StyleSheet,
+  Alert, Linking, SafeAreaView, ScrollView, Share, StatusBar, StyleSheet,
   Text, TextInput, TouchableOpacity, View, Image
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
 import { createStoryPlan, type Genre } from "./src/engine/storyEngine";
 import { ComfyUiImageProvider, type ComfyUiImageWorkflow } from "./src/engine/providers/comfyuiImageProvider";
+import { ComfyUiVideoProvider, type ComfyUiVideoWorkflow } from "./src/engine/providers/comfyuiVideoProvider";
 
-type Scene = { title: string; description: string; dialogue: string; imagePrompt: string; videoPrompt: string; shot: string; camera: string; lighting: string; imageUri?: string };
+type Scene = { title: string; description: string; dialogue: string; imagePrompt: string; videoPrompt: string; shot: string; camera: string; lighting: string; imageUri?: string; videoUri?: string };
 type Project = {
   id: string;
   title: string;
@@ -22,7 +23,13 @@ type Project = {
 
 const STORAGE_KEY = "@estudio2d/projects-v1";
 const COMFY_STORAGE_KEY = "@estudio2d/comfyui-v1";
-type ComfyConfig = { baseUrl: string; workflowText: string; positiveNode: string; negativeNode: string; widthNode: string; heightNode: string; seedNode: string };
+type ComfyConfig = {
+  baseUrl: string; workflowText: string; positiveNode: string; negativeNode: string;
+  widthNode: string; heightNode: string; seedNode: string;
+  videoWorkflowText?: string; videoImageNode?: string; videoPositiveNode?: string;
+  videoNegativeNode?: string; videoWidthNode?: string; videoHeightNode?: string;
+  videoFramesNode?: string; videoFpsNode?: string; videoSeedNode?: string;
+};
 const genres = ["Aventura", "Comédia", "Fantasia", "Ação", "Drama", "Mistério"];
 const durations = ["30 segundos", "1 minuto", "2 minutos", "3 minutos", "5 minutos", "10 minutos"];
 
@@ -85,14 +92,14 @@ export default function App() {
   const [selected, setSelected] = useState<Project | null>(null);
   const [ready, setReady] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [comfyConfig, setComfyConfig] = useState<ComfyConfig>({ baseUrl: "", workflowText: "", positiveNode: "", negativeNode: "", widthNode: "", heightNode: "", seedNode: "" });
+  const [comfyConfig, setComfyConfig] = useState<ComfyConfig>({ baseUrl: "", workflowText: "", positiveNode: "", negativeNode: "", widthNode: "", heightNode: "", seedNode: "", videoWorkflowText: "", videoImageNode: "", videoPositiveNode: "", videoNegativeNode: "", videoWidthNode: "", videoHeightNode: "", videoFramesNode: "", videoFpsNode: "", videoSeedNode: "" });
   const [connectionStatus, setConnectionStatus] = useState("Não testada");
   const [busyScene, setBusyScene] = useState<string | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(COMFY_STORAGE_KEY)
       .then(value => {
-        if (value) setComfyConfig({ ...comfyConfig, ...(JSON.parse(value) as Partial<ComfyConfig>) });
+        if (value) setComfyConfig(prev => ({ ...prev, ...(JSON.parse(value) as Partial<ComfyConfig>) }));
       })
       .catch(() => Alert.alert("Aviso", "Não foi possível carregar a configuração do ComfyUI."));
   }, []);
@@ -140,6 +147,56 @@ export default function App() {
       Alert.alert("Imagem gerada", "A imagem desta cena foi salva no projeto.");
     } catch (error) { Alert.alert("Erro na geração", error instanceof Error ? error.message : "Não foi possível gerar a imagem."); }
     finally { setBusyScene(null); }
+  };
+
+  const generateSceneVideo = async (scene: Scene) => {
+    if (!selected) return;
+    if (!scene.imageUri) {
+      Alert.alert("Imagem necessária", "Gere primeiro a imagem desta cena para usá-la como referência do vídeo.");
+      return;
+    }
+    if (!comfyConfig.videoWorkflowText?.trim() || !comfyConfig.videoImageNode?.trim() || !comfyConfig.videoPositiveNode?.trim()) {
+      Alert.alert("Configure o motor de vídeo", "Abra Configurar geração e informe o workflow de vídeo, o nó LoadImage e o nó do prompt positivo.");
+      setShowSettings(true);
+      return;
+    }
+    setBusyScene(`video:${scene.title}`);
+    try {
+      const workflow = JSON.parse(comfyConfig.videoWorkflowText) as ComfyUiVideoWorkflow;
+      const provider = new ComfyUiVideoProvider({
+        baseUrl: comfyConfig.baseUrl,
+        workflow,
+        imageNodeId: comfyConfig.videoImageNode.trim(),
+        positivePromptNodeId: comfyConfig.videoPositiveNode.trim(),
+        negativePromptNodeId: comfyConfig.videoNegativeNode?.trim() || undefined,
+        widthNodeId: comfyConfig.videoWidthNode?.trim() || undefined,
+        heightNodeId: comfyConfig.videoHeightNode?.trim() || undefined,
+        framesNodeId: comfyConfig.videoFramesNode?.trim() || undefined,
+        fpsNodeId: comfyConfig.videoFpsNode?.trim() || undefined,
+        seedNodeId: comfyConfig.videoSeedNode?.trim() || undefined,
+      });
+      const result = await provider.generate({
+        prompt: scene.videoPrompt || scene.description,
+        imageUri: scene.imageUri,
+        durationSeconds: 4,
+        width: 1024,
+        height: 576,
+        fps: 16,
+      });
+      if (result.status !== "completed" || !result.outputUri) throw new Error(result.error || "O workflow não retornou um vídeo.");
+      const updated = { ...selected, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, videoUri: result.outputUri } : item) };
+      saveUpdatedProject(updated);
+      Alert.alert("Clipe concluído", "O vídeo desta cena foi salvo no projeto.");
+    } catch (error) {
+      Alert.alert("Erro na geração do vídeo", error instanceof Error ? error.message : "Não foi possível gerar o clipe.");
+    } finally {
+      setBusyScene(null);
+    }
+  };
+
+  const openSceneVideo = async (uri: string) => {
+    try { await Linking.openURL(uri); }
+    catch { Alert.alert("Não foi possível abrir", "Verifique se o endereço do vídeo está acessível no celular."); }
   };
 
   const currentScript = useMemo(() => selected ? projectText(selected) : "", [selected]);
@@ -226,7 +283,17 @@ export default function App() {
           <View style={styles.privatePill}><Text style={styles.privateText}>PESSOAL</Text></View>
         </View>
 
-        <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSettings(value => !value)}><Text style={styles.backText}>{showSettings ? "FECHAR CONFIGURAÇÕES" : "⚙  CONFIGURAR GERAÇÃO DE IMAGENS"}</Text></TouchableOpacity>\n        {showSettings && <View style={styles.panel}>\n          <Text style={styles.step}>MOTOR DE IMAGENS · SERVIDOR PRÓPRIO</Text>\n          <Text style={styles.panelTitle}>Conectar ComfyUI</Text>\n          <Text style={styles.note}>Este modo usa um servidor ComfyUI que você controla. O aplicativo não cobra créditos, mas precisa de um computador/servidor com modelo de imagem instalado e acessível pela rede.</Text>\n          <Text style={styles.label}>ENDEREÇO DO SERVIDOR</Text>\n          <TextInput value={comfyConfig.baseUrl} onChangeText={value => setComfyConfig(prev => ({ ...prev, baseUrl: value }))} autoCapitalize="none" placeholder="https://seu-servidor:8188" placeholderTextColor="#777789" style={styles.input} />\n          <Text style={styles.label}>WORKFLOW API JSON</Text>\n          <TextInput value={comfyConfig.workflowText} onChangeText={value => setComfyConfig(prev => ({ ...prev, workflowText: value }))} multiline textAlignVertical="top" placeholder="Cole aqui o JSON exportado em formato API pelo ComfyUI" placeholderTextColor="#777789" style={styles.workflowInput} />\n          <Text style={styles.label}>ID DO NÓ DE PROMPT POSITIVO (CLIPTextEncode)</Text>\n          <TextInput value={comfyConfig.positiveNode} onChangeText={value => setComfyConfig(prev => ({ ...prev, positiveNode: value }))} keyboardType="number-pad" placeholder="Ex.: 6" placeholderTextColor="#777789" style={styles.smallInput} />\n          <Text style={styles.label}>ID DO NÓ DE PROMPT NEGATIVO (OPCIONAL)</Text>\n          <TextInput value={comfyConfig.negativeNode} onChangeText={value => setComfyConfig(prev => ({ ...prev, negativeNode: value }))} keyboardType="number-pad" placeholder="Ex.: 7" placeholderTextColor="#777789" style={styles.smallInput} />\n          <Text style={styles.label}>ID DOS NÓS DE LARGURA / ALTURA / SEED (OPCIONAIS)</Text>\n          <View style={styles.inlineInputs}>{(["widthNode", "heightNode", "seedNode"] as const).map((key, index) => <TextInput key={key} value={comfyConfig[key]} onChangeText={value => setComfyConfig(prev => ({ ...prev, [key]: value }))} keyboardType="number-pad" placeholder={["Largura", "Altura", "Seed"][index]} placeholderTextColor="#777789" style={[styles.smallInput, { flex: 1 }]} />)}</View>\n          <Text style={styles.note}>Status: {connectionStatus}. O workflow precisa terminar em SaveImage. Os nomes de entrada padrão são text, width, height e seed.</Text>\n          <TouchableOpacity style={styles.secondary} onPress={saveComfyConfig}><Text style={styles.secondaryText}>SALVAR CONFIGURAÇÃO</Text></TouchableOpacity>\n          <TouchableOpacity style={styles.primary} onPress={testComfyConnection}><Text style={styles.primaryText}>TESTAR CONEXÃO</Text><Text style={styles.arrow}>→</Text></TouchableOpacity>\n        </View>}\n\n        <View style={styles.hero}>
+        <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSettings(value => !value)}><Text style={styles.backText}>{showSettings ? "FECHAR CONFIGURAÇÕES" : "⚙  CONFIGURAR GERAÇÃO DE IMAGENS"}</Text></TouchableOpacity>\n        {showSettings && <View style={styles.panel}>\n          <Text style={styles.step}>MOTOR DE IMAGENS · SERVIDOR PRÓPRIO</Text>\n          <Text style={styles.panelTitle}>Conectar ComfyUI</Text>\n          <Text style={styles.note}>Este modo usa um servidor ComfyUI que você controla. O aplicativo não cobra créditos, mas precisa de um computador/servidor com modelo de imagem instalado e acessível pela rede.</Text>\n          <Text style={styles.label}>ENDEREÇO DO SERVIDOR</Text>\n          <TextInput value={comfyConfig.baseUrl} onChangeText={value => setComfyConfig(prev => ({ ...prev, baseUrl: value }))} autoCapitalize="none" placeholder="https://seu-servidor:8188" placeholderTextColor="#777789" style={styles.input} />\n          <Text style={styles.label}>WORKFLOW API JSON DE IMAGEM</Text>\n          <TextInput value={comfyConfig.workflowText} onChangeText={value => setComfyConfig(prev => ({ ...prev, workflowText: value }))} multiline textAlignVertical="top" placeholder="Cole aqui o JSON exportado em formato API pelo ComfyUI" placeholderTextColor="#777789" style={styles.workflowInput} />\n          <Text style={styles.label}>ID DO NÓ DE PROMPT POSITIVO (CLIPTextEncode)</Text>\n          <TextInput value={comfyConfig.positiveNode} onChangeText={value => setComfyConfig(prev => ({ ...prev, positiveNode: value }))} keyboardType="number-pad" placeholder="Ex.: 6" placeholderTextColor="#777789" style={styles.smallInput} />\n          <Text style={styles.label}>ID DO NÓ DE PROMPT NEGATIVO (OPCIONAL)</Text>\n          <TextInput value={comfyConfig.negativeNode} onChangeText={value => setComfyConfig(prev => ({ ...prev, negativeNode: value }))} keyboardType="number-pad" placeholder="Ex.: 7" placeholderTextColor="#777789" style={styles.smallInput} />\n          <Text style={styles.label}>ID DOS NÓS DE LARGURA / ALTURA / SEED (OPCIONAIS)</Text>\n          <View style={styles.inlineInputs}>{(["widthNode", "heightNode", "seedNode"] as const).map((key, index) => <TextInput key={key} value={comfyConfig[key]} onChangeText={value => setComfyConfig(prev => ({ ...prev, [key]: value }))} keyboardType="number-pad" placeholder={["Largura", "Altura", "Seed"][index]} placeholderTextColor="#777789" style={[styles.smallInput, { flex: 1 }]} />)}</View>\n          <Text style={styles.label}>WORKFLOW API DE VÍDEO (IMAGEM-PARA-VÍDEO)</Text>
+          <TextInput value={comfyConfig.videoWorkflowText || ""} onChangeText={value => setComfyConfig(prev => ({ ...prev, videoWorkflowText: value }))} multiline textAlignVertical="top" placeholder="Cole o workflow API de vídeo com LoadImage e SaveVideo" placeholderTextColor="#777789" style={styles.workflowInput} />
+          <Text style={styles.label}>NÓS DO WORKFLOW DE VÍDEO</Text>
+          <View style={styles.inlineInputs}>
+            {(["videoImageNode", "videoPositiveNode", "videoNegativeNode"] as const).map((key, index) => <TextInput key={key} value={comfyConfig[key] || ""} onChangeText={value => setComfyConfig(prev => ({ ...prev, [key]: value }))} keyboardType="number-pad" placeholder={["LoadImage", "Prompt+", "Prompt-"][index]} placeholderTextColor="#777789" style={[styles.smallInput, { flex: 1 }]} />)}
+          </View>
+          <Text style={styles.label}>NÓS OPCIONAIS: LARGURA / ALTURA / QUADROS / FPS / SEED</Text>
+          <View style={styles.inlineInputs}>
+            {(["videoWidthNode", "videoHeightNode", "videoFramesNode", "videoFpsNode", "videoSeedNode"] as const).map((key, index) => <TextInput key={key} value={comfyConfig[key] || ""} onChangeText={value => setComfyConfig(prev => ({ ...prev, [key]: value }))} keyboardType="number-pad" placeholder={["Larg.", "Alt.", "Frames", "FPS", "Seed"][index]} placeholderTextColor="#777789" style={[styles.smallInput, { flex: 1 }]} />)}
+          </View>
+          <Text style={styles.note}>O workflow de imagem termina em SaveImage. O de vídeo precisa ter LoadImage conectado ao modelo de animação e SaveVideo na saída. Os nomes de entrada padrão do adaptador são image, text, width, height, length, fps e seed. Cada clique gera um clipe de referência de 4 segundos a 16 FPS.</Text>\n          <TouchableOpacity style={styles.secondary} onPress={saveComfyConfig}><Text style={styles.secondaryText}>SALVAR CONFIGURAÇÃO</Text></TouchableOpacity>\n          <TouchableOpacity style={styles.primary} onPress={testComfyConnection}><Text style={styles.primaryText}>TESTAR CONEXÃO</Text><Text style={styles.arrow}>→</Text></TouchableOpacity>\n        </View>}\n\n        <View style={styles.hero}>
           <Text style={styles.eyebrow}>IDEIAS QUE GANHAM VIDA</Text>
           <Text style={styles.heading}>Crie sua próxima{"\n"}<Text style={styles.headingAccent}>animação.</Text></Text>
           <Text style={styles.intro}>Seu espaço para desenvolver histórias, personagens e cenas.</Text>
@@ -258,7 +325,7 @@ export default function App() {
             <TouchableOpacity style={styles.primary} onPress={createProject}>
               <Text style={styles.primaryText}>✦  CRIAR MEU PROJETO</Text><Text style={styles.arrow}>→</Text>
             </TouchableOpacity>
-            <Text style={styles.note}>O app distribui a história em cenas. Você já pode conectar um ComfyUI próprio para gerar imagens; voz e vídeo ainda serão integrados em etapas futuras.</Text>
+            <Text style={styles.note}>O app organiza a história em cenas. Com um ComfyUI próprio, você pode gerar imagens e animar cada cena com um workflow de vídeo compatível. Voz e montagem final ainda serão etapas futuras.</Text>
           </View>
 
           <View style={styles.sectionHeader}>
@@ -290,7 +357,9 @@ export default function App() {
             <Text style={styles.label}>FICHA DO PERSONAGEM</Text>
             <TextInput value={selected.character} onChangeText={updateCharacter} multiline textAlignVertical="top" placeholder="Descreva aparência, roupa, personalidade e voz do personagem..." placeholderTextColor="#777789" style={styles.characterInput} />
             {selected.scenes.map(scene => <View key={scene.title} style={styles.scene}>
-              <Text style={styles.sceneTitle}>{scene.title}</Text>\n              {scene.imageUri ? <Image source={{ uri: scene.imageUri }} style={styles.generatedImage} resizeMode="cover" /> : <View style={styles.imagePlaceholder}><Text style={styles.note}>Imagem ainda não gerada</Text></View>}\n              <TouchableOpacity style={styles.secondary} disabled={busyScene === scene.title} onPress={() => generateSceneImage(scene)}><Text style={styles.secondaryText}>{busyScene === scene.title ? "GERANDO IMAGEM…" : "GERAR IMAGEM DESTA CENA"}</Text></TouchableOpacity>
+              <Text style={styles.sceneTitle}>{scene.title}</Text>\n              {scene.imageUri ? <Image source={{ uri: scene.imageUri }} style={styles.generatedImage} resizeMode="cover" /> : <View style={styles.imagePlaceholder}><Text style={styles.note}>Imagem ainda não gerada</Text></View>}\n              <TouchableOpacity style={styles.secondary} disabled={busyScene === scene.title || busyScene === `video:${scene.title}`} onPress={() => generateSceneImage(scene)}><Text style={styles.secondaryText}>{busyScene === scene.title ? "GERANDO IMAGEM…" : "GERAR IMAGEM DESTA CENA"}</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.primary} disabled={busyScene === scene.title || busyScene === `video:${scene.title}`} onPress={() => generateSceneVideo(scene)}><Text style={styles.primaryText}>{busyScene === `video:${scene.title}` ? "GERANDO CLIPE…" : "ANIMAR ESTA CENA · 4 SEGUNDOS"}</Text><Text style={styles.arrow}>▶</Text></TouchableOpacity>
+              {scene.videoUri ? <TouchableOpacity style={styles.secondary} onPress={() => openSceneVideo(scene.videoUri!)}><Text style={styles.secondaryText}>ABRIR VÍDEO GERADO</Text></TouchableOpacity> : null}
               <Text style={styles.label}>AÇÃO DA CENA</Text>
               <TextInput value={scene.description} onChangeText={value => updateScene(scene.title, "description", value)} multiline textAlignVertical="top" placeholder="Descreva o que acontece nesta cena..." placeholderTextColor="#777789" style={styles.sceneInput} />
               <Text style={styles.label}>FALA / DIÁLOGO</Text>
