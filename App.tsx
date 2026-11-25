@@ -435,6 +435,7 @@ export default function App() {
       return;
     }
     setBusyScene("render:final");
+    setBatchProgress({ current: 0, total: selected.scenes.length });
     try {
       const directory = `${FileSystem.documentDirectory}final-videos/`;
       const directoryInfo = await FileSystem.getInfoAsync(directory);
@@ -469,6 +470,7 @@ export default function App() {
         const extension = localUri.split("?")[0].split(".").pop()?.toLowerCase() || "mp4";
         const mimeType = extension === "webm" ? "video/webm" : extension === "mov" ? "video/quicktime" : extension === "mkv" ? "video/x-matroska" : "video/mp4";
         form.append("clips", { uri: localUri, name: `scene-${String(index + 1).padStart(2, "0")}.${extension}`, type: mimeType } as any);
+        setBatchProgress({ current: index + 1, total: selected.scenes.length });
       }
 
       const response = await fetch(`${renderBaseUrl}/render`, {
@@ -500,6 +502,7 @@ export default function App() {
       Alert.alert("Falha na montagem", error instanceof Error ? error.message : "Não foi possível montar o MP4 final.");
     } finally {
       setBusyScene(null);
+      setBatchProgress(null);
     }
   };
 
@@ -719,7 +722,7 @@ export default function App() {
               <TouchableOpacity style={styles.secondary} disabled={!!busyScene || !!batchProgress} onPress={generateAllSceneImages}>
                 <Text style={styles.secondaryText}>{batchProgress ? "PROCESSANDO IMAGENS…" : "GERAR IMAGENS PENDENTES"}</Text>
               </TouchableOpacity>
-              {batchProgress ? <Text style={styles.note}>Concluídas {batchProgress.current} de {batchProgress.total}…</Text> : null}
+              {batchProgress ? <Text style={styles.note}>Preparadas {batchProgress.current} de {batchProgress.total} cenas…</Text> : null}
               <TouchableOpacity style={styles.primary} disabled={!!busyScene || !!batchProgress} onPress={generateAllSceneVideos}>
                 <Text style={styles.primaryText}>{batchProgress ? "PROCESSANDO VÍDEOS…" : "ANIMAR CENAS PENDENTES"}</Text><Text style={styles.arrow}>▶</Text>
               </TouchableOpacity>
