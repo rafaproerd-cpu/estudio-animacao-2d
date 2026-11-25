@@ -1,0 +1,27 @@
+name: Render server checks
+
+on:
+  push:
+    paths:
+      - "render-server/**"
+      - ".github/workflows/render-server.yml"
+  pull_request:
+    paths:
+      - "render-server/**"
+      - ".github/workflows/render-server.yml"
+
+jobs:
+  python-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install server dependencies
+        run: pip install -r render-server/requirements.txt
+      - name: Compile Python files
+        run: python -m compileall -q render-server
+      - name: Run unit tests
+        working-directory: render-server
+        run: python -m unittest -v
