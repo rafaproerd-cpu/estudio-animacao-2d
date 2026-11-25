@@ -22,6 +22,8 @@ jobs:
         run: npx expo config --type public
       - name: Check TypeScript
         run: npm run typecheck
+      - name: Build browser preview
+        run: npx expo export --platform web
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
