@@ -570,7 +570,10 @@ export default function App() {
       scenes: selected.scenes.map(scene => ({
         ...scene,
         imagePrompt: updateCharacterInPrompt(scene.imagePrompt || "", selected.character, value),
-        videoPrompt: updateCharacterInPrompt(scene.videoPrompt || "", selected.character, value)
+        videoPrompt: updateCharacterInPrompt(scene.videoPrompt || "", selected.character, value),
+        imageUri: undefined,
+        videoUri: undefined,
+        videoRemoteUri: undefined,
       }))
     };
     saveUpdatedProject(updated);
@@ -582,7 +585,17 @@ export default function App() {
       ...selected,
       finalVideoUri: undefined,
       finalVideoRemoteUri: undefined,
-      scenes: selected.scenes.map(scene => scene.title === sceneTitle ? { ...scene, [field]: value } : scene)
+      scenes: selected.scenes.map(scene => {
+        if (scene.title !== sceneTitle) return scene;
+        const changed = { ...scene, [field]: value };
+        if (field === "imagePrompt" || field === "description") {
+          return { ...changed, imageUri: undefined, videoUri: undefined, videoRemoteUri: undefined };
+        }
+        if (field === "videoPrompt") {
+          return { ...changed, videoUri: undefined, videoRemoteUri: undefined };
+        }
+        return changed;
+      })
     });
   };
 
