@@ -1,50 +1,129 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  Alert,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+  Alert, SafeAreaView, ScrollView, Share, StatusBar, StyleSheet,
+  Text, TextInput, TouchableOpacity, View
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Clipboard from "expo-clipboard";
 
 type Scene = { title: string; description: string; dialogue: string };
+type Project = {
+  id: string;
+  title: string;
+  idea: string;
+  genre: string;
+  duration: string;
+  character: string;
+  scenes: Scene[];
+  createdAt: string;
+};
+
+const STORAGE_KEY = "@estudio2d/projects-v1";
+const genres = ["Aventura", "Comédia", "Fantasia", "Ação", "Drama", "Mistério"];
+const durations = ["30 segundos", "1 minuto", "2 minutos", "3 minutos"];
+
+function buildProject(idea: string, genre: string, duration: string): Project {
+  const title = idea.length > 42 ? idea.slice(0, 42).trim() + "…" : idea;
+  return {
+    id: Date.now().toString(),
+    title,
+    idea,
+    genre,
+    duration,
+    character: "Personagem principal\nNome: a definir\nAparência: a definir\nRoupa: a definir\nPersonalidade: a definir\nVoz: a definir\nRegra de continuidade: manter o mesmo rosto, cabelo, roupa, cores e proporções em todas as cenas.",
+    scenes: [
+      { title: "Cena 1 — Apresentação", description: "Apresente o protagonista, o lugar e a situação inicial. Ponto de partida: " + idea, dialogue: "Personagem: Eu nunca imaginei que isso fosse acontecer…" },
+      { title: "Cena 2 — O desafio", description: "Mostre o problema que movimenta a história, com ritmo de " + genre.toLowerCase() + ". Aumente a tensão e dê ao protagonista uma decisão importante.", dialogue: "Personagem: Preciso encontrar uma saída!" },
+      { title: "Cena 3 — A virada", description: "O protagonista tenta resolver o desafio. Mostre uma ação visual clara e uma consequência para sua escolha.", dialogue: "Personagem: Agora eu sei o que preciso fazer!" },
+      { title: "Cena 4 — Desfecho", description: "Conclua o conflito principal de maneira satisfatória e, se combinar com a ideia, deixe uma pista para uma nova aventura.", dialogue: "Narrador: E aquela foi apenas a primeira de muitas aventuras." }
+    ],
+    createdAt: new Date().toISOString()
+  };
+}
+
+function projectText(project: Project) {
+  return [
+    project.title,
+    "Gênero: " + project.genre,
+    "Duração: " + project.duration,
+    "",
+    "IDEIA ORIGINAL",
+    project.idea,
+    "",
+    "FICHA DO PERSONAGEM",
+    project.character,
+    "",
+    ...project.scenes.flatMap(scene => [scene.title, scene.description, scene.dialogue, ""])
+  ].join("\n");
+}
 
 export default function App() {
   const [idea, setIdea] = useState("");
   const [genre, setGenre] = useState("Aventura");
   const [duration, setDuration] = useState("1 minuto");
-  const [project, setProject] = useState<{ title: string; character: string; scenes: Scene[] } | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selected, setSelected] = useState<Project | null>(null);
+  const [ready, setReady] = useState(false);
 
-  const genres = ["Aventura", "Comédia", "Fantasia", "Ação", "Drama", "Mistério"];
-  const durations = ["30 segundos", "1 minuto", "2 minutos", "3 minutos"];
+  useEffect(() => {
+    AsyncStorage.getItem(STORAGE_KEY)
+      .then(value => {
+        if (value) setProjects(JSON.parse(value) as Project[]);
+      })
+      .catch(() => Alert.alert("Aviso", "Não foi possível carregar os projetos salvos."))
+      .finally(() => setReady(true));
+  }, []);
+
+  useEffect(() => {
+    if (ready) {
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(projects))
+        .catch(() => Alert.alert("Erro ao salvar", "Confira o espaço disponível no aparelho."));
+    }
+  }, [projects, ready]);
+
+  const currentScript = useMemo(() => selected ? projectText(selected) : "", [selected]);
 
   const createProject = () => {
-    if (!idea.trim()) {
-      Alert.alert("Falta sua ideia", "Escreva uma ideia para começar a animação.");
+    const cleanIdea = idea.trim();
+    if (!cleanIdea) {
+      Alert.alert("Falta sua ideia", "Escreva uma ideia para começar.");
       return;
     }
-    const cleanIdea = idea.trim();
-    setProject({
-      title: cleanIdea.length > 42 ? cleanIdea.slice(0, 42).trim() + "…" : cleanIdea,
-      character: "Personagem principal\nA definir: nome, idade, aparência, roupa, personalidade e voz. Essa ficha será usada para manter a consistência visual nas cenas.",
-      scenes: [
-        { title: "Cena 1 — Apresentação", description: "Apresente o personagem e o mundo da história. Ideia-base: " + cleanIdea, dialogue: "Personagem: Tudo começou quando…" },
-        { title: "Cena 2 — Desenvolvimento", description: "Mostre o desafio principal da história no estilo " + genre.toLowerCase() + ".", dialogue: "Personagem: Eu preciso descobrir o que está acontecendo!" },
-        { title: "Cena 3 — Desfecho", description: "Crie uma conclusão coerente e deixe espaço para uma continuação, se fizer sentido.", dialogue: "Narrador: E assim, uma nova aventura começou." }
-      ]
-    });
+    const project = buildProject(cleanIdea, genre, duration);
+    setProjects(previous => [project, ...previous]);
+    setSelected(project);
+    setIdea("");
   };
 
-  const script = useMemo(() => {
-    if (!project) return "";
-    return [project.title, "Gênero: " + genre, "Duração: " + duration, "", project.character, "", ...project.scenes.flatMap(s => [s.title, s.description, s.dialogue, ""])].join("\n");
-  }, [project, genre, duration]);
+  const copyScript = async () => {
+    if (!selected) return;
+    await Clipboard.setStringAsync(currentScript);
+    Alert.alert("Copiado!", "O roteiro foi copiado para a área de transferência.");
+  };
 
-  const copyNotice = () => Alert.alert("Roteiro pronto", "A criação de roteiro está funcionando nesta primeira versão do aplicativo. A cópia e exportação serão adicionadas na próxima etapa.");
+  const shareScript = async () => {
+    if (!selected) return;
+    try {
+      await Share.share({ title: selected.title, message: currentScript });
+    } catch {
+      Alert.alert("Não foi possível compartilhar", "Tente novamente.");
+    }
+  };
+
+  const deleteProject = (id: string) => {
+    Alert.alert("Excluir projeto?", "Essa ação remove o projeto salvo neste aparelho.", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Excluir", style: "destructive", onPress: () => {
+        setProjects(previous => previous.filter(item => item.id !== id));
+        if (selected?.id === id) setSelected(null);
+      }}
+    ]);
+  };
+
+  const startNew = () => {
+    setSelected(null);
+    setIdea("");
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -52,65 +131,91 @@ export default function App() {
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <View style={styles.logo}><Text style={styles.logoText}>✦</Text></View>
-          <View><Text style={styles.brand}>ESTÚDIO <Text style={styles.brandAccent}>2D</Text></Text><Text style={styles.subtitle}>SEU UNIVERSO DE ANIMAÇÃO</Text></View>
+          <View style={styles.brandWrap}>
+            <Text style={styles.brand}>ESTÚDIO <Text style={styles.brandAccent}>2D</Text></Text>
+            <Text style={styles.subtitle}>SEU UNIVERSO DE ANIMAÇÃO</Text>
+          </View>
+          <View style={styles.privatePill}><Text style={styles.privateText}>PESSOAL</Text></View>
         </View>
 
         <View style={styles.hero}>
           <Text style={styles.eyebrow}>IDEIAS QUE GANHAM VIDA</Text>
           <Text style={styles.heading}>Crie sua próxima{"\n"}<Text style={styles.headingAccent}>animação.</Text></Text>
-          <Text style={styles.intro}>Transforme uma ideia em personagens, cenas e histórias animadas.</Text>
+          <Text style={styles.intro}>Seu espaço para desenvolver histórias, personagens e cenas.</Text>
         </View>
 
-        <View style={styles.panel}>
-          <Text style={styles.step}>01 / NOVO PROJETO</Text>
-          <Text style={styles.panelTitle}>Qual é a sua ideia?</Text>
-          <TextInput
-            value={idea}
-            onChangeText={setIdea}
-            multiline
-            maxLength={700}
-            placeholder="Ex.: Um garoto encontra um portal secreto e conhece um pequeno dragão..."
-            placeholderTextColor="#777789"
-            style={styles.input}
-            textAlignVertical="top"
-          />
-          <Text style={styles.counter}>{idea.length}/700 caracteres</Text>
+        {!selected ? <>
+          <View style={styles.panel}>
+            <Text style={styles.step}>01 / NOVO PROJETO</Text>
+            <Text style={styles.panelTitle}>Qual é a sua ideia?</Text>
+            <TextInput value={idea} onChangeText={setIdea} multiline maxLength={700}
+              placeholder="Ex.: Um garoto encontra um portal secreto e conhece um pequeno dragão..."
+              placeholderTextColor="#777789" style={styles.input} textAlignVertical="top" />
+            <Text style={styles.counter}>{idea.length}/700 caracteres</Text>
 
-          <Text style={styles.label}>ESTILO DA HISTÓRIA</Text>
-          <View style={styles.chips}>{genres.map(item => (
-            <TouchableOpacity key={item} onPress={() => setGenre(item)} style={[styles.chip, genre === item && styles.chipActive]}>
-              <Text style={[styles.chipText, genre === item && styles.chipTextActive]}>{item}</Text>
+            <Text style={styles.label}>ESTILO DA HISTÓRIA</Text>
+            <View style={styles.chips}>{genres.map(item => (
+              <TouchableOpacity key={item} onPress={() => setGenre(item)} style={[styles.chip, genre === item && styles.chipActive]}>
+                <Text style={[styles.chipText, genre === item && styles.chipTextActive]}>{item}</Text>
+              </TouchableOpacity>
+            ))}</View>
+
+            <Text style={styles.label}>DURAÇÃO DESEJADA</Text>
+            <View style={styles.chips}>{durations.map(item => (
+              <TouchableOpacity key={item} onPress={() => setDuration(item)} style={[styles.chip, duration === item && styles.chipActive]}>
+                <Text style={[styles.chipText, duration === item && styles.chipTextActive]}>{item}</Text>
+              </TouchableOpacity>
+            ))}</View>
+
+            <TouchableOpacity style={styles.primary} onPress={createProject}>
+              <Text style={styles.primaryText}>✦  CRIAR MEU PROJETO</Text><Text style={styles.arrow}>→</Text>
             </TouchableOpacity>
-          ))}</View>
+            <Text style={styles.note}>Nesta etapa, o app organiza sua ideia em um roteiro-base. A geração de imagens, vozes e vídeos será integrada em seguida.</Text>
+          </View>
 
-          <Text style={styles.label}>DURAÇÃO DESEJADA</Text>
-          <View style={styles.chips}>{durations.map(item => (
-            <TouchableOpacity key={item} onPress={() => setDuration(item)} style={[styles.chip, duration === item && styles.chipActive]}>
-              <Text style={[styles.chipText, duration === item && styles.chipTextActive]}>{item}</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>MEUS PROJETOS</Text>
+            <Text style={styles.projectCount}>{projects.length} salvo(s)</Text>
+          </View>
+          {!ready ? <Text style={styles.empty}>Carregando seus projetos…</Text> :
+            projects.length === 0 ? <Text style={styles.empty}>Seus projetos criados aparecerão aqui.</Text> :
+            projects.map(item => (
+              <View key={item.id} style={styles.projectRow}>
+                <TouchableOpacity style={styles.projectOpen} onPress={() => setSelected(item)}>
+                  <Text style={styles.projectName}>{item.title}</Text>
+                  <Text style={styles.projectMeta}>{item.genre} · {item.duration}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => deleteProject(item.id)} style={styles.deleteButton}>
+                  <Text style={styles.deleteText}>Excluir</Text>
+                </TouchableOpacity>
+              </View>
+            ))
+          }
+        </> : <>
+          <TouchableOpacity onPress={startNew} style={styles.backButton}><Text style={styles.backText}>‹  VOLTAR AOS PROJETOS</Text></TouchableOpacity>
+          <View style={styles.panel}>
+            <Text style={styles.step}>PROJETO SALVO NO APARELHO</Text>
+            <Text style={styles.panelTitle}>{selected.title}</Text>
+            <Text style={styles.projectMeta}>{selected.genre} · {selected.duration}</Text>
+            <Text style={styles.label}>IDEIA ORIGINAL</Text>
+            <Text style={styles.body}>{selected.idea}</Text>
+            <Text style={styles.label}>FICHA DO PERSONAGEM</Text>
+            <Text style={styles.body}>{selected.character}</Text>
+            {selected.scenes.map(scene => <View key={scene.title} style={styles.scene}>
+              <Text style={styles.sceneTitle}>{scene.title}</Text>
+              <Text style={styles.body}>{scene.description}</Text>
+              <Text style={styles.dialogue}>{scene.dialogue}</Text>
+            </View>)}
+            <TouchableOpacity style={styles.primary} onPress={copyScript}>
+              <Text style={styles.primaryText}>COPIAR ROTEIRO</Text><Text style={styles.arrow}>⧉</Text>
             </TouchableOpacity>
-          ))}</View>
+            <TouchableOpacity style={styles.secondary} onPress={shareScript}>
+              <Text style={styles.secondaryText}>COMPARTILHAR / EXPORTAR TEXTO</Text>
+            </TouchableOpacity>
+          </View>
+        </>}
 
-          <TouchableOpacity style={styles.primary} onPress={createProject}>
-            <Text style={styles.primaryText}>✦  CRIAR MEU PROJETO</Text>
-            <Text style={styles.arrow}>→</Text>
-          </TouchableOpacity>
-          <Text style={styles.note}>Esta versão inicial cria a estrutura do roteiro no aplicativo. A geração real de imagens, vozes e vídeos será integrada depois.</Text>
-        </View>
-
-        {project && <View style={styles.panel}>
-          <Text style={styles.step}>02 / SEU PROJETO</Text>
-          <Text style={styles.panelTitle}>{project.title}</Text>
-          <Text style={styles.label}>FICHA DO PERSONAGEM</Text>
-          <Text style={styles.body}>{project.character}</Text>
-          {project.scenes.map((scene, index) => <View key={scene.title} style={styles.scene}>
-            <Text style={styles.sceneTitle}>{scene.title}</Text>
-            <Text style={styles.body}>{scene.description}</Text>
-            <Text style={styles.dialogue}>{scene.dialogue}</Text>
-          </View>)}
-          <TouchableOpacity style={styles.secondary} onPress={copyNotice}><Text style={styles.secondaryText}>ROTEIRO GERADO ✓</Text></TouchableOpacity>
-        </View>}
-
-        <Text style={styles.footer}>ESTÚDIO 2D  ·  VERSÃO INICIAL DO APLICATIVO</Text>
+        <Text style={styles.footer}>ESTÚDIO 2D  ·  APLICATIVO PARA iOS E ANDROID</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -118,38 +223,53 @@ export default function App() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#101018" },
-  container: { padding: 22, paddingBottom: 48 },
-  header: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 12 },
+  container: { padding: 20, paddingBottom: 48 },
+  header: { flexDirection: "row", alignItems: "center", gap: 11, marginTop: 8 },
   logo: { width: 42, height: 42, borderRadius: 14, backgroundColor: "#8B5CF6", alignItems: "center", justifyContent: "center" },
   logoText: { color: "#fff", fontSize: 25 },
+  brandWrap: { flex: 1 },
   brand: { color: "#F5F3FF", fontSize: 15, fontWeight: "900", letterSpacing: 2 },
   brandAccent: { color: "#A78BFA" },
-  subtitle: { color: "#88869A", fontSize: 9, letterSpacing: 1.5, marginTop: 3 },
-  hero: { marginTop: 42, marginBottom: 26 },
+  subtitle: { color: "#88869A", fontSize: 9, letterSpacing: 1.3, marginTop: 3 },
+  privatePill: { borderColor: "#514174", borderWidth: 1, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 6 },
+  privateText: { color: "#C4B5FD", fontSize: 8, fontWeight: "900", letterSpacing: 1 },
+  hero: { marginTop: 38, marginBottom: 24 },
   eyebrow: { color: "#A78BFA", fontSize: 10, fontWeight: "800", letterSpacing: 2 },
-  heading: { color: "#F7F5FF", fontSize: 36, lineHeight: 42, fontWeight: "900", marginTop: 12 },
+  heading: { color: "#F7F5FF", fontSize: 35, lineHeight: 42, fontWeight: "900", marginTop: 11 },
   headingAccent: { color: "#A78BFA" },
-  intro: { color: "#AAA8B8", fontSize: 14, lineHeight: 22, marginTop: 12, maxWidth: 310 },
-  panel: { backgroundColor: "#1A1A27", borderColor: "#303044", borderWidth: 1, borderRadius: 22, padding: 18, marginBottom: 18 },
-  step: { color: "#A78BFA", fontSize: 10, fontWeight: "900", letterSpacing: 1.5 },
-  panelTitle: { color: "#F7F5FF", fontSize: 22, fontWeight: "800", marginTop: 10, marginBottom: 16 },
-  input: { minHeight: 125, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 14, padding: 14, color: "#F7F5FF", fontSize: 14, lineHeight: 21 },
+  intro: { color: "#AAA8B8", fontSize: 14, lineHeight: 22, marginTop: 11 },
+  panel: { backgroundColor: "#1A1A27", borderColor: "#303044", borderWidth: 1, borderRadius: 22, padding: 17, marginBottom: 20 },
+  step: { color: "#A78BFA", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
+  panelTitle: { color: "#F7F5FF", fontSize: 22, fontWeight: "800", marginTop: 10, marginBottom: 13 },
+  input: { minHeight: 120, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 14, padding: 13, color: "#F7F5FF", fontSize: 14, lineHeight: 21 },
   counter: { color: "#777789", fontSize: 10, textAlign: "right", marginTop: 7 },
-  label: { color: "#C6C2D5", fontSize: 10, fontWeight: "800", letterSpacing: 1.2, marginTop: 22, marginBottom: 10 },
+  label: { color: "#C6C2D5", fontSize: 10, fontWeight: "800", letterSpacing: 1.2, marginTop: 21, marginBottom: 10 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { paddingHorizontal: 13, paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: "#414155", backgroundColor: "#20202E" },
+  chip: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 20, borderWidth: 1, borderColor: "#414155", backgroundColor: "#20202E" },
   chipActive: { backgroundColor: "#6D4BC3", borderColor: "#A78BFA" },
   chipText: { color: "#C4C1D0", fontSize: 12, fontWeight: "600" },
   chipTextActive: { color: "#fff" },
-  primary: { marginTop: 26, borderRadius: 14, backgroundColor: "#8B5CF6", minHeight: 54, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  primaryText: { color: "#fff", fontSize: 12, fontWeight: "900", letterSpacing: 1 },
-  arrow: { color: "#fff", fontSize: 22 },
-  note: { color: "#858397", fontSize: 11, lineHeight: 17, marginTop: 14 },
+  primary: { marginTop: 24, borderRadius: 14, backgroundColor: "#8B5CF6", minHeight: 52, paddingHorizontal: 15, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  primaryText: { color: "#fff", fontSize: 11, fontWeight: "900", letterSpacing: 0.8 },
+  arrow: { color: "#fff", fontSize: 21 },
+  note: { color: "#858397", fontSize: 11, lineHeight: 17, marginTop: 13 },
+  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 5, marginBottom: 10 },
+  sectionTitle: { color: "#E8E4F5", fontSize: 11, fontWeight: "900", letterSpacing: 1.3 },
+  projectCount: { color: "#8E8B9E", fontSize: 10 },
+  empty: { color: "#777789", fontSize: 12, paddingVertical: 18, textAlign: "center" },
+  projectRow: { flexDirection: "row", alignItems: "center", backgroundColor: "#1A1A27", borderColor: "#303044", borderWidth: 1, borderRadius: 13, padding: 13, marginBottom: 8 },
+  projectOpen: { flex: 1 },
+  projectName: { color: "#F2EEFF", fontSize: 13, fontWeight: "700" },
+  projectMeta: { color: "#9692A8", fontSize: 10, marginTop: 5 },
+  deleteButton: { padding: 8 },
+  deleteText: { color: "#FCA5A5", fontSize: 10, fontWeight: "700" },
+  backButton: { paddingVertical: 8, marginBottom: 12 },
+  backText: { color: "#C4B5FD", fontSize: 10, fontWeight: "900", letterSpacing: 1 },
   body: { color: "#B8B6C5", fontSize: 13, lineHeight: 21 },
-  scene: { borderTopWidth: 1, borderTopColor: "#343447", marginTop: 18, paddingTop: 16 },
+  scene: { borderTopWidth: 1, borderTopColor: "#343447", marginTop: 18, paddingTop: 15 },
   sceneTitle: { color: "#D8CCFF", fontSize: 15, fontWeight: "800", marginBottom: 8 },
   dialogue: { color: "#A78BFA", fontSize: 13, fontStyle: "italic", marginTop: 9 },
-  secondary: { borderWidth: 1, borderColor: "#8B5CF6", borderRadius: 12, padding: 15, alignItems: "center", marginTop: 22 },
-  secondaryText: { color: "#C4B5FD", fontWeight: "800", fontSize: 11, letterSpacing: 1 },
-  footer: { color: "#696779", fontSize: 9, textAlign: "center", letterSpacing: 1.5, marginTop: 22 }
+  secondary: { borderWidth: 1, borderColor: "#8B5CF6", borderRadius: 12, padding: 14, alignItems: "center", marginTop: 10 },
+  secondaryText: { color: "#C4B5FD", fontWeight: "800", fontSize: 10, letterSpacing: 0.8 },
+  footer: { color: "#696779", fontSize: 9, textAlign: "center", letterSpacing: 1.2, marginTop: 22 }
 });
