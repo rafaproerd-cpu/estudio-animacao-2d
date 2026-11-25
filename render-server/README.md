@@ -20,7 +20,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Crie um token longo e aleatório e configure a variável de ambiente `ESTUDIO_RENDER_TOKEN`.
+Gere um token longo e aleatório (por exemplo, `python -c "import secrets; print(secrets.token_urlsafe(32))"`) e configure a variável de ambiente `ESTUDIO_RENDER_TOKEN`.
 
 Windows PowerShell:
 ```powershell
@@ -34,7 +34,7 @@ export ESTUDIO_RENDER_TOKEN="coloque-seu-token-longo-aqui"
 uvicorn main:app --host 0.0.0.0 --port 8765
 ```
 
-O app deve usar `http://IP-DA-MAQUINA:8765` em rede local, ou um endereço HTTPS protegido por VPN/reverse proxy. O endpoint `/health` permite verificar se o FFmpeg foi encontrado. O endpoint `POST /render` exige `Authorization: Bearer TOKEN` e recebe vários arquivos no campo multipart `clips`, na ordem desejada. O serviço normaliza resolução para 1024×576, 30 FPS e H.264, concatena os segmentos e retorna uma URL para baixar o MP4.
+O app deve usar `http://IP-DA-MAQUINA:8765` em rede local, ou um endereço HTTPS protegido por VPN/reverse proxy. O endpoint `/health` exige o mesmo token Bearer e permite verificar se o FFmpeg foi encontrado. O endpoint `POST /render` exige `Authorization: Bearer TOKEN` e recebe vários arquivos no campo multipart `clips`, na ordem desejada. O serviço normaliza resolução para 1024×576, 30 FPS e H.264, concatena os segmentos e retorna uma URL para baixar o MP4.
 
 ## Limites atuais
 
