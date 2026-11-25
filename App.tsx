@@ -210,12 +210,12 @@ export default function App() {
               <Text style={styles.sceneTitle}>{scene.title}</Text>
               <Text style={styles.body}>{scene.description}</Text>
               <Text style={styles.dialogue}>{scene.dialogue}</Text>
-              <Text style={styles.label}>ENQUADRAMENTO · {scene.shot.toUpperCase()}</Text>
+              <Text style={styles.label}>ENQUADRAMENTO · {(scene.shot || "plano médio").toUpperCase()}</Text>
               <Text style={styles.body}>Câmera: {scene.camera}{"\n"}Luz: {scene.lighting}</Text>
               <Text style={styles.label}>PROMPT VISUAL</Text>
-              <Text style={styles.body}>{scene.imagePrompt}</Text>
+              <Text style={styles.body}>{scene.imagePrompt || "Prompt visual ainda não disponível para este projeto antigo."}</Text>
               <Text style={styles.label}>PROMPT DE ANIMAÇÃO</Text>
-              <Text style={styles.body}>{scene.videoPrompt}</Text>
+              <Text style={styles.body}>{scene.videoPrompt || "Prompt de animação ainda não disponível para este projeto antigo."}</Text>
             </View>)}
             <TouchableOpacity style={styles.primary} onPress={copyScript}>
               <Text style={styles.primaryText}>COPIAR ROTEIRO</Text><Text style={styles.arrow}>⧉</Text>
