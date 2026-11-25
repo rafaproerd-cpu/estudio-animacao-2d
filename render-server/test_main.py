@@ -17,6 +17,16 @@ class RenderServerTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertTrue(main.safe_extension(name))
 
+    def test_accepts_supported_audio_extensions(self):
+        for name in ("voice.mp3", "music.wav", "track.m4a", "voice.aac", "music.ogg", "track.flac"):
+            with self.subTest(name=name):
+                self.assertTrue(main.safe_audio_extension(name))
+
+    def test_rejects_unsupported_audio_extension(self):
+        with self.assertRaises(HTTPException) as raised:
+            main.safe_audio_extension("voice.exe")
+        self.assertEqual(raised.exception.status_code, 415)
+
     def test_rejects_unsupported_or_missing_extension(self):
         for name in ("clip.txt", "clip", "../clip.exe"):
             with self.subTest(name=name):
@@ -51,6 +61,8 @@ class RenderServerTests(unittest.TestCase):
                 with patch.object(main, "run_ffmpeg", side_effect=fake_ffmpeg) as mocked:
                     result = asyncio.run(main.render_video(
                         [upload],
+                        None,
+                        None,
                         "Minha história",
                         "Bearer integration-test-token",
                     ))
