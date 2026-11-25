@@ -105,7 +105,36 @@ export default function App() {
     }
   }, [projects, ready]);
 
-  const saveComfyConfig = async () => {\n    try { await AsyncStorage.setItem(COMFY_STORAGE_KEY, JSON.stringify(comfyConfig)); Alert.alert("Configuração salva", "As configurações do servidor foram guardadas neste aparelho."); }\n    catch { Alert.alert("Erro", "Não foi possível salvar a configuração."); }\n  };\n\n  const testComfyConnection = async () => {\n    const url = comfyConfig.baseUrl.trim().replace(/\\/+$/, "");\n    if (!/^https?:\\/\\//i.test(url)) { Alert.alert("Endereço inválido", "Informe o endereço completo do ComfyUI."); return; }\n    setConnectionStatus("Testando…");\n    try { const response = await fetch(`${url}/system_stats`); if (!response.ok) throw new Error(`HTTP ${response.status}`); await response.json(); setConnectionStatus("Conectado"); Alert.alert("Conexão confirmada", "O aplicativo conseguiu acessar o servidor ComfyUI."); }\n    catch (error) { setConnectionStatus("Falha na conexão"); Alert.alert("Não conectou", error instanceof Error ? error.message : "Verifique endereço, rede e HTTPS."); }\n  };\n\n  const generateSceneImage = async (scene: Scene) => {\n    if (!selected) return;\n    if (!comfyConfig.baseUrl.trim() || !comfyConfig.workflowText.trim() || !comfyConfig.positiveNode.trim()) { Alert.alert("Configure o ComfyUI", "Abra Configurar geração e informe servidor, workflow API e nó do prompt positivo."); setShowSettings(true); return; }\n    setBusyScene(scene.title);\n    try {\n      const workflow = JSON.parse(comfyConfig.workflowText) as ComfyUiImageWorkflow;\n      const provider = new ComfyUiImageProvider({ baseUrl: comfyConfig.baseUrl, workflow, positivePromptNodeId: comfyConfig.positiveNode.trim(), negativePromptNodeId: comfyConfig.negativeNode.trim() || undefined, widthNodeId: comfyConfig.widthNode.trim() || undefined, heightNodeId: comfyConfig.heightNode.trim() || undefined, seedNodeId: comfyConfig.seedNode.trim() || undefined });\n      const result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576 });\n      if (result.status !== "completed" || !result.outputUri) throw new Error(result.error || "A geração não retornou uma imagem.");\n      const updated = { ...selected, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, imageUri: result.outputUri } : item) };\n      saveUpdatedProject(updated);\n      Alert.alert("Imagem gerada", "A imagem desta cena foi salva no projeto.");\n    } catch (error) { Alert.alert("Erro na geração", error instanceof Error ? error.message : "Não foi possível gerar a imagem."); }\n    finally { setBusyScene(null); }\n  };\n\n  const currentScript = useMemo(() => selected ? projectText(selected) : "", [selected]);
+  const saveComfyConfig = async () => {
+    try { await AsyncStorage.setItem(COMFY_STORAGE_KEY, JSON.stringify(comfyConfig)); Alert.alert("Configuração salva", "As configurações do servidor foram guardadas neste aparelho."); }
+    catch { Alert.alert("Erro", "Não foi possível salvar a configuração."); }
+  };
+
+  const testComfyConnection = async () => {
+    const url = comfyConfig.baseUrl.trim().replace(/\\/+$/, "");
+    if (!/^https?:\\/\\//i.test(url)) { Alert.alert("Endereço inválido", "Informe o endereço completo do ComfyUI."); return; }
+    setConnectionStatus("Testando…");
+    try { const response = await fetch(`${url}/system_stats`); if (!response.ok) throw new Error(`HTTP ${response.status}`); await response.json(); setConnectionStatus("Conectado"); Alert.alert("Conexão confirmada", "O aplicativo conseguiu acessar o servidor ComfyUI."); }
+    catch (error) { setConnectionStatus("Falha na conexão"); Alert.alert("Não conectou", error instanceof Error ? error.message : "Verifique endereço, rede e HTTPS."); }
+  };
+
+  const generateSceneImage = async (scene: Scene) => {
+    if (!selected) return;
+    if (!comfyConfig.baseUrl.trim() || !comfyConfig.workflowText.trim() || !comfyConfig.positiveNode.trim()) { Alert.alert("Configure o ComfyUI", "Abra Configurar geração e informe servidor, workflow API e nó do prompt positivo."); setShowSettings(true); return; }
+    setBusyScene(scene.title);
+    try {
+      const workflow = JSON.parse(comfyConfig.workflowText) as ComfyUiImageWorkflow;
+      const provider = new ComfyUiImageProvider({ baseUrl: comfyConfig.baseUrl, workflow, positivePromptNodeId: comfyConfig.positiveNode.trim(), negativePromptNodeId: comfyConfig.negativeNode.trim() || undefined, widthNodeId: comfyConfig.widthNode.trim() || undefined, heightNodeId: comfyConfig.heightNode.trim() || undefined, seedNodeId: comfyConfig.seedNode.trim() || undefined });
+      const result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576 });
+      if (result.status !== "completed" || !result.outputUri) throw new Error(result.error || "A geração não retornou uma imagem.");
+      const updated = { ...selected, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, imageUri: result.outputUri } : item) };
+      saveUpdatedProject(updated);
+      Alert.alert("Imagem gerada", "A imagem desta cena foi salva no projeto.");
+    } catch (error) { Alert.alert("Erro na geração", error instanceof Error ? error.message : "Não foi possível gerar a imagem."); }
+    finally { setBusyScene(null); }
+  };
+
+  const currentScript = useMemo(() => selected ? projectText(selected) : "", [selected]);
 
   const createProject = () => {
     const cleanIdea = idea.trim();
@@ -300,7 +329,13 @@ const styles = StyleSheet.create({
   heading: { color: "#F7F5FF", fontSize: 35, lineHeight: 42, fontWeight: "900", marginTop: 11 },
   headingAccent: { color: "#A78BFA" },
   intro: { color: "#AAA8B8", fontSize: 14, lineHeight: 22, marginTop: 11 },
-  settingsButton: { paddingVertical: 12, marginBottom: 8 },\n  workflowInput: { minHeight: 180, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 12, padding: 11, color: "#F7F5FF", fontSize: 10, lineHeight: 16 },\n  smallInput: { minHeight: 46, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 10, padding: 11, color: "#F7F5FF", fontSize: 12, marginBottom: 8 },\n  inlineInputs: { flexDirection: "row", gap: 7 },\n  generatedImage: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, marginTop: 10, backgroundColor: "#11111B" },\n  imagePlaceholder: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, marginTop: 10, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", alignItems: "center", justifyContent: "center" },\n  panel: { backgroundColor: "#1A1A27", borderColor: "#303044", borderWidth: 1, borderRadius: 22, padding: 17, marginBottom: 20 },
+  settingsButton: { paddingVertical: 12, marginBottom: 8 },
+  workflowInput: { minHeight: 180, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 12, padding: 11, color: "#F7F5FF", fontSize: 10, lineHeight: 16 },
+  smallInput: { minHeight: 46, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 10, padding: 11, color: "#F7F5FF", fontSize: 12, marginBottom: 8 },
+  inlineInputs: { flexDirection: "row", gap: 7 },
+  generatedImage: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, marginTop: 10, backgroundColor: "#11111B" },
+  imagePlaceholder: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, marginTop: 10, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", alignItems: "center", justifyContent: "center" },
+  panel: { backgroundColor: "#1A1A27", borderColor: "#303044", borderWidth: 1, borderRadius: 22, padding: 17, marginBottom: 20 },
   step: { color: "#A78BFA", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
   panelTitle: { color: "#F7F5FF", fontSize: 22, fontWeight: "800", marginTop: 10, marginBottom: 13 },
   characterInput: { minHeight: 150, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 14, padding: 13, color: "#F7F5FF", fontSize: 13, lineHeight: 21 },
