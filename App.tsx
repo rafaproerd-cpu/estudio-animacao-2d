@@ -221,7 +221,7 @@ export default function App() {
             <TouchableOpacity style={styles.primary} onPress={createProject}>
               <Text style={styles.primaryText}>✦  CRIAR MEU PROJETO</Text><Text style={styles.arrow}>→</Text>
             </TouchableOpacity>
-            <Text style={styles.note}>O app distribui a história em cenas conforme a duração escolhida. A geração real de imagens, vozes e vídeos será integrada em uma próxima etapa.</Text>
+            <Text style={styles.note}>O app distribui a história em cenas. Você já pode conectar um ComfyUI próprio para gerar imagens; voz e vídeo ainda serão integrados em etapas futuras.</Text>
           </View>
 
           <View style={styles.sectionHeader}>
