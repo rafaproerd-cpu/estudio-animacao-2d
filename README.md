@@ -9,7 +9,9 @@ Aplicativo mobile multiplataforma desenvolvido com Expo e React Native, pensado 
 - Salvamento automático de projetos no aparelho.
 - Cópia e compartilhamento do roteiro e dos prompts.
 - Integração opcional com um servidor ComfyUI próprio para gerar imagens de cenas.
-- Salvamento local das configurações do ComfyUI, incluindo recarregamento ao abrir o aplicativo.
+- Adaptador de imagem-para-vídeo que envia a imagem-chave, executa um workflow ComfyUI e recupera o clipe gerado.
+- Configuração separada de workflow e IDs dos nós de vídeo, salva no aparelho e recarregada ao abrir o aplicativo.
+- Cada cena pode solicitar um clipe de referência de quatro segundos a 16 FPS e abrir o arquivo retornado pelo servidor.
 
 ## Estado real da geração
 O planejador de cenas funciona localmente, mas não é um modelo generativo. A geração de imagens só funciona depois que o usuário conecta um servidor ComfyUI acessível pela rede, instala um modelo compatível e configura um workflow exportado em formato API que termine em `SaveImage`.
@@ -33,8 +35,8 @@ O projeto usa Expo SDK 54, React Native 0.81 e TypeScript. A checagem de tipos �
 É possível configurar builds com Expo Application Services (EAS). A instalação direta em iPhone depende de assinatura/provisionamento Apple; a distribuição pela App Store exige conta Apple Developer. No Android, é possível gerar APK/AAB conforme o perfil de build.
 
 ## Próximas etapas
-1. Validar a conexão ComfyUI e a geração de uma imagem real em um iPhone.
-2. Integrar um workflow de imagem-para-vídeo e pré-visualização do resultado.
+1. Validar os workflows reais de imagem e vídeo em um iPhone conectado ao servidor ComfyUI.
+2. Implementar reprodução embutida e gerenciamento dos arquivos de vídeo.
 3. Integrar geração de voz e sincronização com as cenas.
-4. Montar e exportar o vídeo final em MP4.
+4. Montar todos os clipes e exportar um único MP4 final.
 5. Reforçar o acesso privado e a gestão segura das conexões.
