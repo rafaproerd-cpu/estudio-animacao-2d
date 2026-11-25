@@ -133,11 +133,12 @@ class RenderServerTests(unittest.TestCase):
                     return Result()
                 def fake_ffmpeg(arguments):
                     Path(arguments[-1]).write_bytes(b"RIFFcombined-wav")
-                segments = [main.TTSRequest(text="Olá", voice="voice-a"), main.TTSRequest(text="Tudo bem?", voice="voice-b")]
+                segments = [main.TTSRequest(text="Olá", voice="voice-a"), main.TTSRequest(text="", voice="voice-a"), main.TTSRequest(text="Tudo bem?", voice="voice-b")]
                 with patch.object(main.shutil, "which", return_value="/usr/bin/piper"), patch.object(main.subprocess, "run", side_effect=fake_piper), patch.object(main, "run_ffmpeg", side_effect=fake_ffmpeg) as ffmpeg:
                     result = main.generate_tts_batch(main.TTSBatchRequest(segments=segments), "Bearer integration-test-token")
                 self.assertEqual(result.voice, "multiple")
-                self.assertEqual(ffmpeg.call_count, 1)
+                self.assertEqual(ffmpeg.call_count, 4)
+                self.assertTrue(any("anullsrc" in call.args[0] for call in ffmpeg.call_args_list))
                 self.assertTrue((main.OUTPUT_DIR / ("tts-" + result.id + ".wav")).is_file())
         finally:
             main.API_TOKEN = original_token
