@@ -5,8 +5,9 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
+import { createStoryPlan, type Genre } from "./src/engine/storyEngine";
 
-type Scene = { title: string; description: string; dialogue: string };
+type Scene = { title: string; description: string; dialogue: string; imagePrompt: string; videoPrompt: string; shot: string; camera: string; lighting: string };
 type Project = {
   id: string;
   title: string;
@@ -23,20 +24,24 @@ const genres = ["Aventura", "Comédia", "Fantasia", "Ação", "Drama", "Mistéri
 const durations = ["30 segundos", "1 minuto", "2 minutos", "3 minutos"];
 
 function buildProject(idea: string, genre: string, duration: string): Project {
-  const title = idea.length > 42 ? idea.slice(0, 42).trim() + "…" : idea;
+  const plan = createStoryPlan(idea, genre as Genre, duration);
   return {
     id: Date.now().toString(),
-    title,
-    idea,
+    title: plan.title,
+    idea: plan.premise,
     genre,
     duration,
-    character: "Personagem principal\nNome: a definir\nAparência: a definir\nRoupa: a definir\nPersonalidade: a definir\nVoz: a definir\nRegra de continuidade: manter o mesmo rosto, cabelo, roupa, cores e proporções em todas as cenas.",
-    scenes: [
-      { title: "Cena 1 — Apresentação", description: "Apresente o protagonista, o lugar e a situação inicial. Ponto de partida: " + idea, dialogue: "Personagem: Eu nunca imaginei que isso fosse acontecer…" },
-      { title: "Cena 2 — O desafio", description: "Mostre o problema que movimenta a história, com ritmo de " + genre.toLowerCase() + ". Aumente a tensão e dê ao protagonista uma decisão importante.", dialogue: "Personagem: Preciso encontrar uma saída!" },
-      { title: "Cena 3 — A virada", description: "O protagonista tenta resolver o desafio. Mostre uma ação visual clara e uma consequência para sua escolha.", dialogue: "Personagem: Agora eu sei o que preciso fazer!" },
-      { title: "Cena 4 — Desfecho", description: "Conclua o conflito principal de maneira satisfatória e, se combinar com a ideia, deixe uma pista para uma nova aventura.", dialogue: "Narrador: E aquela foi apenas a primeira de muitas aventuras." }
-    ],
+    character: "Personagem principal\\nNome: a definir\\nAparência: a definir\\nRoupa: a definir\\nPersonalidade: a definir\\nVoz: a definir\\nRegra de continuidade: manter o mesmo rosto, cabelo, roupa, cores e proporções em todas as cenas.",
+    scenes: plan.scenes.map(scene => ({
+      title: scene.title,
+      description: scene.action,
+      dialogue: scene.dialogue,
+      imagePrompt: scene.imagePrompt,
+      videoPrompt: scene.videoPrompt,
+      shot: scene.shot,
+      camera: scene.camera,
+      lighting: scene.lighting
+    })),
     createdAt: new Date().toISOString()
   };
 }
@@ -53,7 +58,7 @@ function projectText(project: Project) {
     "FICHA DO PERSONAGEM",
     project.character,
     "",
-    ...project.scenes.flatMap(scene => [scene.title, scene.description, scene.dialogue, ""])
+    ...project.scenes.flatMap(scene => [scene.title, scene.description, scene.dialogue, "ENQUADRAMENTO: " + scene.shot, "CÂMERA: " + scene.camera, "ILUMINAÇÃO: " + scene.lighting, "PROMPT DE IMAGEM: " + scene.imagePrompt, "PROMPT DE ANIMAÇÃO: " + scene.videoPrompt, ""])
   ].join("\n");
 }
 
@@ -209,7 +214,7 @@ export default function App() {
             <TouchableOpacity style={styles.primary} onPress={copyScript}>
               <Text style={styles.primaryText}>COPIAR ROTEIRO</Text><Text style={styles.arrow}>⧉</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.secondary} onPress={shareScript}>
+            <TouchableOpacity style={styles.secondary} onPress={async () => { const prompts = selected.scenes.map(scene => scene.imagePrompt + "\\n\\n" + scene.videoPrompt).join("\\n\\n---\\n\\n"); await Clipboard.setStringAsync(prompts); Alert.alert("Prompts copiados", "Os prompts visuais e de animação foram copiados."); }}>\n              <Text style={styles.secondaryText}>COPIAR PROMPTS VISUAIS</Text>\n            </TouchableOpacity>\n            <TouchableOpacity style={styles.secondary} onPress={shareScript}>
               <Text style={styles.secondaryText}>COMPARTILHAR / EXPORTAR TEXTO</Text>
             </TouchableOpacity>
           </View>
