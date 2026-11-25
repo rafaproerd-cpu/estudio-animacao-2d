@@ -150,7 +150,7 @@ export default function App() {
     saveUpdatedProject(updated);
   };
 
-  const updateScene = (sceneTitle: string, field: "description" | "dialogue", value: string) => {
+  const updateScene = (sceneTitle: string, field: "description" | "dialogue" | "imagePrompt" | "videoPrompt", value: string) => {
     if (!selected) return;
     saveUpdatedProject({
       ...selected,
@@ -242,10 +242,10 @@ export default function App() {
               <TextInput value={scene.dialogue} onChangeText={value => updateScene(scene.title, "dialogue", value)} multiline textAlignVertical="top" placeholder="Escreva a fala do personagem..." placeholderTextColor="#777789" style={styles.sceneInput} />
               <Text style={styles.label}>ENQUADRAMENTO · {(scene.shot || "plano médio").toUpperCase()}</Text>
               <Text style={styles.body}>Câmera: {scene.camera}{"\n"}Luz: {scene.lighting}</Text>
-              <Text style={styles.label}>PROMPT VISUAL</Text>
-              <Text style={styles.body}>{scene.imagePrompt || "Prompt visual ainda não disponível para este projeto antigo."}</Text>
-              <Text style={styles.label}>PROMPT DE ANIMAÇÃO</Text>
-              <Text style={styles.body}>{scene.videoPrompt || "Prompt de animação ainda não disponível para este projeto antigo."}</Text>
+              <Text style={styles.label}>PROMPT VISUAL · EDITÁVEL</Text>
+              <TextInput value={scene.imagePrompt || ""} onChangeText={value => updateScene(scene.title, "imagePrompt", value)} multiline textAlignVertical="top" placeholder="Descreva a aparência da cena, cenário, personagem e iluminação..." placeholderTextColor="#777789" style={styles.promptInput} />
+              <Text style={styles.label}>PROMPT DE ANIMAÇÃO · EDITÁVEL</Text>
+              <TextInput value={scene.videoPrompt || ""} onChangeText={value => updateScene(scene.title, "videoPrompt", value)} multiline textAlignVertical="top" placeholder="Descreva os movimentos, expressões e movimentos de câmera..." placeholderTextColor="#777789" style={styles.promptInput} />
             </View>)}
             <TouchableOpacity style={styles.primary} onPress={copyScript}>
               <Text style={styles.primaryText}>COPIAR ROTEIRO</Text><Text style={styles.arrow}>⧉</Text>
@@ -287,6 +287,7 @@ const styles = StyleSheet.create({
   panelTitle: { color: "#F7F5FF", fontSize: 22, fontWeight: "800", marginTop: 10, marginBottom: 13 },
   characterInput: { minHeight: 150, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 14, padding: 13, color: "#F7F5FF", fontSize: 13, lineHeight: 21 },
   sceneInput: { minHeight: 76, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 12, padding: 11, color: "#F7F5FF", fontSize: 12, lineHeight: 19 },
+  promptInput: { minHeight: 132, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 12, padding: 11, color: "#F7F5FF", fontSize: 11, lineHeight: 18 },
   input: { minHeight: 120, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 14, padding: 13, color: "#F7F5FF", fontSize: 14, lineHeight: 21 },
   counter: { color: "#777789", fontSize: 10, textAlign: "right", marginTop: 7 },
   label: { color: "#C6C2D5", fontSize: 10, fontWeight: "800", letterSpacing: 1.2, marginTop: 21, marginBottom: 10 },
