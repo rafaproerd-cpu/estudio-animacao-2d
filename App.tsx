@@ -216,7 +216,10 @@ export default function App() {
       const directoryInfo = await FileSystem.getInfoAsync(directory);
       if (!directoryInfo.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
       const safeName = scene.title.replace(/[^a-z0-9-_]/gi, "-").slice(0, 48) || "scene";
-      const destination = `${directory}${selected.id}-${safeName}-${Date.now()}.mp4`;
+      const filenameParam = sourceUri.match(/[?&]filename=([^&]+)/)?.[1];
+      const sourceFilename = filenameParam ? decodeURIComponent(filenameParam) : "";
+      const extension = sourceFilename.match(/\\.(mp4|webm|mov|mkv)$/i)?.[1] || "mp4";
+      const destination = `${directory}${selected.id}-${safeName}-${Date.now()}.${extension}`;
       const result = await FileSystem.downloadAsync(sourceUri, destination);
       if (result.status < 200 || result.status >= 300) throw new Error(`O servidor retornou HTTP ${result.status}.`);
       const updated = {
