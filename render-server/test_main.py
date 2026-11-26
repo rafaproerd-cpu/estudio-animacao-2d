@@ -475,6 +475,7 @@ class RenderServerTests(unittest.TestCase):
                 main.GENERATION_STATE_DB = Path(temp_dir) / "generation-state.sqlite3"
                 main.generation_jobs.clear()
                 main.generation_download_tokens.clear()
+                main.initialize_generation_state()
                 completed_id = "e" * 32
                 interrupted_id = "f" * 32
                 filename = "image-" + "a" * 32 + ".png"
