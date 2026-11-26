@@ -114,12 +114,16 @@ class VideoGenerationQueueTests(unittest.TestCase):
         self.original_token = main.API_TOKEN
         main.API_TOKEN = "video-test-token"
         self.original_jobs = dict(main.generation_jobs)
+        self.original_download_tokens = dict(main.generation_download_tokens)
         main.generation_jobs.clear()
+        main.generation_download_tokens.clear()
 
     def tearDown(self):
         main.API_TOKEN = self.original_token
         main.generation_jobs.clear()
         main.generation_jobs.update(self.original_jobs)
+        main.generation_download_tokens.clear()
+        main.generation_download_tokens.update(self.original_download_tokens)
 
     def test_video_request_queues_when_motion_fallback_is_available(self):
         image = base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"x" * 100).decode("ascii")
@@ -139,6 +143,57 @@ class VideoGenerationQueueTests(unittest.TestCase):
         self.assertEqual(result["status"], "queued")
         self.assertEqual(len(background.tasks), 1)
         self.assertIs(background.tasks[0].func, main.run_video_generation_job)
+
+    def test_video_worker_persists_completed_mp4_and_download_grant(self):
+        job_id = "c" * 32
+        output = main.WAN_OUTPUT_DIR / ("video-" + job_id + ".mp4")
+        main.generation_jobs[job_id] = {
+            "status": "queued",
+            "progress": 0.0,
+            "message": "Aguardando o motor de vídeo.",
+            "created_at": 1.0,
+        }
+        payload = main.VideoGenerationRequest(
+            prompt="slow cinematic camera movement",
+            imageBase64=base64.b64encode(b"\\x89PNG\\r\\n\\x1a\\n" + b"x" * 100).decode("ascii"),
+            durationSeconds=3,
+        )
+        with patch.object(main, "generate_wan_video", return_value=output), patch.object(
+            main, "persist_generation_job"
+        ) as persist_job, patch.object(main, "persist_download_grant") as persist_grant:
+            main.run_video_generation_job(job_id, payload, b"image bytes")
+
+        job = main.generation_jobs[job_id]
+        self.assertEqual(job["status"], "completed")
+        self.assertEqual(job["progress"], 1.0)
+        self.assertIn("/v1/files/", job["output_url"])
+        self.assertIn(output.name, main.generation_download_tokens)
+        persist_grant.assert_called_once_with(output.name)
+        self.assertEqual(persist_job.call_count, 2)
+
+    def test_video_worker_records_generation_failure(self):
+        job_id = "d" * 32
+        main.generation_jobs[job_id] = {
+            "status": "queued",
+            "progress": 0.0,
+            "message": "Aguardando o motor de vídeo.",
+            "created_at": 1.0,
+        }
+        payload = main.VideoGenerationRequest(
+            prompt="slow cinematic camera movement",
+            imageBase64=base64.b64encode(b"\\x89PNG\\r\\n\\x1a\\n" + b"x" * 100).decode("ascii"),
+            durationSeconds=3,
+        )
+        with patch.object(main, "generate_wan_video", side_effect=RuntimeError("FFmpeg failed")), patch.object(
+            main, "persist_generation_job"
+        ) as persist_job:
+            main.run_video_generation_job(job_id, payload, b"image bytes")
+
+        job = main.generation_jobs[job_id]
+        self.assertEqual(job["status"], "failed")
+        self.assertEqual(job["progress"], 0.0)
+        self.assertIn("FFmpeg failed", job["error"])
+        self.assertEqual(persist_job.call_count, 2)
 
     def test_video_request_rejects_when_no_video_engine_is_available(self):
         image = base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"x" * 100).decode("ascii")
