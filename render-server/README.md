@@ -85,10 +85,10 @@ Em uma máquina Linux com GPU NVIDIA e driver/CUDA compatíveis:
 
 O primeiro carregamento pode baixar vários GB de pesos. O Dockerfile padrão não instala PyTorch/CUDA nem pesos de modelos; a camada de inferência é opcional para evitar uma imagem básica enorme. Se executar em Docker, prepare uma imagem derivada com PyTorch compatível e passe a GPU NVIDIA ao container.
 
-- `POST /v1/generations/images` recebe `prompt`, `negativePrompt`, `width`, `height` e `seed`, e devolve `job_id`.
+- `POST /v1/generations/images` recebe `prompt`, `negativePrompt`, `width`, `height`, `seed` e, opcionalmente, `referenceImageBase64` (PNG/JPEG), e devolve `job_id`.
 - `GET /v1/jobs/{job_id}` consulta o estado; o resultado contém um link temporário privado para o PNG.
 - A fila é em memória, com uma tarefa ativa por padrão; reiniciar o processo perde o histórico dos jobs.
-- O primeiro pipeline é apenas texto-para-imagem. Referências visuais de personagem são recusadas até a implementação de image-to-image.
+- O motor suporta texto-para-imagem e image-to-image com referência PNG/JPEG em Base64 (`referenceImageBase64`). A UI pode reutilizar a primeira imagem como referência das cenas seguintes; o pipeline troca entre SDXL txt2img e img2img, mantendo apenas um carregado por vez.
 - O motor Wan2.2 é opcional e exige o runtime oficial, pesos e aproximadamente 23 GB de VRAM livre; sem isso, `POST /v1/generations/videos` retorna HTTP 503.
 
 ## Motor experimental de vídeo Wan2.2 TI2V 5B
