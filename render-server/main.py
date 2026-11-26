@@ -6,6 +6,7 @@ import secrets
 import shutil
 import subprocess
 import tempfile
+import threading
 import uuid
 from pathlib import Path
 from typing import Annotated
@@ -31,7 +32,7 @@ ALLOWED_AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac"}
 app = FastAPI(title="Estúdio 2D Render Server", version="1.1.0")
 
 generation_jobs: dict[str, dict[str, object]] = {}
-generation_jobs_lock = __import__("threading").Lock()
+generation_jobs_lock = threading.Lock()
 
 
 class ImageGenerationRequest(BaseModel):
@@ -232,7 +233,7 @@ def get_generation_job(job_id: str, authorization: Annotated[str | None, Header(
 @app.get("/v1/files/{filename}")
 def download_generated_image(filename: str, authorization: Annotated[str | None, Header()] = None) -> FileResponse:
     require_token(authorization)
-    if not re.fullmatch(r"image-[a-f0-9]{32}\\.png", filename):
+    if not re.fullmatch(r"image-[a-f0-9]{32}\.png", filename):
         raise HTTPException(status_code=404, detail="Imagem não encontrada.")
     image_path = IMAGE_OUTPUT_DIR / filename
     if not image_path.is_file():
