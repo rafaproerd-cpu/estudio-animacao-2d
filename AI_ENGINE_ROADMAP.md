@@ -31,9 +31,12 @@ A pessoa deve criar um projeto, descrever a história e produzir cenas, imagens,
 - [ ] Separar a API interna do provedor ComfyUI, para que a UI não dependa de detalhes de workflow.
 - [x] Definir o contrato HTTP do lado cliente para envio e consulta de jobs de imagem/vídeo.
 - [x] Criar respostas autenticadas e explícitas de indisponibilidade para os endpoints de imagem/vídeo (HTTP 503, sem simular jobs).
-- [ ] Implementar o contrato de jobs no servidor, com fila real, progresso, cancelamento e mensagens de erro.
+- [x] Implementar uma primeira fila de jobs de imagem SDXL no servidor, com status queued/running/completed/failed, erros explícitos e links privados de download com expiração (fila em memória; sem persistência ainda).
+- [ ] Tornar a fila persistente, limitar concorrência e adicionar cancelamento/progresso granular antes de produção.
 - [ ] Selecionar modelos abertos compatíveis com GPU/VRAM e licenças adequadas; testar qualidade, tempo e requisitos reais antes de fixar a escolha.
-- [ ] Criar adaptadores backend para os modelos escolhidos e remover configuração manual da experiência principal.
+- [x] Criar o primeiro adaptador backend de imagem SDXL via Diffusers, carregado sob demanda e ativado somente quando modelo, dependências e dispositivo estão disponíveis.
+- [ ] Implementar image-to-image para referências de personagem, incluindo upload seguro dos arquivos do aparelho.
+- [ ] Criar o adaptador backend de vídeo Wan2.2 TI2V 5B depois de validar runtime e memória.
 - [ ] Hospedar backend em hardware compatível e conectar o app com autenticação.
 - [ ] Testar ponta a ponta em iPhone: ideia → cenas → imagens → animação → voz → MP4.
 
@@ -48,7 +51,7 @@ O app agora possui adaptadores genéricos em `src/engine/providers/httpGeneratio
 
 A API responde com `job_id`; a consulta de status devolve `queued`, `running`, `completed`, `failed` ou `cancelled`. Ao concluir, informa `output_url`. O app resolve URLs relativas contra o endereço-base e aceita token Bearer opcional.
 
-**Importante:** os endpoints `POST /v1/generations/images` e `POST /v1/generations/videos` já existem no backend, mas retornam HTTP 503 de forma intencional até que modelos reais sejam instalados. Ainda não há fila de jobs nem geração de imagem/vídeo ativa. Os adaptadores do app não ativam geração por si só. Próxima etapa: definir e testar o contrato de capacidades e jobs antes de instalar um modelo real.
+**Estado atualizado:** `POST /v1/generations/images` aceita prompts e cria jobs SDXL apenas quando `IMAGE_MODEL_ID`, Diffusers, PyTorch e o dispositivo configurado estão prontos. Os jobs podem ser consultados em `GET /v1/jobs/{job_id}`; o resultado é servido por link privado temporário. A fila é volátil e ainda não é usada pela UI. Referências de personagem são recusadas por enquanto porque o primeiro pipeline é text-to-image. `POST /v1/generations/videos` continua retornando HTTP 503 até que o pipeline Wan seja integrado. Nenhum modelo foi instalado no ambiente publicado e nenhuma inferência real foi executada ainda.
 
 
 ## Avaliação inicial de modelos abertos (não instalados)
@@ -81,4 +84,6 @@ Referências oficiais consultadas:
 - [x] O endpoint autenticado `GET /v1/capabilities` detecta GPUs NVIDIA via `nvidia-smi` e informa nome, memória total, memória livre e versão do driver reportadas.
 - [x] A detecção é opcional: se `nvidia-smi` não existir ou falhar, a API continua funcionando e retorna `gpu_detection: not_detected`.
 - [ ] Essas métricas são apenas um retrato do driver no momento da consulta; não comprovam compatibilidade CUDA nem capacidade de executar SDXL/Wan. Validar o ambiente real antes de instalar pesos.
+- [x] Adicionar runtime opcional SDXL via Diffusers, sem incluir PyTorch/CUDA pesado na imagem Docker padrão.
+- [ ] Instalar o runtime opcional em GPU compatível, carregar o checkpoint e medir VRAM/tempo/qualidade com uma inferência real.
 - [ ] Quando um servidor GPU for escolhido, validar runtime CUDA, compatibilidade das bibliotecas e memória disponível durante uma inferência real.
