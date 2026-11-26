@@ -1133,6 +1133,8 @@ const styles = StyleSheet.create({
   generatedImage: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, marginTop: 10, backgroundColor: "#11111B" },
   videoPlayer: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, marginTop: 10, backgroundColor: "#000" },
   imagePlaceholder: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, marginTop: 10, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", alignItems: "center", justifyContent: "center" },
+  statusPill: { alignSelf: "flex-start", marginTop: 8, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: "#173629" },
+  statusReady: { color: "#7BE0A7", fontSize: 10, fontWeight: "900", letterSpacing: 0.7 },
   timelinePanel: { backgroundColor: "#202033", borderColor: "#514174", borderWidth: 1, borderRadius: 18, padding: 15, marginTop: 20 },
   progressPanel: { marginTop: 12, padding: 12, borderRadius: 12, backgroundColor: "#151522", borderWidth: 1, borderColor: "#514174" },
   progressTitle: { color: "#D8CCFF", fontSize: 10, fontWeight: "900", letterSpacing: 1 },
