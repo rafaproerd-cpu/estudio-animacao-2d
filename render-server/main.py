@@ -123,10 +123,6 @@ def initialize_generation_state() -> None:
         ):
             generation_download_tokens[filename] = (token, float(expires_at))
         connection.execute("DELETE FROM generation_download_tokens WHERE expires_at < ?", (now,))
-        connection.execute(
-            "DELETE FROM generation_jobs WHERE job_id NOT IN "
-            "(SELECT job_id FROM generation_jobs)"
-        )
 
 
 def prune_generation_state() -> None:
