@@ -138,7 +138,7 @@ O endpoint `GET /v1/capabilities` é a fonte de verdade sobre os recursos instal
 
 ### Endpoints de geração de imagem e vídeo
 
-`POST /v1/generations/images` cria uma tarefa real quando SDXL local ou um Space Hugging Face remoto está configurado; a disponibilidade remota depende da fila e da cota do Space. `GET /v1/jobs/{job_id}` devolve o estado e o link de saída. `POST /v1/generations/videos` cria um job Wan2.2 TI2V quando o runtime está pronto; caso contrário, retorna HTTP 503. Consulte `GET /v1/capabilities` antes de iniciar uma geração.
+`POST /v1/generations/images` cria uma tarefa real quando SDXL local ou um Space Hugging Face remoto está configurado; a disponibilidade remota depende da fila e da cota do Space. `GET /v1/jobs/{job_id}` devolve o estado e o link de saída. `POST /v1/generations/videos` cria um job Wan2.2 TI2V quando o runtime está pronto; se Wan2.2 não estiver disponível, cria um clipe limitado com movimento de câmera via FFmpeg quando o FFmpeg estiver instalado. Esse fallback não anima personagens. O endpoint retorna HTTP 503 somente quando nenhum dos dois modos está disponível. Consulte `GET /v1/capabilities` antes de iniciar uma geração.
 
 
 ## Implantação guiada no Render
