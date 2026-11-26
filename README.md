@@ -21,7 +21,7 @@ O backend FastAPI tem agora os primeiros adaptadores reais preparados:
 **Nenhuma inferência de imagem ou vídeo foi executada ainda.** Os modelos não foram baixados e o backend não está hospedado nem conectado à prévia. As filas atuais são voláteis: reiniciar o processo apaga o estado dos jobs. O ambiente publicado não tem GPU, pesos SDXL/Wan ou Piper. A prévia GitHub Pages é somente a interface; não gera mídia sozinha.
 
 ## Modelos e requisitos
-- **Imagem:** SDXL 1.0 Base; precisa de PyTorch/CUDA e Diffusers, além de GPU compatível. A consistência de personagem ainda precisa ser avaliada; o primeiro pipeline não aceita imagens de referência.
+- **Imagem:** SDXL 1.0 Base; precisa de PyTorch/CUDA e Diffusers, além de GPU compatível. O backend agora aceita uma imagem de referência PNG/JPEG em Base64 via SDXL image-to-image; o app reutiliza a primeira cena como referência para cenas seguintes. A consistência visual ainda precisa ser validada em uma inferência real.
 - **Vídeo:** Wan2.2 TI2V 5B; o model card oficial informa Apache 2.0, geração texto+imagem para vídeo, 24 FPS e GPU com pelo menos 24 GB de VRAM na configuração descrita. O backend usa o CLI oficial, pois o model card informa requisitos específicos para a versão Diffusers.
 
 Referências oficiais:
