@@ -179,7 +179,7 @@ def generate_huggingface_image(
         verbose=False,
     )
     # Gradio Client handles the Space queue and waits for the API result.
-    result = client.predict(prompt, api_name="/generate")
+    result = client.predict(prompt, int(seed or 12345), api_name="/generate")
 
     # Gradio image outputs are commonly returned as a FileData mapping or a path.
     candidate = result
