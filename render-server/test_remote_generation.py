@@ -40,7 +40,7 @@ class RemoteImageQueueTests(unittest.TestCase):
         self.assertIs(background.tasks[0].func, main.run_image_generation_job)
 
     def test_remote_space_queues_reference_images_for_img2img(self):
-        reference = b"\x89PNG\r\n\\x1a\nreference"
+        reference = b"\x89PNG\r\n\x1a\nreference"
         payload = main.ImageGenerationRequest(
             prompt="cinematic anime scene",
             width=512,
