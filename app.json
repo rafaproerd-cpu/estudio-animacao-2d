@@ -22,6 +22,9 @@
     "web": {
       "bundler": "metro",
       "output": "single"
+    },
+    "experiments": {
+      "baseUrl": "/estudio-animacao-2d"
     }
   }
 }
