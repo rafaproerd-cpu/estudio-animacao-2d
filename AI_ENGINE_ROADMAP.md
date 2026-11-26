@@ -5,7 +5,7 @@ A pessoa deve criar um projeto, descrever a história e produzir cenas, imagens,
 
 ## Situação real atual
 - O app organiza projetos e cria um storyboard local baseado em regras e modelos de texto quando não há provedor conectado. Também possui integração opcional com um provedor compatível com Chat Completions para gerar roteiros originais; ela exige credenciais configuradas no servidor e ainda não está ativada no ambiente publicado.
-- Existe um adaptador HTTP genérico no app para um futuro motor integrado. A geração real ainda não está conectada.
+- O app já possui adaptadores HTTP conectados aos endpoints de jobs do backend para solicitar e consultar imagens e clipes. O fluxo de cliente está implementado, mas a geração remota real depende de um backend hospedado com motores configurados; o site publicado sozinho não gera mídia.
 - O servidor FastAPI/FFmpeg monta clipes e tem endpoints opcionais de voz Piper, mas precisa ser hospedado e receber os modelos/binários necessários.
 - A interface web está publicada; isso não hospeda o motor de inferência.
 - Não existe neste momento um serviço de geração de imagem/vídeo pronto, ilimitado e gratuito conectado ao app.
@@ -32,7 +32,8 @@ A pessoa deve criar um projeto, descrever a história e produzir cenas, imagens,
 - [ ] Configurar credenciais de um provedor de texto no servidor hospedado e executar teste real de roteiro ponta a ponta.
 - [x] Empacotar o servidor de montagem em Docker.
 - [x] Confirmar uma execução bem-sucedida da etapa Docker no CI (imagem do servidor construída no GitHub Actions).
-- [ ] Separar a API interna do provedor ComfyUI, para que a UI não dependa de detalhes de workflow.
+- [x] Corrigir o Dockerfile para incluir `story_engine.py`, necessário à importação da API, e validar a importação de `main` durante a construção da imagem.
+- [ ] Remover dependências legadas de ComfyUI da configuração e da interface, mantendo somente os adaptadores HTTP internos de geração.
 - [x] Definir o contrato HTTP do lado cliente para envio e consulta de jobs de imagem/vídeo.
 - [x] Criar respostas autenticadas e explícitas de indisponibilidade para os endpoints de imagem/vídeo (HTTP 503, sem simular jobs).
 - [x] Implementar uma primeira fila de jobs de imagem SDXL no servidor, com status queued/running/completed/failed, erros explícitos e links privados de download com expiração (fila em memória; sem persistência ainda).
