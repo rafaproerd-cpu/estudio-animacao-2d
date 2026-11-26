@@ -58,10 +58,10 @@ Esta é uma shortlist para protótipo, não uma promessa de geração já dispon
 | Etapa | Candidato | Motivo para avaliar | Limite conhecido |
 |---|---|---|---|
 | Imagem | SDXL 1.0 Base | Modelo de texto-para-imagem conhecido, pode rodar sozinho sem o refiner e tem licença OpenRAIL++-M | Precisa de GPU compatível para uso prático; a licença tem condições e restrições de uso. A consistência de personagens precisa ser testada com referências/LoRAs. |
-| Vídeo | Wan2.1 T2V 1.3B | Pesos Apache-2.0; versão compacta com geração 480p | A documentação do modelo informa 8,19 GB de VRAM e cerca de 4 minutos para 5 segundos em RTX 4090; isso ainda é hardware caro e não roda no iPhone. |
+| Vídeo com imagem de referência | Wan2.2 TI2V 5B | Um único modelo oficial suporta texto-para-vídeo e imagem-para-vídeo; licença Apache 2.0; saída 720p a 24 FPS | A documentação oficial indica GPU com pelo menos 24 GB de VRAM (ex.: RTX 4090) e menos de 9 minutos para 5 segundos em 720p sob a configuração descrita. Não é gratuito hospedar a GPU e o resultado anime/2D precisa ser avaliado. |
 
 ### Plano de avaliação antes de instalar
-1. Confirmar licença e requisitos da versão exata dos pesos e de todos os componentes auxiliares.
+1. Confirmar licença e requisitos da versão exata dos pesos e de todos os componentes auxiliares. Para vídeo image-to-video, priorizar o Wan2.2 TI2V 5B em vez do Wan2.1 T2V 1.3B, pois este último é o checkpoint T2V e não é o melhor encaixe para animar a imagem-base de cada cena.
 2. Fazer teste de imagem com a mesma ficha de personagem em 10 cenas diferentes; medir consistência de rosto, roupa e paleta.
 3. Fazer teste de vídeo image-to-video/text-to-video com movimento de câmera e movimento corporal; medir artefatos, duração, resolução e tempo por clipe.
 4. Só então criar o adaptador backend. O modelo de vídeo escolhido pode mudar se o teste não atingir qualidade 2D/anime desejada.
@@ -69,10 +69,11 @@ Esta é uma shortlist para protótipo, não uma promessa de geração já dispon
 
 Referências oficiais consultadas:
 - SDXL 1.0 Base (model card e licença): https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0
-- Wan2.1 T2V 1.3B (model card, licença e requisitos): https://huggingface.co/Wan-AI/Wan2.1-T2V-1.3B
+- Wan2.1 T2V 1.3B (model card, licença e requisitos; candidato anterior, apenas T2V): https://huggingface.co/Wan-AI/Wan2.1-T2V-1.3B
+- Wan2.2 TI2V 5B (model card oficial, tarefas T2V/I2V, licença e requisitos): https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B
 - Wan2.1 (tarefas e resoluções suportadas): https://github.com/Wan-Video/Wan2.1
 
-**Decisão atual:** candidatos para teste apenas. Nenhum peso foi baixado, nenhum motor foi instalado e nenhuma geração foi ativada no servidor.
+**Decisão atual (revisada em 25/11/2026):** SDXL 1.0 Base segue como candidato para imagens; Wan2.2 TI2V 5B passa a ser o principal candidato para animação image-to-video. São candidatos para teste apenas: nenhum peso foi baixado, nenhum motor foi instalado e nenhuma geração foi ativada no servidor.
 
 
 ## Diagnóstico de hardware no backend
