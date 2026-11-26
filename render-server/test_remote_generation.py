@@ -1,5 +1,7 @@
 import base64
 import unittest
+from io import BytesIO
+from PIL import Image
 from unittest.mock import patch
 
 import main
@@ -40,7 +42,9 @@ class RemoteImageQueueTests(unittest.TestCase):
         self.assertIs(background.tasks[0].func, main.run_image_generation_job)
 
     def test_remote_space_queues_reference_images_for_img2img(self):
-        reference = b"\x89PNG\r\n\x1a\nreference"
+        image_buffer = BytesIO()
+        Image.new("RGB", (24, 16), (20, 40, 60)).save(image_buffer, format="PNG")
+        reference = image_buffer.getvalue()
         payload = main.ImageGenerationRequest(
             prompt="cinematic anime scene",
             width=512,
