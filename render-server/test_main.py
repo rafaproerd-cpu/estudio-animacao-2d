@@ -278,7 +278,7 @@ class RenderServerTests(unittest.TestCase):
         created_job_id = None
         try:
             main.API_TOKEN = "generation-test-token"
-            reference_bytes = b"\\x89PNG\\r\\n\\x1a\\n" + (b"reference-image" * 8)
+            reference_bytes = b"\x89PNG\r\n\x1a\n" + (b"reference-image" * 8)
             payload = main.ImageGenerationRequest(
                 prompt="same anime character in a new scene",
                 referenceImageBase64=base64.b64encode(reference_bytes).decode("ascii"),
