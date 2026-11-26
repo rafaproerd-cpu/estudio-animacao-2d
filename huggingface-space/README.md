@@ -15,7 +15,7 @@ Este Space é um protótipo de prova de conceito para gerar uma imagem com SDXL 
 
 ## O que ele faz
 - Recebe uma descrição curta de cena.
-- Gera uma imagem 512×512 com quatro passos de inferência.
+- Gera uma imagem horizontal 16:9 (768×432) com quatro passos de inferência, pronta para o quadro do estúdio sem cortar o topo ou a base da composição.
 - Expõe a função Gradio com o nome de API generate, para futura conexão com o servidor do Estúdio 2D.
 
 ## Publicação
