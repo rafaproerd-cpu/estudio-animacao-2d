@@ -11,13 +11,3 @@ services:
         generateValue: true
       - key: ESTUDIO_ALLOWED_ORIGINS
         value: https://rafaproerd-cpu.github.io
-      - key: HF_SPACE_ID
-        sync: false
-      - key: HF_TOKEN
-        sync: false
-      - key: STORY_API_URL
-        sync: false
-      - key: STORY_API_KEY
-        sync: false
-      - key: STORY_MODEL
-        sync: false
