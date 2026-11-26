@@ -147,6 +147,10 @@ export class HttpImageGenerationProvider
 export class HttpVideoGenerationProvider
   extends HttpGenerationProviderBase
   implements VideoGenerationProvider {
+  constructor(options: HttpGenerationProviderOptions) {
+    super({ ...options, timeoutMs: options.timeoutMs ?? 3 * 60 * 60 * 1000 });
+  }
+
   readonly info: ProviderInfo = {
     id: "estudio2d-video-api",
     name: "Motor integrado de animação",
