@@ -15,6 +15,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY main.py image_engine.py video_engine.py story_engine.py ./
+RUN python -c "import main; print('Estúdio 2D render API import OK')"
 RUN useradd --create-home --uid 10001 app \
     && mkdir -p /data/outputs /data/voices \
     && chown -R app:app /app /data
