@@ -22,7 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from image_engine import IMAGE_OUTPUT_DIR, active_image_engine_status, generate_huggingface_image, generate_sdxl_image, image_engine_status, huggingface_image_engine_status
+from image_engine import IMAGE_OUTPUT_DIR, active_image_engine_status, generate_image, image_engine_status, huggingface_image_engine_status
 from video_engine import WAN_OUTPUT_DIR, generate_wan_video, video_engine_status
 
 APP_DIR = Path(__file__).resolve().parent
@@ -181,23 +181,14 @@ def run_image_generation_job(job_id: str, payload: ImageGenerationRequest, refer
         generation_jobs[job_id].update({"status": "running", "message": "Carregando o motor de imagem e gerando a cena."})
     persist_generation_job(job_id)
     try:
-        if image_engine_status()["available"]:
-            output = generate_sdxl_image(
-                prompt=payload.prompt.strip(),
-                negative_prompt=payload.negative_prompt,
-                width=payload.width,
-                height=payload.height,
-                seed=payload.seed,
-                reference_image_bytes=reference_image_bytes,
-            )
-        else:
-            output = generate_huggingface_image(
-                prompt=payload.prompt.strip(),
-                width=payload.width,
-                height=payload.height,
-                seed=payload.seed,
-                reference_image_bytes=reference_image_bytes,
-            )
+        output = generate_image(
+            prompt=payload.prompt.strip(),
+            negative_prompt=payload.negative_prompt,
+            width=payload.width,
+            height=payload.height,
+            seed=payload.seed,
+            reference_image_bytes=reference_image_bytes,
+        )
         download_token = secrets.token_urlsafe(32)
         with generation_jobs_lock:
             generation_download_tokens[output.name] = (download_token, time.time() + GENERATION_DOWNLOAD_TTL_SECONDS)
