@@ -223,7 +223,7 @@ class VideoGenerationRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     prompt: str = Field(min_length=1, max_length=12000)
     image_base64: str = Field(alias="imageBase64", min_length=100, max_length=24_000_000)
-    duration_seconds: float = Field(default=4.0, alias="durationSeconds", ge=1.0, le=5.0)
+    duration_seconds: float = Field(default=4.0, alias="durationSeconds", ge=1.0, le=5.0, allow_inf_nan=False)
     seed: int | None = None
 
 
