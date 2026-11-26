@@ -851,18 +851,18 @@ export default function App() {
               <Text style={styles.note}>O app não exige workflows ou ComfyUI. O motor pesado roda no backend próprio do Estúdio 2D e precisa de uma GPU compatível.</Text>
               <Text style={styles.step}>ÁUDIO DO PROJETO</Text>
               <Text style={styles.note}>Adicione uma narração e/ou música de fundo. A voz será mixada em volume normal e a música em volume reduzido.</Text>
-              <Text style={styles.note}>A narração automática por cena será integrada ao motor próprio do aplicativo. Por enquanto, você pode selecionar um arquivo de narração e uma música de fundo para usar quando a montagem estiver disponível.</Text>
-              <TouchableOpacity style={styles.secondary} disabled><Text style={styles.secondaryText}>VOZES DE IA · EM DESENVOLVIMENTO</Text></TouchableOpacity>
+              <Text style={styles.note}>Carregue as vozes instaladas no servidor para gerar uma narração por cena. Você também pode usar um arquivo de áudio próprio.</Text>
+              <TouchableOpacity style={styles.secondary} onPress={loadTtsVoices} disabled={!!busyScene || !!batchProgress}><Text style={styles.secondaryText}>CARREGAR VOZES DISPONÍVEIS</Text></TouchableOpacity>
               {ttsVoices.length ? <View style={styles.chips}>{ttsVoices.map(voice => <TouchableOpacity key={voice} style={[styles.chip, selectedTtsVoice === voice && styles.chipActive]} onPress={() => setSelectedTtsVoice(voice)}><Text style={[styles.chipText, selectedTtsVoice === voice && styles.chipTextActive]}>{voice}</Text></TouchableOpacity>)}</View> : null}
-              <TouchableOpacity style={styles.primary} disabled>
-                <Text style={styles.primaryText}>GERAR NARRAÇÃO COM IA · EM DESENVOLVIMENTO</Text><Text style={styles.arrow}>♫</Text>
+              <TouchableOpacity style={styles.primary} onPress={generateAiNarration} disabled={!!busyScene || !!batchProgress || !ttsVoices.length}>
+                <Text style={styles.primaryText}>{busyScene === "tts:project" ? "GERANDO NARRAÇÃO…" : "GERAR NARRAÇÃO COM IA"}</Text><Text style={styles.arrow}>♫</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.secondary} onPress={() => pickProjectAudio("narrationUri")} disabled={!!busyScene || !!batchProgress}><Text style={styles.secondaryText}>{selected.narrationUri ? "NARRAÇÃO SELECIONADA · " + selected.narrationUri.split("/").pop() : "ESCOLHER NARRAÇÃO"}</Text></TouchableOpacity>
               {selected.narrationUri ? <TouchableOpacity style={styles.secondary} onPress={() => saveUpdatedProject({ ...selected, narrationUri: undefined, finalVideoUri: undefined, finalVideoRemoteUri: undefined })}><Text style={styles.secondaryText}>REMOVER NARRAÇÃO</Text></TouchableOpacity> : null}
               <TouchableOpacity style={styles.secondary} onPress={() => pickProjectAudio("musicUri")} disabled={!!busyScene || !!batchProgress}><Text style={styles.secondaryText}>{selected.musicUri ? "MÚSICA SELECIONADA · " + selected.musicUri.split("/").pop() : "ESCOLHER MÚSICA DE FUNDO"}</Text></TouchableOpacity>
               {selected.musicUri ? <TouchableOpacity style={styles.secondary} onPress={() => saveUpdatedProject({ ...selected, musicUri: undefined, finalVideoUri: undefined, finalVideoRemoteUri: undefined })}><Text style={styles.secondaryText}>REMOVER MÚSICA</Text></TouchableOpacity> : null}
-              <TouchableOpacity style={styles.primary} disabled>
-                <Text style={styles.primaryText}>MONTAGEM AUTOMÁTICA EM MP4 · EM DESENVOLVIMENTO</Text><Text style={styles.arrow}>▣</Text>
+              <TouchableOpacity style={styles.primary} onPress={renderFinalVideo} disabled={!!busyScene || !!batchProgress || selected.scenes.some(scene => !scene.videoUri)}>
+                <Text style={styles.primaryText}>{busyScene === "render:final" ? "MONTANDO VÍDEO FINAL…" : "MONTAR VÍDEO FINAL EM MP4"}</Text><Text style={styles.arrow}>▣</Text>
               </TouchableOpacity>
               {selected.finalVideoUri ? <>
                 <Text style={styles.label}>VÍDEO COMPLETO DO PROJETO</Text>
