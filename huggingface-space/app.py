@@ -32,8 +32,8 @@ def generate_image(prompt: str, seed: int = 12345):
         prompt=prompt,
         num_inference_steps=4,
         guidance_scale=0.0,
-        height=512,
-        width=512,
+        height=432,
+        width=768,
         generator=generator,
     )
     return result.images[0]
