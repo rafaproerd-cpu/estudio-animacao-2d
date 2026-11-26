@@ -508,7 +508,9 @@ class RenderServerTests(unittest.TestCase):
         created_job_id = None
         try:
             main.API_TOKEN = "generation-test-token"
-            reference_bytes = b"\x89PNG\r\n\x1a\n" + (b"reference-image" * 8)
+            image_buffer = BytesIO()
+            Image.new("RGB", (24, 16), (40, 80, 120)).save(image_buffer, format="PNG")
+            reference_bytes = image_buffer.getvalue()
             payload = main.ImageGenerationRequest(
                 prompt="same anime character in a new scene",
                 referenceImageBase64=base64.b64encode(reference_bytes).decode("ascii"),
@@ -538,6 +540,23 @@ class RenderServerTests(unittest.TestCase):
                 with self.assertRaises(HTTPException) as raised:
                     main.request_image_generation(payload, BackgroundTasks(), "Bearer generation-test-token")
             self.assertEqual(raised.exception.status_code, 415)
+        finally:
+            main.API_TOKEN = original_token
+
+    def test_image_generation_rejects_corrupted_png_with_valid_signature(self):
+        original_token = main.API_TOKEN
+        try:
+            main.API_TOKEN = "generation-test-token"
+            reference_bytes = b"\x89PNG\r\n\x1a\n" + (b"not-a-real-image" * 8)
+            payload = main.ImageGenerationRequest(
+                prompt="anime character",
+                referenceImageBase64=base64.b64encode(reference_bytes).decode("ascii"),
+            )
+            with patch.object(main, "image_engine_status", return_value={"available": True, "message": "ready"}):
+                with self.assertRaises(HTTPException) as raised:
+                    main.request_image_generation(payload, BackgroundTasks(), "Bearer generation-test-token")
+            self.assertEqual(raised.exception.status_code, 415)
+            self.assertIn("corrompida", raised.exception.detail)
         finally:
             main.API_TOKEN = original_token
 
