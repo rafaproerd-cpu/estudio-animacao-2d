@@ -83,6 +83,23 @@ abstract class HttpGenerationProviderBase {
     return parseResponse<T>(await this.fetcher(`${this.baseUrl}${path}`, { ...init, headers }));
   }
 
+  private async pollJob(jobId: string): Promise<JobResponse> {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await this.request<JobResponse>(
+          "/v1/jobs/" + encodeURIComponent(jobId),
+        );
+      } catch (error) {
+        lastError = error;
+        // Repete apenas falhas de rede, sem mascarar respostas HTTP do servidor.
+        if (!(error instanceof TypeError) || attempt === 2) throw error;
+        await wait(1000 * (attempt + 1));
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error("Falha de rede ao consultar a geração.");
+  }
+
   protected async submitAndWait(path: string, payload: unknown): Promise<GenerationProgress> {
     try {
       const queued = await this.request<JobResponse>(path, {
@@ -93,9 +110,7 @@ abstract class HttpGenerationProviderBase {
 
       const startedAt = Date.now();
       while (Date.now() - startedAt < this.timeoutMs) {
-        const job = await this.request<JobResponse>(
-          `/v1/jobs/${encodeURIComponent(queued.job_id)}`,
-        );
+        const job = await this.pollJob(queued.job_id);
         if (job.status === "completed") {
           if (!job.output_url) throw new Error("A tarefa terminou sem informar o arquivo gerado.");
           return {
