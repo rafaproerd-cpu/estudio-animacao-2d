@@ -71,6 +71,26 @@ PIPER_VOICES_DIR=./voices
 MAX_TTS_CHARACTERS=6000
 ```
 
+## Motor opcional de imagem SDXL
+
+A API inclui um primeiro motor de texto-para-imagem baseado em Diffusers. Ele fica desativado por padrão e só aparece como disponível quando o checkpoint, PyTorch, Diffusers e a GPU configurada estão prontos.
+
+Em uma máquina Linux com GPU NVIDIA e driver/CUDA compatíveis:
+
+1. Instale PyTorch usando o seletor oficial para a versão CUDA da máquina: https://pytorch.org/get-started/locally/
+2. Instale a camada adicional: `pip install -r requirements-image.txt`.
+3. Configure `IMAGE_MODEL_ID=stabilityai/stable-diffusion-xl-base-1.0` (ou o caminho de um checkpoint SDXL local) e `IMAGE_DEVICE=cuda`.
+4. Ajuste `IMAGE_MIN_FREE_VRAM_MB` se necessário; o padrão é 8.000 MB livres. O motor recusa iniciar quando a memória disponível fica abaixo desse limite.
+5. Mantenha `ESTUDIO_RENDER_TOKEN` configurado e consulte `GET /v1/capabilities`.
+
+O primeiro carregamento pode baixar vários GB de pesos. O Dockerfile padrão não instala PyTorch/CUDA nem pesos de modelos; a camada de inferência é opcional para evitar uma imagem básica enorme. Se executar em Docker, prepare uma imagem derivada com PyTorch compatível e passe a GPU NVIDIA ao container.
+
+- `POST /v1/generations/images` recebe `prompt`, `negativePrompt`, `width`, `height` e `seed`, e devolve `job_id`.
+- `GET /v1/jobs/{job_id}` consulta o estado; o resultado contém um link temporário privado para o PNG.
+- A fila é em memória, com uma tarefa ativa por padrão; reiniciar o processo perde o histórico dos jobs.
+- O primeiro pipeline é apenas texto-para-imagem. Referências visuais de personagem são recusadas até a implementação de image-to-image.
+- Vídeo ainda não está disponível; `POST /v1/generations/videos` continua retornando HTTP 503.
+
 ## Limites atuais
 
 - A montagem concatena os clipes em sequência; transições e efeitos ainda não estão implementados.
@@ -83,9 +103,9 @@ MAX_TTS_CHARACTERS=6000
 
 ## Estado dos motores integrados
 
-O endpoint `GET /v1/capabilities` é a fonte de verdade sobre os recursos instalados. Ele não marca imagem ou vídeo como disponíveis só porque o app possui adaptadores HTTP: os modelos precisam estar instalados e conectados no backend. Neste momento, a API informa imagem e vídeo como `not_configured`. Isso evita que a interface prometa uma geração que o servidor ainda não consegue executar.
+O endpoint `GET /v1/capabilities` é a fonte de verdade sobre os recursos instalados. O motor de imagem só aparece como `ready` quando SDXL, PyTorch, Diffusers e memória de GPU suficiente estão disponíveis. O motor de vídeo permanece `not_configured` até a integração real do modelo Wan.
 
 
 ### Endpoints de geração de imagem e vídeo
 
-Os endpoints `POST /v1/generations/images` e `POST /v1/generations/videos` já existem como respostas explícitas de indisponibilidade: ambos exigem token e retornam HTTP 503 enquanto não houver um modelo real instalado. Consulte `GET /v1/capabilities` para verificar os recursos disponíveis. Eles não criam jobs fictícios nem simulam progresso.
+`POST /v1/generations/images` cria uma tarefa real somente quando o motor SDXL está pronto; caso contrário, exige token e retorna HTTP 503. `GET /v1/jobs/{job_id}` devolve o estado e o link de saída. `POST /v1/generations/videos` continua retornando HTTP 503 até a integração do motor de vídeo. Consulte `GET /v1/capabilities` antes de iniciar uma geração.
