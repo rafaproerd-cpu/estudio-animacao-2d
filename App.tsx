@@ -189,8 +189,8 @@ export default function App() {
 
   const testRenderConnection = async () => {
     const url = (engineConfig.renderBaseUrl || "").trim().replace(/\/+$/, "");
-    if (!/^https?:\/\//i.test(url)) {
-      Alert.alert("Endereço inválido", "Informe o endereço do servidor de montagem, incluindo http:// ou https://.");
+    if (!isAllowedEngineUrl(url)) {
+      Alert.alert("Endereço inválido", "Use um endereço HTTPS seguro. HTTP só é permitido para testes locais em localhost.");
       return;
     }
     try {
@@ -217,8 +217,8 @@ export default function App() {
   const getEngineConnection = () => {
     const baseUrl = (engineConfig.renderBaseUrl || "").trim().replace(/\/+$/, "");
     const token = (engineConfig.renderToken || "").trim();
-    if (!/^https?:\/\//i.test(baseUrl) || !token) {
-      Alert.alert("Conecte o motor do Estúdio 2D", "Informe o endereço HTTPS do servidor próprio e o token na opção Conectar motor.");
+    if (!isAllowedEngineUrl(baseUrl) || !token) {
+      Alert.alert("Conecte o motor do Estúdio 2D", "Informe um endereço HTTPS seguro e o token na opção Conectar motor.");
       setShowSettings(true);
       return null;
     }
