@@ -70,6 +70,14 @@ class StoryEngineTests(unittest.TestCase):
         self.assertEqual(len(plan["scenes"]), 4)
         self.assertEqual(plan["scenes"][0]["id"], "scene-1")
         self.assertEqual(plan["scenes"][0]["action"], "A protagonista encontra uma pista diferente 1.")
+        self.assertEqual(plan["estimatedSeconds"], 30)
+
+    def test_converts_supported_duration_labels_to_seconds(self):
+        self.assertEqual(story_engine._duration_in_seconds("30 segundos"), 30)
+        self.assertEqual(story_engine._duration_in_seconds("1 minuto"), 60)
+        self.assertEqual(story_engine._duration_in_seconds("2 minutos"), 120)
+        self.assertEqual(story_engine._duration_in_seconds("5 minutos"), 300)
+        self.assertEqual(story_engine._duration_in_seconds("10 minutos"), 600)
 
     def test_rejects_incomplete_scene(self):
         broken = valid_story()
