@@ -103,10 +103,16 @@ def initialize_generation_state() -> None:
             "CREATE TABLE IF NOT EXISTS generation_download_tokens "
             "(filename TEXT PRIMARY KEY, token TEXT NOT NULL, expires_at REAL NOT NULL)"
         )
-        for job_id, payload in connection.execute("SELECT job_id, payload FROM generation_jobs"):
+        stale_job_ids: list[str] = []
+        for job_id, payload in connection.execute("SELECT job_id, payload FROM generation_jobs").fetchall():
             try:
                 job = json.loads(payload)
                 if not isinstance(job, dict):
+                    stale_job_ids.append(job_id)
+                    continue
+                created_at = float(job.get("created_at", now))
+                if now - created_at > JOB_RETENTION_SECONDS:
+                    stale_job_ids.append(job_id)
                     continue
                 if job.get("status") in {"queued", "running"}:
                     job.update({
@@ -119,10 +125,14 @@ def initialize_generation_state() -> None:
                         "UPDATE generation_jobs SET payload=? WHERE job_id=?",
                         (json.dumps(job), job_id),
                     )
-                if now - float(job.get("created_at", now)) <= JOB_RETENTION_SECONDS:
-                    generation_jobs[job_id] = job
+                generation_jobs[job_id] = job
             except (TypeError, ValueError, json.JSONDecodeError):
-                continue
+                stale_job_ids.append(job_id)
+        if stale_job_ids:
+            connection.executemany(
+                "DELETE FROM generation_jobs WHERE job_id=?",
+                [(job_id,) for job_id in stale_job_ids],
+            )
         for filename, token, expires_at in connection.execute(
             "SELECT filename, token, expires_at FROM generation_download_tokens WHERE expires_at >= ?",
             (now,),
