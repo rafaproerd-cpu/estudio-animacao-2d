@@ -128,7 +128,11 @@ class VideoGenerationQueueTests(unittest.TestCase):
         main.generation_download_tokens.update(self.original_download_tokens)
 
     def test_video_request_queues_when_motion_fallback_is_available(self):
-        image = base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"x" * 100).decode("ascii")
+        from io import BytesIO
+        from PIL import Image
+        image_buffer = BytesIO()
+        Image.new("RGB", (32, 18), "white").save(image_buffer, format="PNG")
+        image = base64.b64encode(image_buffer.getvalue()).decode("ascii")
         payload = main.VideoGenerationRequest(
             prompt="slow cinematic camera movement",
             imageBase64=image,
@@ -157,7 +161,7 @@ class VideoGenerationQueueTests(unittest.TestCase):
         }
         payload = main.VideoGenerationRequest(
             prompt="slow cinematic camera movement",
-            imageBase64=base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"x" * 100).decode("ascii"),
+            imageBase64=image,
             durationSeconds=3,
         )
         with patch.object(main, "generate_wan_video", return_value=output), patch.object(
