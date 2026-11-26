@@ -255,7 +255,9 @@ export default function App() {
     setBusyScene(scene.title);
     try {
       const provider = new HttpImageGenerationProvider({ baseUrl: connection.baseUrl, token: connection.token });
-      const result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576 });
+      const referenceScene = selected.scenes.find(item => item.title !== scene.title && item.imageUri);
+      const referenceImageBase64 = referenceScene?.imageUri ? await imageUriToBase64(referenceScene.imageUri) : undefined;
+      const result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, referenceImageBase64 });
       if (result.status !== "completed" || !result.outputUri) throw new Error(result.error || "O motor não retornou uma imagem.");
       const localUri = await persistGeneratedImage(result.outputUri, selected.id, scene.title);
       const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, imageUri: localUri, videoUri: undefined, videoRemoteUri: undefined } : item) };
@@ -333,7 +335,9 @@ export default function App() {
       const provider = new HttpImageGenerationProvider({ baseUrl: connection.baseUrl, token: connection.token });
       for (const scene of pendingScenes) {
         setBusyScene(scene.title);
-        const result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576 });
+        const referenceScene = workingProject.scenes.find(item => item.imageUri);
+        const referenceImageBase64 = referenceScene?.imageUri ? await imageUriToBase64(referenceScene.imageUri) : undefined;
+        const result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, referenceImageBase64 });
         if (result.status !== "completed" || !result.outputUri) throw new Error(`${scene.title}: ${result.error || "o motor não retornou uma imagem"}`);
         const localUri = await persistGeneratedImage(result.outputUri, workingProject.id, scene.title);
         workingProject = { ...workingProject, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: workingProject.scenes.map(item => item.title === scene.title ? { ...item, imageUri: localUri, videoUri: undefined, videoRemoteUri: undefined } : item) };
