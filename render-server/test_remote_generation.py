@@ -40,7 +40,7 @@ class RemoteImageQueueTests(unittest.TestCase):
             prompt="cinematic anime scene",
             width=512,
             height=512,
-            referenceImageBase64=base64.b64encode(b"\\x89PNG\\r\\n\\x1a\\nreference").decode("ascii"),
+            referenceImageBase64=base64.b64encode(b"\x89PNG\r\n\x1a\nreference").decode("ascii"),
         )
         with patch.object(main, "image_engine_status", return_value={"available": False}), patch.object(
             main, "huggingface_image_engine_status", return_value=self.engine_status
