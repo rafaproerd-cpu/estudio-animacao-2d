@@ -6,6 +6,8 @@ import os
 import re
 import secrets
 import shutil
+import sqlite3
+import json
 import subprocess
 import tempfile
 import threading
@@ -50,6 +52,81 @@ generation_download_tokens: dict[str, tuple[str, float]] = {}
 MAX_ACTIVE_IMAGE_JOBS = max(1, int(os.getenv("MAX_ACTIVE_IMAGE_JOBS", "1")))
 JOB_RETENTION_SECONDS = max(3600, int(os.getenv("JOB_RETENTION_SECONDS", "86400")))
 GENERATION_DOWNLOAD_TTL_SECONDS = max(3600, int(os.getenv("GENERATION_DOWNLOAD_TTL_SECONDS", "604800")))
+GENERATION_STATE_DB = Path(os.getenv("GENERATION_STATE_DB", str(OUTPUT_DIR / "generation_state.sqlite3"))).resolve()
+
+
+def _state_connection() -> sqlite3.Connection:
+    GENERATION_STATE_DB.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(GENERATION_STATE_DB, timeout=10)
+    connection.execute("PRAGMA journal_mode=WAL")
+    return connection
+
+
+def persist_generation_job(job_id: str) -> None:
+    with generation_jobs_lock:
+        job = generation_jobs.get(job_id)
+        snapshot = dict(job) if job is not None else None
+    if snapshot is None:
+        return
+    with _state_connection() as connection:
+        connection.execute(
+            "INSERT INTO generation_jobs(job_id, payload) VALUES (?, ?) "
+            "ON CONFLICT(job_id) DO UPDATE SET payload=excluded.payload",
+            (job_id, json.dumps(snapshot)),
+        )
+
+
+def persist_download_grant(filename: str) -> None:
+    with generation_jobs_lock:
+        grant = generation_download_tokens.get(filename)
+    if grant is None:
+        return
+    with _state_connection() as connection:
+        connection.execute(
+            "INSERT INTO generation_download_tokens(filename, token, expires_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(filename) DO UPDATE SET token=excluded.token, expires_at=excluded.expires_at",
+            (filename, grant[0], grant[1]),
+        )
+
+
+def initialize_generation_state() -> None:
+    now = time.time()
+    with _state_connection() as connection:
+        connection.execute("CREATE TABLE IF NOT EXISTS generation_jobs (job_id TEXT PRIMARY KEY, payload TEXT NOT NULL)")
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS generation_download_tokens "
+            "(filename TEXT PRIMARY KEY, token TEXT NOT NULL, expires_at REAL NOT NULL)"
+        )
+        for job_id, payload in connection.execute("SELECT job_id, payload FROM generation_jobs"):
+            try:
+                job = json.loads(payload)
+                if not isinstance(job, dict):
+                    continue
+                if job.get("status") in {"queued", "running"}:
+                    job.update({
+                        "status": "failed",
+                        "progress": 0.0,
+                        "message": "O servidor reiniciou antes de concluir esta tarefa. Inicie uma nova geração.",
+                        "error": "generation_interrupted_by_server_restart",
+                    })
+                    connection.execute(
+                        "UPDATE generation_jobs SET payload=? WHERE job_id=?",
+                        (json.dumps(job), job_id),
+                    )
+                if now - float(job.get("created_at", now)) <= JOB_RETENTION_SECONDS:
+                    generation_jobs[job_id] = job
+            except (TypeError, ValueError, json.JSONDecodeError):
+                continue
+        for filename, token, expires_at in connection.execute(
+            "SELECT filename, token, expires_at FROM generation_download_tokens WHERE expires_at >= ?",
+            (now,),
+        ):
+            generation_download_tokens[filename] = (token, float(expires_at))
+        connection.execute("DELETE FROM generation_download_tokens WHERE expires_at < ?", (now,))
+        connection.execute(
+            "DELETE FROM generation_jobs WHERE job_id NOT IN "
+            "(SELECT job_id FROM generation_jobs)"
+        )
 
 
 def prune_generation_state() -> None:
@@ -65,6 +142,15 @@ def prune_generation_state() -> None:
         expired_tokens = [name for name, grant in generation_download_tokens.items() if grant[1] < now]
         for name in expired_tokens:
             generation_download_tokens.pop(name, None)
+    if expired_jobs or expired_tokens:
+        with _state_connection() as connection:
+            if expired_jobs:
+                connection.executemany("DELETE FROM generation_jobs WHERE job_id=?", [(job_id,) for job_id in expired_jobs])
+            if expired_tokens:
+                connection.executemany("DELETE FROM generation_download_tokens WHERE filename=?", [(name,) for name in expired_tokens])
+
+
+initialize_generation_state()
 
 
 class ImageGenerationRequest(BaseModel):
@@ -81,6 +167,7 @@ class ImageGenerationRequest(BaseModel):
 def run_image_generation_job(job_id: str, payload: ImageGenerationRequest, reference_image_bytes: bytes | None = None) -> None:
     with generation_jobs_lock:
         generation_jobs[job_id].update({"status": "running", "message": "Carregando o motor de imagem e gerando a cena."})
+    persist_generation_job(job_id)
     try:
         output = generate_sdxl_image(
             prompt=payload.prompt.strip(),
@@ -99,6 +186,8 @@ def run_image_generation_job(job_id: str, payload: ImageGenerationRequest, refer
                 "message": "Imagem gerada.",
                 "output_url": "/v1/files/" + output.name + "?token=" + download_token,
             })
+        persist_download_grant(output.name)
+        persist_generation_job(job_id)
     except Exception as error:
         with generation_jobs_lock:
             generation_jobs[job_id].update({
@@ -107,6 +196,7 @@ def run_image_generation_job(job_id: str, payload: ImageGenerationRequest, refer
                 "message": "A geração de imagem falhou.",
                 "error": str(error)[:1200],
             })
+        persist_generation_job(job_id)
 
 
 class VideoGenerationRequest(BaseModel):
@@ -120,6 +210,7 @@ class VideoGenerationRequest(BaseModel):
 def run_video_generation_job(job_id: str, payload: VideoGenerationRequest, image_bytes: bytes) -> None:
     with generation_jobs_lock:
         generation_jobs[job_id].update({"status": "running", "message": "Preparando imagem de referência e gerando o clipe com Wan2.2."})
+    persist_generation_job(job_id)
     try:
         output = generate_wan_video(
             prompt=payload.prompt.strip(),
@@ -136,6 +227,8 @@ def run_video_generation_job(job_id: str, payload: VideoGenerationRequest, image
                 "message": "Clipe de vídeo gerado.",
                 "output_url": "/v1/files/" + output.name + "?token=" + download_token,
             })
+        persist_download_grant(output.name)
+        persist_generation_job(job_id)
     except Exception as error:
         with generation_jobs_lock:
             generation_jobs[job_id].update({
@@ -144,6 +237,7 @@ def run_video_generation_job(job_id: str, payload: VideoGenerationRequest, image
                 "message": "A geração de vídeo falhou.",
                 "error": str(error)[:1600],
             })
+        persist_generation_job(job_id)
 
 
 class RenderResponse(BaseModel):
@@ -302,6 +396,7 @@ def request_image_generation(
             "message": "Aguardando o motor de imagem.",
             "created_at": time.time(),
         }
+    persist_generation_job(job_id)
     background_tasks.add_task(run_image_generation_job, job_id, payload, reference_image_bytes)
     return {"job_id": job_id, "status": "queued", "progress": 0.0, "message": "Geração adicionada à fila."}
 
@@ -378,6 +473,7 @@ def request_video_generation(
             "message": "Aguardando o motor de vídeo.",
             "created_at": time.time(),
         }
+    persist_generation_job(job_id)
     background_tasks.add_task(run_video_generation_job, job_id, payload, image_bytes)
     return {"job_id": job_id, "status": "queued", "progress": 0.0, "message": "Animação adicionada à fila."}
 
