@@ -10,7 +10,7 @@ import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
 import * as SecureStore from "expo-secure-store";
 import { useVideoPlayer, VideoView } from "expo-video";
-import { createStoryPlan, type Genre } from "./src/engine/storyEngine";
+import { createStoryPlan, type Genre, type StoryPlan } from "./src/engine/storyEngine";
 import { HttpImageGenerationProvider, HttpVideoGenerationProvider } from "./src/engine/providers/httpGenerationProvider";
 
 type Scene = { title: string; description: string; dialogue: string; imagePrompt: string; videoPrompt: string; shot: string; camera: string; lighting: string; voiceId?: string; imageUri?: string; videoUri?: string; videoRemoteUri?: string };
@@ -80,9 +80,9 @@ function stableProjectSeed(seedKey: string): number {
   return hash >>> 0;
 }
 
-function buildProject(idea: string, genre: string, duration: string): Project {
+function buildProject(idea: string, genre: string, duration: string, generatedPlan?: StoryPlan): Project {
   const character = "Personagem principal\nNome: a definir\nAparência: a definir\nRoupa: a definir\nPersonalidade: a definir\nVoz: a definir\nRegra de continuidade: manter o mesmo rosto, cabelo, roupa, cores e proporções em todas as cenas.";
-  const plan = createStoryPlan(idea, genre as Genre, duration, character);
+  const plan = generatedPlan || createStoryPlan(idea, genre as Genre, duration, character);
   return {
     id: Date.now().toString(),
     title: plan.title,
@@ -149,6 +149,7 @@ export default function App() {
   const [engineConfig, setEngineConfig] = useState<EngineConfig>({ renderBaseUrl: "", renderToken: "" });
   const [connectionStatus, setConnectionStatus] = useState("Não testada");
   const [busyScene, setBusyScene] = useState<string | null>(null);
+  const [creatingStory, setCreatingStory] = useState(false);
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
   const [ttsVoices, setTtsVoices] = useState<string[]>([]);
   const [selectedTtsVoice, setSelectedTtsVoice] = useState("");
@@ -756,17 +757,61 @@ export default function App() {
 
   const currentScript = useMemo(() => selected ? projectText(selected) : "", [selected]);
 
-  const createProject = () => {
+  const createProject = async () => {
     const cleanIdea = idea.trim();
     if (!cleanIdea) {
       Alert.alert("Falta sua ideia", "Escreva uma ideia para começar.");
       return;
     }
-    const project = buildProject(cleanIdea, genre, duration);
-    setProjects(previous => [project, ...previous]);
-    setSelected(project);
-    setIdea("");
-    Alert.alert("História organizada!", `O Estúdio 2D montou ${project.scenes.length} cenas automaticamente. Você pode revisar o roteiro e editar qualquer cena, sem precisar preencher os espaços manualmente.`);
+    if (creatingStory) return;
+    setCreatingStory(true);
+    try {
+      let generatedPlan: StoryPlan | undefined;
+      let usedLocalTemplate = true;
+      const baseUrl = (engineConfig.renderBaseUrl || "").trim().replace(/\\/+$/, "");
+      const token = (engineConfig.renderToken || "").trim();
+      if (isAllowedEngineUrl(baseUrl) && token) {
+        try {
+          const response = await fetch(`${baseUrl}/v1/stories/generate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              idea: cleanIdea,
+              genre,
+              duration,
+              character: "Personagem principal a definir. Manter rosto, cabelo, roupa, proporções e paleta consistentes em todas as cenas."
+            })
+          });
+          const result = await response.json();
+          if (response.ok) {
+            generatedPlan = result as StoryPlan;
+            usedLocalTemplate = false;
+          } else if (response.status !== 503) {
+            throw new Error(result.detail || "Não foi possível gerar o roteiro com IA.");
+          }
+        } catch (error) {
+          if (error instanceof TypeError) {
+            Alert.alert("Servidor indisponível", "Não consegui acessar o servidor. Vou montar um planejamento local para você não perder sua ideia.");
+          } else {
+            throw error;
+          }
+        }
+      }
+      const project = buildProject(cleanIdea, genre, duration, generatedPlan);
+      setProjects(previous => [project, ...previous]);
+      setSelected(project);
+      setIdea("");
+      Alert.alert(
+        usedLocalTemplate ? "Planejamento criado" : "Roteiro original criado por IA",
+        usedLocalTemplate
+          ? `O Estúdio organizou ${project.scenes.length} cenas com o planejador local. Para roteiros originais por IA, o servidor precisa ter um provedor de texto configurado.`
+          : `A IA criou ${project.scenes.length} cenas com acontecimentos e falas próprios. Você pode revisar e editar tudo no Estúdio.`
+      );
+    } catch (error) {
+      Alert.alert("Não foi possível criar a história", error instanceof Error ? error.message : "Tente novamente.");
+    } finally {
+      setCreatingStory(false);
+    }
   };
 
   const copyScript = async () => {
