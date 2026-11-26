@@ -119,3 +119,130 @@ def generate_sdxl_image(
         output = IMAGE_OUTPUT_DIR / ("image-" + uuid.uuid4().hex + ".png")
         image.save(output, format="PNG")
         return output
+
+
+# Optional hosted inference through a Hugging Face Gradio Space.
+# The token is read only by this server and must never be sent to the mobile app.
+HF_SPACE_ID = os.getenv("HF_SPACE_ID", "").strip()
+HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
+
+
+def huggingface_image_engine_status() -> dict[str, object]:
+    if not HF_SPACE_ID:
+        return {
+            "available": False,
+            "status": "not_configured",
+            "message": "Configure HF_SPACE_ID com o identificador do seu Space Gradio para habilitar a geração remota.",
+        }
+    try:
+        import importlib.util
+        installed = importlib.util.find_spec("gradio_client") is not None
+    except (ImportError, ValueError):
+        installed = False
+    if not installed:
+        return {
+            "available": False,
+            "status": "dependencies_missing",
+            "message": "Instale gradio_client no servidor para conectar ao Space.",
+        }
+    return {
+        "available": True,
+        "status": "configured_unverified",
+        "provider": "Hugging Face Gradio Space",
+        "space_id": HF_SPACE_ID,
+        "message": "Space configurado. A disponibilidade real será confirmada ao enviar a primeira geração.",
+    }
+
+
+def generate_huggingface_image(
+    prompt: str,
+    width: int,
+    height: int,
+    seed: int | None,
+    reference_image_bytes: bytes | None = None,
+) -> Path:
+    """Generate an image through a hosted Gradio Space and copy its result locally."""
+    if reference_image_bytes:
+        raise RuntimeError(
+            "O Space remoto atual aceita somente texto; imagem de referência ainda não é suportada."
+        )
+    status = huggingface_image_engine_status()
+    if not status["available"]:
+        raise RuntimeError(str(status["message"]))
+
+    from gradio_client import Client
+
+    IMAGE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    client = Client(
+        HF_SPACE_ID,
+        hf_token=HF_TOKEN or None,
+        verbose=False,
+    )
+    # Gradio Client handles the Space queue and waits for the API result.
+    result = client.predict(prompt=prompt, api_name="/generate")
+
+    # Gradio image outputs are commonly returned as a FileData mapping or a path.
+    candidate = result
+    if isinstance(candidate, (list, tuple)):
+        if not candidate:
+            raise RuntimeError("O Space retornou uma resposta de imagem vazia.")
+        candidate = candidate[0]
+    if isinstance(candidate, dict):
+        candidate = candidate.get("path") or candidate.get("url")
+    if not isinstance(candidate, str) or not candidate:
+        raise RuntimeError("O Space não retornou um arquivo de imagem reconhecido.")
+
+    source = Path(candidate)
+    if not source.is_file():
+        raise RuntimeError("O arquivo de imagem retornado pelo Space não está acessível no servidor.")
+    output = IMAGE_OUTPUT_DIR / ("image-hf-" + uuid.uuid4().hex + ".png")
+    # Re-encode as PNG to normalize the downloaded Space result.
+    from PIL import Image
+    with Image.open(source) as image:
+        image.convert("RGB").save(output, format="PNG")
+    return output
+
+
+def active_image_engine_status() -> dict[str, object]:
+    local = image_engine_status()
+    if local["available"]:
+        return local
+    remote = huggingface_image_engine_status()
+    if remote["available"]:
+        return remote
+    return {
+        "available": False,
+        "status": "not_configured",
+        "message": str(local.get("message", "Motor local indisponível"))
+        + " "
+        + str(remote.get("message", "Motor remoto indisponível")),
+        "local": local,
+        "remote": remote,
+    }
+
+
+def generate_image(
+    prompt: str,
+    negative_prompt: str | None,
+    width: int,
+    height: int,
+    seed: int | None,
+    reference_image_bytes: bytes | None = None,
+) -> Path:
+    """Prefer a configured local SDXL engine; otherwise use the hosted Space."""
+    if image_engine_status()["available"]:
+        return generate_sdxl_image(
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            width=width,
+            height=height,
+            seed=seed,
+            reference_image_bytes=reference_image_bytes,
+        )
+    return generate_huggingface_image(
+        prompt=prompt,
+        width=width,
+        height=height,
+        seed=seed,
+        reference_image_bytes=reference_image_bytes,
+    )
