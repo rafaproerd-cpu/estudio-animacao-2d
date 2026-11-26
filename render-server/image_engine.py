@@ -179,7 +179,7 @@ def generate_huggingface_image(
     reference_path = None
     try:
         if reference_image_bytes:
-            suffix = ".png" if reference_image_bytes.startswith(b"\\x89PNG") else ".jpg"
+            suffix = ".png" if reference_image_bytes.startswith(b"\x89PNG") else ".jpg"
             with tempfile.NamedTemporaryFile(prefix="estudio-reference-", suffix=suffix, delete=False) as temporary:
                 temporary.write(reference_image_bytes)
                 reference_path = Path(temporary.name)
