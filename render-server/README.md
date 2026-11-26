@@ -1,6 +1,6 @@
 # Servidor de montagem do Estúdio 2D
 
-Este serviço opcional transforma os clipes gerados no app em um único MP4. Ele deve rodar na mesma máquina/rede do servidor ComfyUI, ou em outra máquina com acesso ao iPhone e espaço suficiente.
+Este serviço é o backend próprio do Estúdio 2D: recebe pedidos do app, executa os motores locais de imagem/vídeo quando configurados e também monta clipes em MP4. Ele deve rodar em uma máquina com recursos compatíveis e acesso HTTPS seguro.
 
 ## Requisitos
 
@@ -52,7 +52,7 @@ export ESTUDIO_RENDER_TOKEN="coloque-seu-token-longo-aqui"
 uvicorn main:app --host 0.0.0.0 --port 8765
 ```
 
-O app deve usar `http://IP-DA-MAQUINA:8765` em rede local, ou um endereço HTTPS protegido por VPN/reverse proxy. O endpoint `/health` exige o mesmo token Bearer e permite verificar se o FFmpeg foi encontrado. O endpoint `GET /v1/capabilities` (também protegido pelo token) informa quais motores estão realmente instalados; imagem e vídeo só aparecem como disponíveis quando seus runtimes, pesos e GPU estão configurados; voz depende do executável Piper e de modelos `.onnx`. O endpoint `POST /render` exige `Authorization: Bearer TOKEN` e recebe vários arquivos no campo multipart `clips`, na ordem desejada. O serviço normaliza resolução para 1024×576, 30 FPS e H.264, concatena os segmentos e retorna uma URL para baixar o MP4. Também aceita narração e música opcionais e faz a mixagem no MP4 final.
+O app usa o endereço HTTPS público protegido do backend. Configure `ESTUDIO_ALLOWED_ORIGINS` com a origem do app web (por exemplo `https://rafaproerd-cpu.github.io`) para permitir chamadas do navegador; o padrão `*` é amplo e deve ser restringido em produção. O endpoint `/health` exige o mesmo token Bearer e permite verificar se o FFmpeg foi encontrado. O endpoint `GET /v1/capabilities` (também protegido pelo token) informa quais motores estão realmente instalados; imagem e vídeo só aparecem como disponíveis quando seus runtimes, pesos e GPU estão configurados; voz depende do executável Piper e de modelos `.onnx`. O endpoint `POST /render` exige `Authorization: Bearer TOKEN` e recebe vários arquivos no campo multipart `clips`, na ordem desejada. O serviço normaliza resolução para 1024×576, 30 FPS e H.264, concatena os segmentos e retorna uma URL para baixar o MP4. Também aceita narração e música opcionais e faz a mixagem no MP4 final.
 
 ## Voz por IA local (Piper)
 
@@ -89,7 +89,7 @@ O primeiro carregamento pode baixar vários GB de pesos. O Dockerfile padrão n�
 - `GET /v1/jobs/{job_id}` consulta o estado; o resultado contém um link temporário privado para o PNG.
 - A fila é em memória, com uma tarefa ativa por padrão; reiniciar o processo perde o histórico dos jobs.
 - O primeiro pipeline é apenas texto-para-imagem. Referências visuais de personagem são recusadas até a implementação de image-to-image.
-- O motor Wan2.2 é opcional e exige o runtime oficial, pesos e pelo menos cerca de 23 GB de VRAM livre; sem isso, `POST /v1/generations/videos` retorna HTTP 503.
+- O motor Wan2.2 é opcional e exige o runtime oficial, pesos e aproximadamente 23 GB de VRAM livre; sem isso, `POST /v1/generations/videos` retorna HTTP 503.
 
 ## Motor experimental de vídeo Wan2.2 TI2V 5B
 
@@ -100,7 +100,7 @@ Instalação em uma máquina GPU:
 2. Instale PyTorch/CUDA compatíveis e as dependências oficiais do repositório (PyTorch 2.4 ou superior).
 3. Baixe `Wan-AI/Wan2.2-TI2V-5B` para um diretório persistente.
 4. Configure `WAN_GENERATE_SCRIPT` para o `generate.py` clonado, `WAN_CHECKPOINT_DIR` para os pesos, `WAN_PYTHON` para o Python desse ambiente e `WAN_SIZE=1280*704`.
-5. O backend verifica CUDA e pelo menos 24 GB de VRAM livre antes de aceitar jobs.
+5. O backend verifica CUDA e cerca de 23 GB de VRAM livre (margem aproximada para a configuração de 24 GB) antes de aceitar jobs.
 
 O endpoint recebe `prompt`, `imageBase64` (PNG/JPEG), `durationSeconds` de 1 a 5 e `seed`. O backend escolhe um número de frames 4n+1 a 24 FPS, executa o CLI e retorna um link temporário protegido. Nenhum modelo foi instalado nem testado no ambiente publicado.
 
