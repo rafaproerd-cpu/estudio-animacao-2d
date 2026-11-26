@@ -47,9 +47,20 @@ class RenderServerTests(unittest.TestCase):
 
 
     def test_detects_nvidia_gpus_from_nvidia_smi(self):
-        completed = type("Result", (), {"returncode": 0, "stdout": "NVIDIA RTX 4090, 24564", "stderr": ""})()
+        completed = type("Result", (), {"returncode": 0, "stdout": "NVIDIA RTX 4090, 24564, 22000, 550.54.14", "stderr": ""})()
+        with patch.object(main.shutil, "which", return_value="/usr/bin/nvidia-smi"), patch.object(main.subprocess, "run", return_value=completed) as mocked:
+            self.assertEqual(main.available_nvidia_gpus(), [{
+                "name": "NVIDIA RTX 4090",
+                "memory_total_mb": "24564",
+                "memory_free_mb": "22000",
+                "driver_version": "550.54.14",
+            }])
+            self.assertIn("memory.free", mocked.call_args.args[0][1])
+
+    def test_gpu_detection_returns_empty_when_nvidia_smi_fails(self):
+        completed = type("Result", (), {"returncode": 1, "stdout": "", "stderr": "driver unavailable"})()
         with patch.object(main.shutil, "which", return_value="/usr/bin/nvidia-smi"), patch.object(main.subprocess, "run", return_value=completed):
-            self.assertEqual(main.available_nvidia_gpus(), [{"name": "NVIDIA RTX 4090", "memory_mb": "24564"}])
+            self.assertEqual(main.available_nvidia_gpus(), [])
 
     def test_gpu_detection_is_optional_when_nvidia_smi_is_missing(self):
         with patch.object(main.shutil, "which", return_value=None):
