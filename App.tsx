@@ -422,7 +422,7 @@ export default function App() {
       const localVideoUri = await persistGeneratedVideo(result.outputUri, selected.id, scene.title);
       const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, videoUri: localVideoUri, videoRemoteUri: result.outputUri } : item) };
       saveUpdatedProject(updated);
-      Alert.alert("Clipe concluído", "A animação foi gerada pelo motor do Estúdio 2D. Você pode baixá-la para o iPhone.");
+      Alert.alert("Clipe concluído", (result.message || "O clipe foi criado pelo motor do Estúdio 2D.") + " Você pode baixá-lo para o iPhone.");
     } catch (error) {
       Alert.alert("Erro na geração do vídeo", error instanceof Error ? error.message : "Não foi possível gerar o clipe.");
     } finally {
@@ -491,6 +491,7 @@ export default function App() {
     }
     let workingProject = selected;
     let completed = 0;
+    let lastEngineMessage = "";
     setBatchProgress({ current: 0, total: pendingScenes.length });
     try {
       const provider = new HttpVideoGenerationProvider({ baseUrl: connection.baseUrl, token: connection.token });
@@ -499,6 +500,7 @@ export default function App() {
         const imageBase64 = await imageUriToBase64(scene.imageUri!);
         const result = await provider.generate({ prompt: scene.videoPrompt || scene.description, imageBase64, durationSeconds: sceneClipDurationSeconds(workingProject), width: 1280, height: 704, fps: 24 });
         if (result.status !== "completed" || !result.outputUri) throw new Error(`${scene.title}: ${result.error || "o motor não retornou um clipe"}`);
+        lastEngineMessage = result.message || "";
         const localVideoUri = await persistGeneratedVideo(result.outputUri, workingProject.id, scene.title);
         workingProject = { ...workingProject, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: workingProject.scenes.map(item => item.title === scene.title ? { ...item, videoUri: localVideoUri, videoRemoteUri: result.outputUri } : item) };
         completed += 1;
@@ -506,7 +508,7 @@ export default function App() {
         setProjects(previous => previous.map(item => item.id === workingProject.id ? workingProject : item));
         setBatchProgress({ current: completed, total: pendingScenes.length });
       }
-      Alert.alert("Animação concluída", `${completed} novos clipes foram gerados.`);
+      Alert.alert("Clipes concluídos", `${completed} novos clipes foram criados. ${lastEngineMessage}`.trim());
     } catch (error) {
       Alert.alert("Geração interrompida", `${completed} de ${pendingScenes.length} clipes pendentes concluídos. ${error instanceof Error ? error.message : "Falha desconhecida."}`);
     } finally {
