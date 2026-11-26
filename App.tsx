@@ -475,6 +475,27 @@ export default function App() {
     }
   };
 
+  const downloadFinalVideo = async () => {
+    if (!selected?.finalVideoRemoteUri) return;
+    setBusyScene("download:final");
+    try {
+      const directory = `${FileSystem.documentDirectory}final-videos/`;
+      const info = await FileSystem.getInfoAsync(directory);
+      if (!info.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
+      const destination = `${directory}${selected.id}-final-${Date.now()}.mp4`;
+      const result = await FileSystem.downloadAsync(selected.finalVideoRemoteUri, destination, {
+        headers: engineConfig.renderToken ? { Authorization: `Bearer ${engineConfig.renderToken}` } : undefined,
+      });
+      if (result.status < 200 || result.status >= 300) throw new Error(`O servidor retornou HTTP ${result.status}.`);
+      saveUpdatedProject({ ...selected, finalVideoUri: result.uri });
+      Alert.alert("MP4 salvo no iPhone", "Agora você pode exportar o vídeo para Arquivos ou compartilhar.");
+    } catch (error) {
+      Alert.alert("Falha ao baixar o MP4", error instanceof Error ? error.message : "Tente novamente.");
+    } finally {
+      setBusyScene(null);
+    }
+  };
+
   const exportSceneVideo = async (scene: Scene) => {
     if (!scene.videoUri) return;
     if (!scene.videoUri.startsWith("file://")) {
@@ -929,6 +950,7 @@ export default function App() {
               {selected.finalVideoUri ? <>
                 <Text style={styles.label}>VÍDEO COMPLETO DO PROJETO</Text>
                 <SceneVideoPlayer uri={selected.finalVideoUri} />
+                {!selected.finalVideoUri.startsWith("file://") ? <TouchableOpacity style={styles.secondary} disabled={!!busyScene} onPress={downloadFinalVideo}><Text style={styles.secondaryText}>{busyScene === "download:final" ? "BAIXANDO MP4…" : "BAIXAR MP4 PARA O IPHONE"}</Text></TouchableOpacity> : null}
                 <TouchableOpacity style={styles.secondary} onPress={async () => {
                   if (!selected.finalVideoUri?.startsWith("file://")) {
                     Alert.alert("Arquivo indisponível", "Baixe novamente o MP4 final para exportá-lo.");
