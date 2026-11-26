@@ -39,21 +39,23 @@ class RemoteImageQueueTests(unittest.TestCase):
         self.assertEqual(len(background.tasks), 1)
         self.assertIs(background.tasks[0].func, main.run_image_generation_job)
 
-    def test_remote_space_rejects_reference_images_before_queueing(self):
+    def test_remote_space_queues_reference_images_for_img2img(self):
+        reference = b"\\x89PNG\\r\\n\\x1a\\nreference"
         payload = main.ImageGenerationRequest(
             prompt="cinematic anime scene",
             width=512,
             height=512,
-            referenceImageBase64=base64.b64encode(b"\x89PNG\r\n\x1a\nreference").decode("ascii"),
+            referenceImageBase64=base64.b64encode(reference).decode("ascii"),
         )
+        background = BackgroundTasks()
         with patch.object(main, "image_engine_status", return_value={"available": False}), patch.object(
             main, "huggingface_image_engine_status", return_value=self.engine_status
         ), patch.object(main, "prune_generation_state"), patch.object(main, "persist_generation_job"):
-            with self.assertRaises(HTTPException) as raised:
-                main.request_image_generation(payload, BackgroundTasks(), "Bearer remote-image-test-token")
+            result = main.request_image_generation(payload, background, "Bearer remote-image-test-token")
 
-        self.assertEqual(raised.exception.status_code, 422)
-        self.assertIn("somente texto", raised.exception.detail)
+        self.assertEqual(result["status"], "queued")
+        self.assertEqual(len(background.tasks), 1)
+        self.assertEqual(background.tasks[0].args[2], reference)
 
 
     def test_worker_persists_completed_image_and_download_grant(self):
