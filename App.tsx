@@ -722,6 +722,7 @@ export default function App() {
     setProjects(previous => [project, ...previous]);
     setSelected(project);
     setIdea("");
+    Alert.alert("História organizada!", `O Estúdio 2D montou ${project.scenes.length} cenas automaticamente. Você pode revisar o roteiro e editar qualquer cena, sem precisar preencher os espaços manualmente.`);
   };
 
   const copyScript = async () => {
@@ -868,9 +869,9 @@ export default function App() {
             ))}</View>
 
             <TouchableOpacity style={styles.primary} onPress={createProject}>
-              <Text style={styles.primaryText}>✦  CRIAR MEU PROJETO</Text><Text style={styles.arrow}>→</Text>
+              <Text style={styles.primaryText}>✦  CRIAR HISTÓRIA E PREENCHER CENAS</Text><Text style={styles.arrow}>→</Text>
             </TouchableOpacity>
-            <Text style={styles.note}>O app já organiza a história, os personagens e as cenas. O motor próprio de imagens, animação, voz e montagem integrada está em desenvolvimento; você não precisará configurar ComfyUI, workflows ou instalar plugins.</Text>
+            <Text style={styles.note}>Esta etapa organiza automaticamente o roteiro e preenche todas as cenas. Isso ainda é um planejador local, não uma IA generativa. A criação real de imagens, animações e vozes depende do motor de IA hospedado.</Text>
           </View>
 
           <View style={styles.sectionHeader}>
