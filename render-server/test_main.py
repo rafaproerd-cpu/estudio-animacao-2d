@@ -222,6 +222,37 @@ class RenderServerTests(unittest.TestCase):
             main.API_TOKEN = original_token
             main.OUTPUT_DIR = original_output
 
+    def test_render_endpoint_mixes_narration_and_background_music_at_expected_levels(self):
+        original_token = main.API_TOKEN
+        original_output = main.OUTPUT_DIR
+        try:
+            main.API_TOKEN = "integration-test-token"
+            with tempfile.TemporaryDirectory() as temp_dir:
+                main.OUTPUT_DIR = Path(temp_dir)
+
+                def fake_ffmpeg(arguments):
+                    Path(arguments[-1]).write_bytes(b"\\x00\\x00\\x00\\x18ftypisom\\x00\\x00\\x02\\x00" + (b"mock-mp4-data" * 3))
+
+                clip = UploadFile(filename="scene.mp4", file=BytesIO(b"fake-video"))
+                narration = UploadFile(filename="narration.wav", file=BytesIO(b"fake-narration"))
+                music = UploadFile(filename="music.mp3", file=BytesIO(b"fake-music"))
+                with patch.object(main, "run_ffmpeg", side_effect=fake_ffmpeg) as mocked:
+                    result = asyncio.run(main.render_video(
+                        [clip], narration, music, "Audio test", "Bearer integration-test-token"
+                    ))
+
+                audio_command = mocked.call_args_list[-1].args[0]
+                audio_filter = audio_command[audio_command.index("-filter_complex") + 1]
+                self.assertIn("[1:a]volume=1.0[narr]", audio_filter)
+                self.assertIn("[2:a]volume=0.18[music]", audio_filter)
+                self.assertIn("amix=inputs=2", audio_filter)
+                self.assertIn("apad[aout]", audio_filter)
+                self.assertIn("-shortest", audio_command)
+                self.assertTrue((main.OUTPUT_DIR / f"{result.id}.mp4").is_file())
+        finally:
+            main.API_TOKEN = original_token
+            main.OUTPUT_DIR = original_output
+
     def test_render_endpoint_rejects_invalid_final_mp4_output(self):
         original_token = main.API_TOKEN
         original_output = main.OUTPUT_DIR
