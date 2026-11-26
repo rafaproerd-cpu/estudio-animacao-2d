@@ -497,6 +497,12 @@ def request_video_generation(
     return {"job_id": job_id, "status": "queued", "progress": 0.0, "message": "Animação adicionada à fila."}
 
 
+@app.get("/healthz")
+def public_health_check() -> dict[str, bool]:
+    """Health check público mínimo para o provedor de hospedagem; não revela estado nem exige segredo."""
+    return {"ok": True}
+
+
 @app.get("/health")
 def health(authorization: Annotated[str | None, Header()] = None) -> dict[str, str | bool]:
     require_token(authorization)
