@@ -23,7 +23,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from image_engine import IMAGE_OUTPUT_DIR, active_image_engine_status, generate_image, image_engine_status, huggingface_image_engine_status
-from video_engine import WAN_OUTPUT_DIR, generate_wan_video, validate_reference_image, video_engine_status
+from video_engine import WAN_OUTPUT_DIR, generate_wan_video, validate_mp4_output, validate_reference_image, video_engine_status
 from story_engine import generate_story_plan, story_engine_status
 
 APP_DIR = Path(__file__).resolve().parent
@@ -787,8 +787,10 @@ async def render_video(
             else:
                 shutil.copy2(joined_video, output_file)
 
-        if not output_file.exists() or output_file.stat().st_size == 0:
-            raise HTTPException(status_code=500, detail="O FFmpeg não produziu o MP4 final.")
+        try:
+            validate_mp4_output(output_file)
+        except RuntimeError as error:
+            raise HTTPException(status_code=500, detail="O FFmpeg não produziu um MP4 final válido.") from error
         return RenderResponse(
             id=render_id,
             filename=f"{normalized_name}.mp4",
