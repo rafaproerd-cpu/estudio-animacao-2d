@@ -22,7 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from image_engine import IMAGE_OUTPUT_DIR, generate_sdxl_image, image_engine_status
+from image_engine import IMAGE_OUTPUT_DIR, active_image_engine_status, generate_image, image_engine_status, huggingface_image_engine_status
 from video_engine import WAN_OUTPUT_DIR, generate_wan_video, video_engine_status
 
 APP_DIR = Path(__file__).resolve().parent
@@ -181,7 +181,7 @@ def run_image_generation_job(job_id: str, payload: ImageGenerationRequest, refer
         generation_jobs[job_id].update({"status": "running", "message": "Carregando o motor de imagem e gerando a cena."})
     persist_generation_job(job_id)
     try:
-        output = generate_sdxl_image(
+        output = generate_image(
             prompt=payload.prompt.strip(),
             negative_prompt=payload.negative_prompt,
             width=payload.width,
@@ -352,7 +352,9 @@ def generation_capabilities(authorization: Annotated[str | None, Header()] = Non
             "note": "A detecção NVIDIA não confirma compatibilidade com um modelo; requisitos de VRAM e CUDA ainda precisam ser validados.",
         },
         "engines": {
-            "image": image_engine_status(),
+            "image": active_image_engine_status(),
+            "image_local": image_engine_status(),
+            "image_remote": huggingface_image_engine_status(),
             "video": video_engine_status(),
             "audio": {
                 "available": piper_available and bool(voices),
@@ -375,9 +377,9 @@ def request_image_generation(
     background_tasks: BackgroundTasks,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, object]:
-    """Enfileira SDXL somente quando modelo, dependências e dispositivo estão prontos."""
+    """Enfileira geração de imagem quando o motor local ou remoto está configurado."""
     require_token(authorization)
-    status = image_engine_status()
+    status = active_image_engine_status()
     if not status["available"]:
         raise HTTPException(status_code=503, detail=str(status["message"]) + " Consulte /v1/capabilities.")
     if not payload.prompt.strip():
