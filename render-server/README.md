@@ -89,7 +89,7 @@ O primeiro carregamento pode baixar vários GB de pesos. O Dockerfile padrão n�
 - `GET /v1/jobs/{job_id}` consulta o estado; o resultado contém um link temporário privado para o PNG.
 - A fila é em memória, com uma tarefa ativa por padrão; reiniciar o processo perde o histórico dos jobs.
 - O motor suporta texto-para-imagem e image-to-image com referência PNG/JPEG em Base64 (`referenceImageBase64`). A UI pode reutilizar a primeira imagem como referência das cenas seguintes; o pipeline troca entre SDXL txt2img e img2img, mantendo apenas um carregado por vez.
-- O motor Wan2.2 é opcional e exige o runtime oficial, pesos e aproximadamente 23 GB de VRAM livre; sem isso, `POST /v1/generations/videos` retorna HTTP 503.
+- Quando Wan2.2 não está configurado, o endpoint de vídeo usa um fallback FFmpeg que cria um MP4 com movimento suave de câmera (zoom/pan) sobre a imagem estática. Isso é uma animação de câmera, não movimento de personagens gerado por IA. O status da capacidade identifica esse modo como `ready_motion_only`.
 
 ## Geração remota de imagens via Hugging Face ZeroGPU
 
@@ -108,9 +108,9 @@ HF_SPACE_ID=seu-usuario/seu-space
 HF_TOKEN=
 ```
 
-## Motor experimental de vídeo Wan2.2 TI2V 5B
+## Vídeo: fallback de câmera e motor IA Wan2.2
 
-O adaptador opcional usa o CLI oficial do projeto Wan2.2. O checkpoint TI2V 5B suporta texto+imagem para vídeo, 720p a 24 FPS e a configuração oficial de uma GPU requer pelo menos 24 GB de VRAM. O backend chama o script oficial `generate.py`, sem shell.
+O endpoint de vídeo funciona em dois níveis. Sem GPU, o fallback FFmpeg cria um clipe MP4 com movimento de câmera sobre a imagem fornecida; não inventa movimentos de personagens ou novos elementos. Para movimento real sintetizado por IA, o adaptador opcional usa o CLI oficial do projeto Wan2.2. O checkpoint TI2V 5B suporta texto+imagem para vídeo, 720p a 24 FPS e a configuração oficial de uma GPU requer pelo menos 24 GB de VRAM. O backend chama o script oficial `generate.py`, sem shell.
 
 Instalação em uma máquina GPU:
 1. Clone `https://github.com/Wan-Video/Wan2.2`.
