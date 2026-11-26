@@ -22,8 +22,8 @@ def generate_image(prompt: str, seed: int = 12345):
     prompt = (prompt or "").strip()
     if len(prompt) < 8:
         raise gr.Error("Descreva a cena com pelo menos 8 caracteres.")
-    if len(prompt) > 1200:
-        raise gr.Error("A descrição deve ter no máximo 1.200 caracteres.")
+    if len(prompt) > 3000:
+        raise gr.Error("A descrição deve ter no máximo 3.000 caracteres.")
 
     safe_seed = int(seed) % (2**32)
     generator = torch.Generator(device="cuda").manual_seed(safe_seed)
