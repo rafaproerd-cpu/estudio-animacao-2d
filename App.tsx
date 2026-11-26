@@ -709,43 +709,12 @@ export default function App() {
           <View style={styles.privatePill}><Text style={styles.privateText}>PESSOAL</Text></View>
         </View>
 
-        <TouchableOpacity style={styles.settingsButton} disabled={!!busyScene} onPress={() => setShowSettings(value => !value)}><Text style={styles.backText}>{showSettings ? "FECHAR OPÇÕES TÉCNICAS" : "⚙  OPÇÕES TÉCNICAS (EM DESENVOLVIMENTO)"}</Text></TouchableOpacity>
-        {showSettings && <View style={styles.panel}>
-          <Text style={styles.step}>PAINEL TÉCNICO PROVISÓRIO</Text>
-          <Text style={styles.panelTitle}>Motores de geração</Text>
-          <Text style={styles.note}>Esta área ainda é provisória e exige configuração manual. Ela não representa a experiência final que estamos construindo. A meta é substituir estas etapas por motores integrados ao Estúdio 2D, sem exigir que você cole workflows ou configure serviços externos. Até essa integração ficar pronta, a geração de imagens e vídeos ainda não funciona automaticamente.</Text>
-          <Text style={styles.step}>MOTOR DE IMAGENS · CONEXÃO EXPERIMENTAL</Text>
-          <Text style={styles.label}>ENDEREÇO DO SERVIDOR</Text>
-          <TextInput value={comfyConfig.baseUrl} onChangeText={value => setComfyConfig(prev => ({ ...prev, baseUrl: value }))} autoCapitalize="none" placeholder="https://seu-servidor:8188" placeholderTextColor="#777789" style={styles.input} />
-          <Text style={styles.label}>WORKFLOW API JSON DE IMAGEM</Text>
-          <TextInput value={comfyConfig.workflowText} onChangeText={value => setComfyConfig(prev => ({ ...prev, workflowText: value }))} multiline textAlignVertical="top" placeholder="Cole aqui o JSON exportado em formato API pelo ComfyUI" placeholderTextColor="#777789" style={styles.workflowInput} />
-          <Text style={styles.label}>ID DO NÓ DE PROMPT POSITIVO (CLIPTextEncode)</Text>
-          <TextInput value={comfyConfig.positiveNode} onChangeText={value => setComfyConfig(prev => ({ ...prev, positiveNode: value }))} keyboardType="number-pad" placeholder="Ex.: 6" placeholderTextColor="#777789" style={styles.smallInput} />
-          <Text style={styles.label}>ID DO NÓ DE PROMPT NEGATIVO (OPCIONAL)</Text>
-          <TextInput value={comfyConfig.negativeNode} onChangeText={value => setComfyConfig(prev => ({ ...prev, negativeNode: value }))} keyboardType="number-pad" placeholder="Ex.: 7" placeholderTextColor="#777789" style={styles.smallInput} />
-          <Text style={styles.label}>ID DOS NÓS DE LARGURA / ALTURA / SEED (OPCIONAIS)</Text>
-          <View style={styles.inlineInputs}>{(["widthNode", "heightNode", "seedNode"] as const).map((key, index) => <TextInput key={key} value={comfyConfig[key]} onChangeText={value => setComfyConfig(prev => ({ ...prev, [key]: value }))} keyboardType="number-pad" placeholder={["Largura", "Altura", "Seed"][index]} placeholderTextColor="#777789" style={[styles.smallInput, { flex: 1 }]} />)}</View>
-          <Text style={styles.label}>WORKFLOW API DE VÍDEO (IMAGEM-PARA-VÍDEO)</Text>
-          <TextInput value={comfyConfig.videoWorkflowText || ""} onChangeText={value => setComfyConfig(prev => ({ ...prev, videoWorkflowText: value }))} multiline textAlignVertical="top" placeholder="Cole o workflow API de vídeo com LoadImage e SaveVideo" placeholderTextColor="#777789" style={styles.workflowInput} />
-          <Text style={styles.label}>NÓS DO WORKFLOW DE VÍDEO</Text>
-          <View style={styles.inlineInputs}>
-            {(["videoImageNode", "videoPositiveNode", "videoNegativeNode"] as const).map((key, index) => <TextInput key={key} value={comfyConfig[key] || ""} onChangeText={value => setComfyConfig(prev => ({ ...prev, [key]: value }))} keyboardType="number-pad" placeholder={["LoadImage", "Prompt+", "Prompt-"][index]} placeholderTextColor="#777789" style={[styles.smallInput, { flex: 1 }]} />)}
-          </View>
-          <Text style={styles.label}>NÓS OPCIONAIS: LARGURA / ALTURA / QUADROS / FPS / SEED</Text>
-          <View style={styles.inlineInputs}>
-            {(["videoWidthNode", "videoHeightNode", "videoFramesNode", "videoFpsNode", "videoSeedNode"] as const).map((key, index) => <TextInput key={key} value={comfyConfig[key] || ""} onChangeText={value => setComfyConfig(prev => ({ ...prev, [key]: value }))} keyboardType="number-pad" placeholder={["Larg.", "Alt.", "Frames", "FPS", "Seed"][index]} placeholderTextColor="#777789" style={[styles.smallInput, { flex: 1 }]} />)}
-          </View>
-          <Text style={styles.note}>O workflow de imagem termina em SaveImage. O de vídeo precisa ter LoadImage conectado ao modelo de animação e SaveVideo na saída. Os nomes de entrada padrão do adaptador são image, text, width, height, length, fps e seed. Cada clique gera um clipe de referência de 4 segundos a 16 FPS.</Text>
-          <Text style={styles.step}>MONTAGEM DO MP4 FINAL · SERVIDOR PRÓPRIO</Text>
-          <Text style={styles.note}>Este serviço usa FFmpeg na mesma máquina ou rede do ComfyUI. Configure-o seguindo render-server/README.md.</Text>
-          <Text style={styles.label}>ENDEREÇO DO SERVIDOR DE MONTAGEM</Text>
-          <TextInput value={comfyConfig.renderBaseUrl || ""} onChangeText={value => setComfyConfig(prev => ({ ...prev, renderBaseUrl: value }))} autoCapitalize="none" placeholder="http://IP-DO-SERVIDOR:8765" placeholderTextColor="#777789" style={styles.input} />
-          <Text style={styles.label}>TOKEN DE ACESSO DO SERVIDOR</Text>
-          <TextInput value={comfyConfig.renderToken || ""} onChangeText={value => setComfyConfig(prev => ({ ...prev, renderToken: value }))} autoCapitalize="none" secureTextEntry placeholder="Token configurado no servidor" placeholderTextColor="#777789" style={styles.smallInput} />
-          <TouchableOpacity style={styles.secondary} onPress={testRenderConnection}><Text style={styles.secondaryText}>TESTAR SERVIDOR DE MONTAGEM</Text></TouchableOpacity>
-          <TouchableOpacity style={styles.secondary} onPress={saveComfyConfig}><Text style={styles.secondaryText}>SALVAR CONFIGURAÇÃO</Text></TouchableOpacity>
-          <TouchableOpacity style={styles.primary} onPress={testComfyConnection}><Text style={styles.primaryText}>TESTAR CONEXÃO</Text><Text style={styles.arrow}>→</Text></TouchableOpacity>
-        </View>}\n
+        <View style={styles.panel}>
+          <Text style={styles.step}>ESTÚDIO 2D · PRÉVIA DE DESENVOLVIMENTO</Text>
+          <Text style={styles.panelTitle}>Seu espaço de criação</Text>
+          <Text style={styles.note}>Você já pode organizar ideias, personagens e cenas. A geração automática de imagens e animações ainda está em desenvolvimento e será integrada aqui, sem exigir configurações técnicas ou pacotes de créditos.</Text>
+        </View>
+
         <View style={styles.hero}>
           <Text style={styles.eyebrow}>IDEIAS QUE GANHAM VIDA</Text>
           <Text style={styles.heading}>Crie sua próxima{"\n"}<Text style={styles.headingAccent}>animação.</Text></Text>
