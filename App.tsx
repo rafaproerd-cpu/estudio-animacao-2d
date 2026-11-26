@@ -228,7 +228,7 @@ export default function App() {
   };
 
   const getEngineConnection = () => {
-      const baseUrl = (engineConfig.renderBaseUrl || "").trim().replace(/\/+$/, "");
+      const baseUrl = (engineConfig.renderBaseUrl || "").trim().replace(new RegExp("/+$"), "");
     const token = (engineConfig.renderToken || "").trim();
     if (!isAllowedEngineUrl(baseUrl) || !token) {
       Alert.alert("Conecte o motor do Estúdio 2D", "Informe um endereço HTTPS seguro e o token na opção Conectar motor.");
