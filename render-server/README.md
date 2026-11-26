@@ -91,6 +91,23 @@ O primeiro carregamento pode baixar vários GB de pesos. O Dockerfile padrão n�
 - O motor suporta texto-para-imagem e image-to-image com referência PNG/JPEG em Base64 (`referenceImageBase64`). A UI pode reutilizar a primeira imagem como referência das cenas seguintes; o pipeline troca entre SDXL txt2img e img2img, mantendo apenas um carregado por vez.
 - O motor Wan2.2 é opcional e exige o runtime oficial, pesos e aproximadamente 23 GB de VRAM livre; sem isso, `POST /v1/generations/videos` retorna HTTP 503.
 
+## Geração remota de imagens via Hugging Face ZeroGPU
+
+Como alternativa ao SDXL instalado em uma GPU própria, o servidor pode chamar um Space Gradio configurado com ZeroGPU. Isso não hospeda o backend automaticamente e depende de um Space criado na conta Hugging Face do usuário, da fila e da cota de GPU dessa conta.
+
+1. Crie um Space Gradio com ZeroGPU e publique os arquivos de `huggingface-space/` deste repositório.
+2. No ambiente do servidor de renderização, configure `HF_SPACE_ID=seu-usuario/seu-space`.
+3. Para Space privado, configure também `HF_TOKEN` como segredo do servidor. Nunca coloque esse token no aplicativo ou no código público.
+4. Instale `render-server/requirements.txt` e consulte `GET /v1/capabilities`.
+
+Quando o SDXL local não estiver pronto, o backend tentará usar o Space remoto. O protótipo atual gera imagens quadradas de 512×512 e não recebe imagem de referência, não mantém identidade de personagens por conta própria e não gera vídeo. O status `configured_unverified` significa que as configurações existem; somente uma chamada real confirma que o Space está acordado, autorizado e com cota disponível.
+
+Exemplo de variáveis:
+```bash
+HF_SPACE_ID=seu-usuario/seu-space
+HF_TOKEN=
+```
+
 ## Motor experimental de vídeo Wan2.2 TI2V 5B
 
 O adaptador opcional usa o CLI oficial do projeto Wan2.2. O checkpoint TI2V 5B suporta texto+imagem para vídeo, 720p a 24 FPS e a configuração oficial de uma GPU requer pelo menos 24 GB de VRAM. O backend chama o script oficial `generate.py`, sem shell.
@@ -116,9 +133,9 @@ O endpoint recebe `prompt`, `imageBase64` (PNG/JPEG), `durationSeconds` de 1 a 5
 
 ## Estado dos motores integrados
 
-O endpoint `GET /v1/capabilities` é a fonte de verdade sobre os recursos instalados. O motor de imagem só aparece como `ready` quando SDXL, PyTorch, Diffusers e memória de GPU suficiente estão disponíveis. O motor de vídeo só aparece como `ready` quando o CLI oficial do Wan2.2, checkpoint, PyTorch/CUDA e memória livre suficiente estão configurados.
+O endpoint `GET /v1/capabilities` é a fonte de verdade sobre os recursos instalados. O motor de imagem informa se SDXL local está pronto ou se há um Space Hugging Face remoto configurado; um Space configurado ainda precisa ser testado por uma chamada real. O motor de vídeo só aparece como `ready` quando o CLI oficial do Wan2.2, checkpoint, PyTorch/CUDA e memória livre suficiente estão configurados.
 
 
 ### Endpoints de geração de imagem e vídeo
 
-`POST /v1/generations/images` cria uma tarefa real somente quando o motor SDXL está pronto; caso contrário, exige token e retorna HTTP 503. `GET /v1/jobs/{job_id}` devolve o estado e o link de saída. `POST /v1/generations/videos` cria um job Wan2.2 TI2V quando o runtime está pronto; caso contrário, retorna HTTP 503. Consulte `GET /v1/capabilities` antes de iniciar uma geração.
+`POST /v1/generations/images` cria uma tarefa real quando SDXL local ou um Space Hugging Face remoto está configurado; a disponibilidade remota depende da fila e da cota do Space. `GET /v1/jobs/{job_id}` devolve o estado e o link de saída. `POST /v1/generations/videos` cria um job Wan2.2 TI2V quando o runtime está pronto; caso contrário, retorna HTTP 503. Consulte `GET /v1/capabilities` antes de iniciar uma geração.
