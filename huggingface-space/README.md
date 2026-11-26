@@ -15,8 +15,10 @@ Este Space é um protótipo de prova de conceito para gerar uma imagem com SDXL 
 
 ## O que ele faz
 - Recebe uma descrição curta de cena.
-- Gera uma imagem horizontal 16:9 (768×432) com quatro passos de inferência, pronta para o quadro do estúdio sem cortar o topo ou a base da composição.
-- Expõe a função Gradio com o nome de API generate, para futura conexão com o servidor do Estúdio 2D.
+- Gera uma imagem horizontal 16:9 (768×432) com quatro passos de inferência.
+- Aceita uma imagem de referência opcional e usa img2img para orientar a aparência da cena seguinte.
+- Mantém a mesma semente do projeto quando enviada pelo Estúdio.
+- Expõe a função Gradio `generate` para conexão com o servidor do Estúdio 2D.
 
 ## Publicação
 1. Crie um Space novo no Hugging Face.
@@ -29,6 +31,6 @@ Não coloque tokens privados nos arquivos. Para contas gratuitas, a cota diária
 
 ## Limitações
 - Este é apenas o primeiro teste de imagem, não gera vídeo.
-- O modelo é SDXL Turbo; consistência de personagem entre cenas ainda não está implementada.
+- O modelo é SDXL Turbo. A imagem de referência ajuda a manter a aparência entre cenas, mas não garante identidade perfeita do personagem.
 - O projeto ainda não está conectado automaticamente a um Space publicado.
 - A disponibilidade do ZeroGPU depende da elegibilidade e das cotas da conta.
