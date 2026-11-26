@@ -87,7 +87,7 @@ O primeiro carregamento pode baixar vários GB de pesos. O Dockerfile padrão n�
 
 - `POST /v1/generations/images` recebe `prompt`, `negativePrompt`, `width`, `height`, `seed` e, opcionalmente, `referenceImageBase64` (PNG/JPEG), e devolve `job_id`.
 - `GET /v1/jobs/{job_id}` consulta o estado; o resultado contém um link temporário privado para o PNG.
-- A fila é em memória, com uma tarefa ativa por padrão; reiniciar o processo perde o histórico dos jobs.
+- A execução da fila é em memória, com uma tarefa ativa por padrão. O estado dos jobs e os tokens temporários de download são registrados em SQLite (`GENERATION_STATE_DB`, por padrão dentro de `RENDER_OUTPUT_DIR`); após reiniciar, tarefas que estavam em andamento são marcadas como interrompidas. Em hospedagens com disco efêmero, o banco e os arquivos ainda podem desaparecer em reinicializações ou novos deploys.
 - O motor suporta texto-para-imagem e image-to-image com referência PNG/JPEG em Base64 (`referenceImageBase64`). A UI pode reutilizar a primeira imagem como referência das cenas seguintes; o pipeline troca entre SDXL txt2img e img2img, mantendo apenas um carregado por vez.
 - Quando Wan2.2 não está configurado, o endpoint de vídeo usa um fallback FFmpeg que cria um MP4 com movimento suave de câmera (zoom/pan) sobre a imagem estática. Isso é uma animação de câmera, não movimento de personagens gerado por IA. O status da capacidade identifica esse modo como `ready_motion_only`.
 
