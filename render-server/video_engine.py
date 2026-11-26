@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 import shutil
 import subprocess
@@ -153,7 +154,9 @@ def _generate_camera_motion_video(image_bytes: bytes, duration_seconds: float) -
 
 
 def wan_frame_count(duration_seconds: float) -> int:
-    """Converte duração em frames válidos para o CLI Wan2.2 (4n + 1)."""
+    """Converte duração finita em frames válidos para o CLI Wan2.2 (4n + 1)."""
+    if not math.isfinite(duration_seconds):
+        raise ValueError("A duração do vídeo precisa ser um número finito.")
     frame_target = round(max(0.0, duration_seconds) * 24)
     return max(5, min(121, round((frame_target - 1) / 4) * 4 + 1))
 
