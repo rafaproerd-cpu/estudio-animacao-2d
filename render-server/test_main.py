@@ -231,7 +231,7 @@ class RenderServerTests(unittest.TestCase):
                 main.OUTPUT_DIR = Path(temp_dir)
 
                 def fake_ffmpeg(arguments):
-                    Path(arguments[-1]).write_bytes(b"\\x00\\x00\\x00\\x18ftypisom\\x00\\x00\\x02\\x00" + (b"mock-mp4-data" * 3))
+                    Path(arguments[-1]).write_bytes(b"\x00\x00\x00\x18ftypisom\x00\x00\x02\x00" + (b"mock-mp4-data" * 3))
 
                 clip = UploadFile(filename="scene.mp4", file=BytesIO(b"fake-video"))
                 narration = UploadFile(filename="narration.wav", file=BytesIO(b"fake-narration"))
