@@ -5,7 +5,7 @@ A pessoa deve criar um projeto, descrever a história e produzir cenas, imagens,
 
 ## Situação real atual
 - O app organiza projetos e cria um storyboard local baseado em regras e modelos de texto. Isso ainda não é um modelo de IA generativa.
-- A geração de imagens e de clipes está ligada a um adaptador ComfyUI que exige servidor, workflow e IDs de nós preenchidos manualmente.
+- Existe um adaptador HTTP genérico no app para um futuro motor integrado. A geração real ainda não está conectada.
 - O servidor FastAPI/FFmpeg monta clipes e tem endpoints opcionais de voz Piper, mas precisa ser hospedado e receber os modelos/binários necessários.
 - A interface web está publicada; isso não hospeda o motor de inferência.
 - Não existe neste momento um serviço de geração de imagem/vídeo pronto, ilimitado e gratuito conectado ao app.
@@ -19,7 +19,7 @@ A pessoa deve criar um projeto, descrever a história e produzir cenas, imagens,
 6. **Experiência mobile-first:** uma tela de criação e uma fila de produção; nenhum campo de servidor/workflow na experiência normal.
 
 ## Restrições honestas
-- Modelos abertos podem ser usados sem pagar licença, mas inferência de vídeo exige GPU, memória, armazenamento e energia.
+- `requiresPaidCredits: false` nos adaptadores significa apenas que não há cobrança por créditos de API de terceiros; não significa hospedagem/inferência gratuita. Modelos abertos podem ser usados sem pagar licença, mas inferência de vídeo exige GPU, memória, armazenamento e energia.
 - GitHub Pages só publica a interface estática; não executa modelos.
 - Um container Docker empacota o backend, mas não fornece GPU nem hospedagem.
 - Hospedagem gratuita tem limites, pode dormir ou não oferecer GPU. Não prometer geração ilimitada gratuita.
@@ -48,4 +48,4 @@ O app agora possui adaptadores genéricos em `src/engine/providers/httpGeneratio
 
 A API responde com `job_id`; a consulta de status devolve `queued`, `running`, `completed`, `failed` ou `cancelled`. Ao concluir, informa `output_url`. O app resolve URLs relativas contra o endereço-base e aceita token Bearer opcional.
 
-**Importante:** estes adaptadores definem e implementam o lado cliente do contrato. Os endpoints correspondentes ainda não existem no servidor, então eles não ativam geração por si só. A próxima etapa é implementar fila de tarefas e adaptadores reais de modelos no backend, com detecção de hardware e mensagens de indisponibilidade.
+**Importante:** os endpoints `POST /v1/generations/images` e `POST /v1/generations/videos` já existem no backend, mas retornam HTTP 503 de forma intencional até que modelos reais sejam instalados. Ainda não há fila de jobs nem geração de imagem/vídeo ativa. Os adaptadores do app não ativam geração por si só. Próxima etapa: definir e testar o contrato de capacidades e jobs antes de instalar um modelo real.
