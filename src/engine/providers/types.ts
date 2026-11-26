@@ -39,6 +39,8 @@ export type ImageGenerationRequest = {
   height: number;
   seed?: number;
   referenceImageUris?: string[];
+  /** Imagem-chave PNG/JPEG em Base64 para manter a aparência do personagem. */
+  referenceImageBase64?: string;
 };
 
 export type VideoGenerationRequest = {
