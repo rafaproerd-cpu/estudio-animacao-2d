@@ -47,7 +47,7 @@ export type StoryPlan = {
   visualStyle: string;
   continuityRules: string[];
   scenes: PlannedScene[];
-  generatedBy: "local-template";
+  generatedBy: "local-template" | "ai-provider";
 };
 
 const VISUAL_STYLE =
