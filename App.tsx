@@ -249,14 +249,21 @@ export default function App() {
         URL.revokeObjectURL(objectUrl);
       }
     }
-    const directory = (FileSystem.documentDirectory || "") + "generated-images/";
-    const info = await FileSystem.getInfoAsync(directory);
-    if (!info.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
-    const safeName = sceneTitle.replace(/[^a-z0-9-_]/gi, "-").slice(0, 48) || "scene";
-    const destination = directory + projectId + "-" + safeName + "-" + Date.now() + ".png";
-    const download = await FileSystem.downloadAsync(remoteUri, destination);
-    if (download.status < 200 || download.status >= 300) throw new Error("A imagem foi gerada, mas não foi possível salvá-la no iPhone.");
-    return download.uri;
+    try {
+      if (!FileSystem.documentDirectory) throw new Error("Armazenamento local indisponível.");
+      const directory = FileSystem.documentDirectory + "generated-images/";
+      const info = await FileSystem.getInfoAsync(directory);
+      if (!info.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
+      const safeName = sceneTitle.replace(/[^a-z0-9-_]/gi, "-").slice(0, 48) || "scene";
+      const destination = directory + projectId + "-" + safeName + "-" + Date.now() + ".png";
+      const download = await FileSystem.downloadAsync(remoteUri, destination);
+      if (download.status < 200 || download.status >= 300) throw new Error(`HTTP ${download.status}`);
+      return download.uri;
+    } catch (error) {
+      // Preserve a imagem gerada mesmo quando o aparelho não consegue copiá-la localmente.
+      console.warn("Imagem gerada, mas a cópia local falhou:", error);
+      return remoteUri;
+    }
   };
 
   const persistGeneratedVideo = async (remoteUri: string, projectId: string, sceneTitle: string) => {
@@ -300,7 +307,7 @@ export default function App() {
       const localUri = await persistGeneratedImage(result.outputUri, selected.id, scene.title);
       const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, imageUri: localUri, videoUri: undefined, videoRemoteUri: undefined } : item) };
       saveUpdatedProject(updated);
-      Alert.alert("Imagem gerada", "A imagem foi criada pelo motor do Estúdio 2D e salva no iPhone.");
+      Alert.alert("Imagem gerada", "A imagem foi criada pelo motor do Estúdio 2D. Se a cópia local falhar, o app mantém o link do arquivo.");
     } catch (error) { Alert.alert("Erro na geração", error instanceof Error ? error.message : "Não foi possível gerar a imagem."); }
     finally { setBusyScene(null); }
   };
@@ -385,7 +392,7 @@ export default function App() {
         setProjects(previous => previous.map(item => item.id === workingProject.id ? workingProject : item));
         setBatchProgress({ current: completed, total: pendingScenes.length });
       }
-      Alert.alert("Imagens concluídas", `${completed} imagens foram geradas e salvas no iPhone.`);
+      Alert.alert("Imagens concluídas", `${completed} imagens foram geradas. O app salvou localmente quando possível e manteve os links das demais.`);
     } catch (error) {
       Alert.alert("Geração interrompida", `${completed} de ${pendingScenes.length} imagens concluídas. ${error instanceof Error ? error.message : "Falha desconhecida."}`);
     } finally {
