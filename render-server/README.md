@@ -91,6 +91,19 @@ O primeiro carregamento pode baixar vários GB de pesos. O Dockerfile padrão n�
 - O primeiro pipeline é apenas texto-para-imagem. Referências visuais de personagem são recusadas até a implementação de image-to-image.
 - Vídeo ainda não está disponível; `POST /v1/generations/videos` continua retornando HTTP 503.
 
+## Motor experimental de vídeo Wan2.2 TI2V 5B
+
+O adaptador opcional usa o CLI oficial do projeto Wan2.2. O checkpoint TI2V 5B suporta texto+imagem para vídeo, 720p a 24 FPS e a configuração oficial de uma GPU requer pelo menos 24 GB de VRAM. O backend chama o script oficial `generate.py`, sem shell.
+
+Instalação em uma máquina GPU:
+1. Clone `https://github.com/Wan-Video/Wan2.2`.
+2. Instale PyTorch/CUDA compatíveis e as dependências oficiais do repositório (PyTorch 2.4 ou superior).
+3. Baixe `Wan-AI/Wan2.2-TI2V-5B` para um diretório persistente.
+4. Configure `WAN_GENERATE_SCRIPT` para o `generate.py` clonado, `WAN_CHECKPOINT_DIR` para os pesos, `WAN_PYTHON` para o Python desse ambiente e `WAN_SIZE=1280*704`.
+5. O backend verifica CUDA e pelo menos 24 GB de VRAM livre antes de aceitar jobs.
+
+O endpoint recebe `prompt`, `imageBase64` (PNG/JPEG), `durationSeconds` de 1 a 5 e `seed`. O backend escolhe um número de frames 4n+1 a 24 FPS, executa o CLI e retorna um link temporário protegido. Nenhum modelo foi instalado nem testado no ambiente publicado.
+
 ## Limites atuais
 
 - A montagem concatena os clipes em sequência; transições e efeitos ainda não estão implementados.
