@@ -339,7 +339,7 @@ def download_generated_media(
     if not media_path.is_file():
         raise HTTPException(status_code=404, detail="Arquivo gerado não encontrado ou já removido.")
     media_type = "video/mp4" if filename.startswith("video-") else "image/png"
-    return FileResponse(media_path, media_type=media_type, filename=filename)
+    return FileResponse(media_path, media_type=media_type, filename=filename, headers={"Cache-Control": "private, no-store"})
 
 
 @app.post("/v1/generations/videos")
@@ -533,7 +533,7 @@ def download_tts(tts_id: str, authorization: Annotated[str | None, Header()] = N
     audio_file = OUTPUT_DIR / ("tts-" + tts_id + ".wav")
     if not audio_file.is_file():
         raise HTTPException(status_code=404, detail="Áudio não encontrado ou já removido.")
-    return FileResponse(audio_file, media_type="audio/wav", filename="narracao-" + tts_id + ".wav")
+    return FileResponse(audio_file, media_type="audio/wav", filename="narracao-" + tts_id + ".wav", headers={"Cache-Control": "private, no-store"})
 
 
 @app.post("/render", response_model=RenderResponse)
@@ -659,4 +659,4 @@ def download_render(render_id: str, authorization: Annotated[str | None, Header(
     output_file = OUTPUT_DIR / f"{render_id}.mp4"
     if not output_file.is_file():
         raise HTTPException(status_code=404, detail="Vídeo não encontrado ou já removido.")
-    return FileResponse(output_file, media_type="video/mp4", filename=f"estudio-2d-{render_id}.mp4")
+    return FileResponse(output_file, media_type="video/mp4", filename=f"estudio-2d-{render_id}.mp4", headers={"Cache-Control": "private, no-store"})
