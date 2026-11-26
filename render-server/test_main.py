@@ -311,6 +311,44 @@ class RenderServerTests(unittest.TestCase):
         finally:
             main.IMAGE_OUTPUT_DIR = original_output
 
+    def test_image_queue_rejects_when_gpu_worker_is_busy(self):
+        original_token = main.API_TOKEN
+        original_limit = main.MAX_ACTIVE_IMAGE_JOBS
+        job_id = "b" * 32
+        try:
+            main.API_TOKEN = "generation-test-token"
+            main.MAX_ACTIVE_IMAGE_JOBS = 1
+            main.generation_jobs[job_id] = {"status": "running", "created_at": __import__("time").time()}
+            payload = main.ImageGenerationRequest(prompt="anime scene")
+            with patch.object(main, "image_engine_status", return_value={"available": True, "message": "ready"}):
+                with self.assertRaises(HTTPException) as raised:
+                    main.request_image_generation(payload, BackgroundTasks(), "Bearer generation-test-token")
+            self.assertEqual(raised.exception.status_code, 429)
+        finally:
+            main.generation_jobs.pop(job_id, None)
+            main.API_TOKEN = original_token
+            main.MAX_ACTIVE_IMAGE_JOBS = original_limit
+
+    def test_image_job_worker_publishes_completed_result_with_private_link(self):
+        original_output = main.IMAGE_OUTPUT_DIR
+        job_id = "c" * 32
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                main.IMAGE_OUTPUT_DIR = Path(temp_dir)
+                output = Path(temp_dir) / ("image-" + "d" * 32 + ".png")
+                output.write_bytes(b"fake-png")
+                main.generation_jobs[job_id] = {"status": "queued", "created_at": __import__("time").time()}
+                with patch.object(main, "generate_sdxl_image", return_value=output):
+                    main.run_image_generation_job(job_id, main.ImageGenerationRequest(prompt="anime scene"))
+                job = main.generation_jobs[job_id]
+                self.assertEqual(job["status"], "completed")
+                self.assertIn("/v1/files/" + output.name + "?token=", job["output_url"])
+                self.assertIn(output.name, main.generation_download_tokens)
+        finally:
+            main.generation_jobs.pop(job_id, None)
+            main.generation_download_tokens.pop(output.name, None)
+            main.IMAGE_OUTPUT_DIR = original_output
+
 
 if __name__ == "__main__":
     unittest.main()
