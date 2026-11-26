@@ -38,6 +38,21 @@ class ReferenceImageValidationTests(unittest.TestCase):
             video_engine.validate_reference_image(buffer.getvalue())
 
 
+class WanFrameCountTests(unittest.TestCase):
+    def test_frame_count_is_within_supported_bounds_and_matches_four_n_plus_one(self):
+        for duration in (0, 0.2, 1, 3, 5, 10, 30, 300):
+            with self.subTest(duration=duration):
+                count = video_engine.wan_frame_count(duration)
+                self.assertGreaterEqual(count, 5)
+                self.assertLessEqual(count, 121)
+                self.assertEqual((count - 1) % 4, 0)
+
+    def test_frame_count_scales_with_requested_duration_until_cap(self):
+        self.assertLess(video_engine.wan_frame_count(2), video_engine.wan_frame_count(5))
+        self.assertEqual(video_engine.wan_frame_count(30), 121)
+        self.assertEqual(video_engine.wan_frame_count(300), 121)
+
+
 class WanOutputValidationTests(unittest.TestCase):
     def test_accepts_iso_bmff_mp4_header(self):
         with tempfile.TemporaryDirectory() as directory:
