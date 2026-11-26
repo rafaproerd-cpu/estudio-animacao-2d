@@ -1,0 +1,6 @@
+gradio>=5.0,<6.0
+spaces
+diffusers>=0.30.0
+transformers>=4.44.0
+accelerate>=0.34.0
+safetensors>=0.4.4
