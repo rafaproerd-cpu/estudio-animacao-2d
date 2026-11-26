@@ -31,7 +31,8 @@ type Project = {
 };
 
 const STORAGE_KEY = "@estudio2d/projects-v1";
-const ENGINE_STORAGE_KEY = "@estudio2d/comfyui-v1";
+const ENGINE_STORAGE_KEY = "@estudio2d/engine-v2";
+const LEGACY_ENGINE_STORAGE_KEY = "@estudio2d/comfyui-v1";
 type EngineConfig = {
   renderBaseUrl?: string;
   renderToken?: string;
@@ -177,7 +178,7 @@ export default function App() {
 
   useEffect(() => {
     Promise.all([
-      AsyncStorage.getItem(ENGINE_STORAGE_KEY),
+      AsyncStorage.getItem(ENGINE_STORAGE_KEY).then(async current => current ?? await AsyncStorage.getItem(LEGACY_ENGINE_STORAGE_KEY)),
       readRenderToken(),
     ])
       .then(async ([value, token]) => {
@@ -185,7 +186,10 @@ export default function App() {
         const legacyToken = saved.renderToken;
         delete saved.renderToken;
         if (!token && legacyToken) await writeRenderToken(legacyToken);
-        if (value && legacyToken) await AsyncStorage.setItem(ENGINE_STORAGE_KEY, JSON.stringify(saved));
+        if (value) {
+          await AsyncStorage.setItem(ENGINE_STORAGE_KEY, JSON.stringify(saved));
+          await AsyncStorage.removeItem(LEGACY_ENGINE_STORAGE_KEY);
+        }
         setEngineConfig(prev => ({ ...prev, ...saved, renderToken: token || legacyToken || "" }));
       })
       .catch(() => Alert.alert("Aviso", "Não foi possível carregar as configurações seguras do servidor."));
@@ -1124,7 +1128,6 @@ const styles = StyleSheet.create({
   headingAccent: { color: "#A78BFA" },
   intro: { color: "#AAA8B8", fontSize: 14, lineHeight: 22, marginTop: 11 },
   settingsButton: { paddingVertical: 12, marginBottom: 8 },
-  workflowInput: { minHeight: 180, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 12, padding: 11, color: "#F7F5FF", fontSize: 10, lineHeight: 16 },
   smallInput: { minHeight: 46, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", borderRadius: 10, padding: 11, color: "#F7F5FF", fontSize: 12, marginBottom: 8 },
   inlineInputs: { flexDirection: "row", gap: 7 },
   generatedImage: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, marginTop: 10, backgroundColor: "#11111B" },
