@@ -9,6 +9,7 @@ from typing import Any
 IMAGE_MODEL_ID = os.getenv("IMAGE_MODEL_ID", "").strip()
 IMAGE_DEVICE = os.getenv("IMAGE_DEVICE", "cuda").strip().lower()
 IMAGE_STEPS = max(10, min(int(os.getenv("IMAGE_STEPS", "25")), 50))
+IMAGE_MIN_FREE_VRAM_MB = max(6000, int(os.getenv("IMAGE_MIN_FREE_VRAM_MB", "8000")))
 IMAGE_OUTPUT_DIR = Path(os.getenv("IMAGE_OUTPUT_DIR", os.getenv("RENDER_OUTPUT_DIR", "outputs"))).resolve()
 
 _pipeline: Any = None
@@ -33,6 +34,22 @@ def image_engine_status() -> dict[str, object]:
         cuda_available = False
     if IMAGE_DEVICE == "cuda" and not cuda_available:
         return {"available": False, "status": "gpu_unavailable", "message": "IMAGE_DEVICE=cuda, mas PyTorch não detectou uma GPU CUDA disponível."}
+    if IMAGE_DEVICE == "cuda":
+        try:
+            free_bytes, total_bytes = torch.cuda.mem_get_info()
+            free_mb = int(free_bytes / (1024 * 1024))
+            total_mb = int(total_bytes / (1024 * 1024))
+            if free_mb < IMAGE_MIN_FREE_VRAM_MB:
+                return {
+                    "available": False,
+                    "status": "insufficient_vram",
+                    "device": IMAGE_DEVICE,
+                    "vram_free_mb": free_mb,
+                    "vram_total_mb": total_mb,
+                    "message": f"SDXL requer margem de memória GPU. Disponível: {free_mb} MB; mínimo configurado: {IMAGE_MIN_FREE_VRAM_MB} MB.",
+                }
+        except Exception:
+            return {"available": False, "status": "gpu_diagnostics_failed", "message": "Não foi possível consultar a memória livre da GPU CUDA."}
     if IMAGE_DEVICE not in {"cuda", "cpu"}:
         return {"available": False, "status": "invalid_device", "message": "IMAGE_DEVICE deve ser cuda ou cpu."}
     if IMAGE_DEVICE == "cpu" and os.getenv("IMAGE_ALLOW_CPU", "").lower() not in {"1", "true", "yes"}:
