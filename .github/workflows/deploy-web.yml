@@ -24,8 +24,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Validate ZeroGPU Space Python syntax
-        run: python -m py_compile huggingface-space/app.py
+      - name: Validate ZeroGPU Space and render backend Python syntax
+        run: python -m py_compile huggingface-space/app.py render-server/main.py render-server/image_engine.py render-server/video_engine.py
 
   build:
     runs-on: ubuntu-latest
