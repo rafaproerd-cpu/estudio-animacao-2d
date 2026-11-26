@@ -10,16 +10,16 @@ _image_pipe = None
 
 def get_pipeline(use_reference: bool = False):
     global _text_pipe, _image_pipe
-    if use_reference:
-        if _image_pipe is None:
-            _image_pipe = AutoPipelineForImage2Image.from_pretrained(
-                MODEL_ID, torch_dtype=torch.float16, variant="fp16", use_safetensors=True
-            ).to("cuda")
-        return _image_pipe
+    # Carrega os pesos uma única vez. O pipeline image-to-image reutiliza os
+    # mesmos componentes do text-to-image para evitar duplicar o modelo na GPU.
     if _text_pipe is None:
         _text_pipe = AutoPipelineForText2Image.from_pretrained(
             MODEL_ID, torch_dtype=torch.float16, variant="fp16", use_safetensors=True
         ).to("cuda")
+    if use_reference:
+        if _image_pipe is None:
+            _image_pipe = AutoPipelineForImage2Image.from_pipe(_text_pipe)
+        return _image_pipe
     return _text_pipe
 
 @spaces.GPU(duration=60)
