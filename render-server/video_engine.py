@@ -92,7 +92,14 @@ def _generate_camera_motion_video(image_bytes: bytes, duration_seconds: float) -
         temp = Path(temp_dir)
         image_path = temp / "reference.png"
         temporary_output = temp / "generated.mp4"
-        image_path.write_bytes(image_bytes)
+        try:
+            from PIL import Image
+            import io
+
+            with Image.open(io.BytesIO(image_bytes)) as source:
+                source.convert("RGB").save(image_path, format="PNG")
+        except Exception as error:
+            raise RuntimeError("A imagem enviada não pôde ser decodificada.") from error
         video_filter = (
             "scale=1280:720:force_original_aspect_ratio=increase,"
             "crop=1280:720,"
