@@ -71,6 +71,22 @@ PIPER_VOICES_DIR=./voices
 MAX_TTS_CHARACTERS=6000
 ```
 
+## Roteiros originais com modelo de linguagem
+
+O Estúdio agora possui o endpoint autenticado `POST /v1/stories/generate`. Quando configurado, ele envia a ideia, gênero, duração e ficha do personagem a um provedor compatível com a API Chat Completions e transforma a resposta em cenas estruturadas para o aplicativo. A chave fica exclusivamente no servidor; nunca a coloque no app ou no repositório.
+
+Configure estas variáveis no serviço de hospedagem:
+
+```bash
+STORY_API_URL=https://seu-provedor/v1/chat/completions
+STORY_API_KEY=seu-segredo
+STORY_MODEL=id-do-modelo
+```
+
+O provedor precisa aceitar autenticação Bearer, o formato Chat Completions e resposta JSON (`response_format: json_object`). A chamada tem timeout de até 120 segundos e o servidor valida entre 4 e 30 cenas antes de devolver o roteiro. O app tenta usar esse endpoint quando o servidor já está conectado; se o provedor não estiver configurado (HTTP 503), continua com o planejador local e avisa que não se trata de roteiro generativo.
+
+A API do provedor pode ser paga ou oferecer uma cota gratuita limitada. Verifique preço, limites e política de dados do serviço escolhido antes de inserir a chave. O Estúdio não inclui créditos de IA nem promete geração gratuita ilimitada.
+
 ## Motor opcional de imagem SDXL
 
 A API inclui um primeiro motor de texto-para-imagem baseado em Diffusers. Ele fica desativado por padrão e só aparece como disponível quando o checkpoint, PyTorch, Diffusers e a GPU configurada estão prontos.
