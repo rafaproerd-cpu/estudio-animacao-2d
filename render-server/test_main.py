@@ -242,6 +242,38 @@ class RenderServerTests(unittest.TestCase):
             main.API_TOKEN = original_token
             main.PIPER_VOICES_DIR = original_voices
 
+    def test_capabilities_distinguish_configured_remote_space_from_verified_generation(self):
+        original_token = main.API_TOKEN
+        try:
+            main.API_TOKEN = "capabilities-test-token"
+            remote = {
+                "available": True,
+                "status": "configured_unverified",
+                "provider": "Hugging Face Gradio Space",
+                "message": "Space configurado; geração ainda não testada.",
+            }
+            active = {
+                "available": True,
+                "status": "configured_unverified",
+                "provider": "Hugging Face Gradio Space",
+                "message": "Space configurado; geração ainda não testada.",
+            }
+            with patch.object(main, "active_image_engine_status", return_value=active), patch.object(
+                main, "image_engine_status", return_value={"available": False, "status": "not_configured"}
+            ), patch.object(main, "huggingface_image_engine_status", return_value=remote), patch.object(
+                main, "available_piper_voices", return_value=[]
+            ), patch.object(main.shutil, "which", return_value=None), patch.object(
+                main, "available_nvidia_gpus", return_value=[]
+            ), patch.object(main, "video_engine_status", return_value={"available": False, "status": "not_configured"}):
+                result = main.generation_capabilities("Bearer capabilities-test-token")
+            image = result["engines"]["image"]
+            self.assertTrue(image["available"])
+            self.assertEqual(image["status"], "configured_unverified")
+            self.assertEqual(result["engines"]["image_remote"]["status"], "configured_unverified")
+            self.assertNotEqual(image["status"], "ready")
+        finally:
+            main.API_TOKEN = original_token
+
     def test_image_and_video_generation_fail_clearly_until_models_are_installed(self):
         original_token = main.API_TOKEN
         try:
