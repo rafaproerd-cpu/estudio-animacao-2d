@@ -139,5 +139,47 @@ class WanOutputValidationTests(unittest.TestCase):
             self.assertEqual(observed["input_signature"], b"\x89PNG\r\n\x1a\n")
 
 
+
+class VideoEngineDispatchTests(unittest.TestCase):
+    def test_generate_video_uses_camera_fallback_when_wan_is_unavailable(self):
+        expected = Path("/tmp/fallback-scene.mp4")
+        with patch.object(video_engine, "video_engine_status", return_value={
+            "available": True,
+            "status": "ready_motion_only",
+            "model": "FFmpeg Ken Burns",
+        }), patch.object(
+            video_engine, "_generate_camera_motion_video", return_value=expected
+        ) as fallback, patch.object(
+            video_engine.subprocess, "run"
+        ) as wan_process:
+            result = video_engine.generate_wan_video(
+                prompt="Uma personagem caminhando",
+                image_bytes=b"image-bytes",
+                duration_seconds=3.0,
+                seed=123,
+            )
+
+        self.assertEqual(result, expected)
+        fallback.assert_called_once_with(b"image-bytes", 3.0)
+        wan_process.assert_not_called()
+
+    def test_generate_video_rejects_when_no_engine_is_available(self):
+        with patch.object(video_engine, "video_engine_status", return_value={
+            "available": False,
+            "status": "gpu_unavailable",
+            "message": "Wan2.2 precisa de uma GPU CUDA compatível.",
+        }), patch.object(video_engine, "_generate_camera_motion_video") as fallback:
+            with self.assertRaisesRegex(RuntimeError, "GPU CUDA compatível"):
+                video_engine.generate_wan_video(
+                    prompt="Uma personagem caminhando",
+                    image_bytes=b"image-bytes",
+                    duration_seconds=3.0,
+                    seed=123,
+                )
+
+        fallback.assert_not_called()
+
+
+
 if __name__ == "__main__":
     unittest.main()
