@@ -253,6 +253,41 @@ class RenderServerTests(unittest.TestCase):
             main.API_TOKEN = original_token
             main.OUTPUT_DIR = original_output
 
+    def test_render_endpoint_handles_narration_only_and_music_only(self):
+        original_token = main.API_TOKEN
+        original_output = main.OUTPUT_DIR
+        try:
+            main.API_TOKEN = "integration-test-token"
+            for audio_kind, expected_filter in (
+                ("narration", "[1:a]volume=1.0,apad[aout]"),
+                ("music", "[1:a]volume=0.18,apad[aout]"),
+            ):
+                with self.subTest(audio_kind=audio_kind), tempfile.TemporaryDirectory() as temp_dir:
+                    main.OUTPUT_DIR = Path(temp_dir)
+
+                    def fake_ffmpeg(arguments):
+                        Path(arguments[-1]).write_bytes(
+                            b"\\x00\\x00\\x00\\x18ftypisom\\x00\\x00\\x02\\x00" + (b"mock-mp4-data" * 3)
+                        )
+
+                    clip = UploadFile(filename="scene.mp4", file=BytesIO(b"fake-video"))
+                    narration = UploadFile(filename="narration.wav", file=BytesIO(b"fake-narration")) if audio_kind == "narration" else None
+                    music = UploadFile(filename="music.mp3", file=BytesIO(b"fake-music")) if audio_kind == "music" else None
+                    with patch.object(main, "run_ffmpeg", side_effect=fake_ffmpeg) as mocked:
+                        result = asyncio.run(main.render_video(
+                            [clip], narration, music, "Single audio test", "Bearer integration-test-token"
+                        ))
+
+                    audio_command = mocked.call_args_list[-1].args[0]
+                    audio_filter = audio_command[audio_command.index("-filter_complex") + 1]
+                    self.assertEqual(audio_filter, expected_filter)
+                    self.assertIn("[aout]", audio_command[audio_command.index("-map") + 2])
+                    self.assertIn("-shortest", audio_command)
+                    self.assertTrue((main.OUTPUT_DIR / f"{result.id}.mp4").is_file())
+        finally:
+            main.API_TOKEN = original_token
+            main.OUTPUT_DIR = original_output
+
     def test_render_endpoint_rejects_invalid_final_mp4_output(self):
         original_token = main.API_TOKEN
         original_output = main.OUTPUT_DIR
