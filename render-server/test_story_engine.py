@@ -78,6 +78,8 @@ class StoryEngineTests(unittest.TestCase):
         self.assertEqual(story_engine._duration_in_seconds("2 minutos"), 120)
         self.assertEqual(story_engine._duration_in_seconds("5 minutos"), 300)
         self.assertEqual(story_engine._duration_in_seconds("10 minutos"), 600)
+        self.assertEqual(story_engine._duration_in_seconds("1 minuto e 30 segundos"), 90)
+        self.assertEqual(story_engine._duration_in_seconds("2 min 15 seg"), 135)
 
     def test_rejects_incomplete_scene(self):
         broken = valid_story()
