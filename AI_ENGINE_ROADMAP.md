@@ -73,3 +73,11 @@ Referências oficiais consultadas:
 - Wan2.1 (tarefas e resoluções suportadas): https://github.com/Wan-Video/Wan2.1
 
 **Decisão atual:** candidatos para teste apenas. Nenhum peso foi baixado, nenhum motor foi instalado e nenhuma geração foi ativada no servidor.
+
+
+## Diagnóstico de hardware no backend
+
+- [x] O endpoint autenticado `GET /v1/capabilities` agora tenta detectar GPUs NVIDIA via `nvidia-smi` e informa nome e memória total reportada.
+- [x] A detecção é opcional: se `nvidia-smi` não existir ou falhar, a API continua funcionando e retorna `gpu_detection: not_detected`.
+- [ ] Essa leitura não comprova compatibilidade CUDA, VRAM livre ou capacidade de executar SDXL/Wan; validar o ambiente real antes de instalar pesos.
+- [ ] O próximo passo após CI verde é ampliar o diagnóstico para memória livre e versões de runtime quando o servidor GPU for escolhido.
