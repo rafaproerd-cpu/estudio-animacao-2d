@@ -52,7 +52,7 @@ export ESTUDIO_RENDER_TOKEN="coloque-seu-token-longo-aqui"
 uvicorn main:app --host 0.0.0.0 --port 8765
 ```
 
-O app deve usar `http://IP-DA-MAQUINA:8765` em rede local, ou um endereço HTTPS protegido por VPN/reverse proxy. O endpoint `/health` exige o mesmo token Bearer e permite verificar se o FFmpeg foi encontrado. O endpoint `GET /v1/capabilities` (também protegido pelo token) informa quais motores estão realmente instalados; no estado atual, imagem e vídeo aparecem como indisponíveis, enquanto voz depende do executável Piper e de modelos `.onnx`. O endpoint `POST /render` exige `Authorization: Bearer TOKEN` e recebe vários arquivos no campo multipart `clips`, na ordem desejada. O serviço normaliza resolução para 1024×576, 30 FPS e H.264, concatena os segmentos e retorna uma URL para baixar o MP4. Também aceita narração e música opcionais e faz a mixagem no MP4 final.
+O app deve usar `http://IP-DA-MAQUINA:8765` em rede local, ou um endereço HTTPS protegido por VPN/reverse proxy. O endpoint `/health` exige o mesmo token Bearer e permite verificar se o FFmpeg foi encontrado. O endpoint `GET /v1/capabilities` (também protegido pelo token) informa quais motores estão realmente instalados; imagem e vídeo só aparecem como disponíveis quando seus runtimes, pesos e GPU estão configurados; voz depende do executável Piper e de modelos `.onnx`. O endpoint `POST /render` exige `Authorization: Bearer TOKEN` e recebe vários arquivos no campo multipart `clips`, na ordem desejada. O serviço normaliza resolução para 1024×576, 30 FPS e H.264, concatena os segmentos e retorna uma URL para baixar o MP4. Também aceita narração e música opcionais e faz a mixagem no MP4 final.
 
 ## Voz por IA local (Piper)
 
@@ -89,7 +89,7 @@ O primeiro carregamento pode baixar vários GB de pesos. O Dockerfile padrão n�
 - `GET /v1/jobs/{job_id}` consulta o estado; o resultado contém um link temporário privado para o PNG.
 - A fila é em memória, com uma tarefa ativa por padrão; reiniciar o processo perde o histórico dos jobs.
 - O primeiro pipeline é apenas texto-para-imagem. Referências visuais de personagem são recusadas até a implementação de image-to-image.
-- Vídeo ainda não está disponível; `POST /v1/generations/videos` continua retornando HTTP 503.
+- O motor Wan2.2 é opcional e exige o runtime oficial, pesos e pelo menos cerca de 23 GB de VRAM livre; sem isso, `POST /v1/generations/videos` retorna HTTP 503.
 
 ## Motor experimental de vídeo Wan2.2 TI2V 5B
 
@@ -116,9 +116,9 @@ O endpoint recebe `prompt`, `imageBase64` (PNG/JPEG), `durationSeconds` de 1 a 5
 
 ## Estado dos motores integrados
 
-O endpoint `GET /v1/capabilities` é a fonte de verdade sobre os recursos instalados. O motor de imagem só aparece como `ready` quando SDXL, PyTorch, Diffusers e memória de GPU suficiente estão disponíveis. O motor de vídeo permanece `not_configured` até a integração real do modelo Wan.
+O endpoint `GET /v1/capabilities` é a fonte de verdade sobre os recursos instalados. O motor de imagem só aparece como `ready` quando SDXL, PyTorch, Diffusers e memória de GPU suficiente estão disponíveis. O motor de vídeo só aparece como `ready` quando o CLI oficial do Wan2.2, checkpoint, PyTorch/CUDA e memória livre suficiente estão configurados.
 
 
 ### Endpoints de geração de imagem e vídeo
 
-`POST /v1/generations/images` cria uma tarefa real somente quando o motor SDXL está pronto; caso contrário, exige token e retorna HTTP 503. `GET /v1/jobs/{job_id}` devolve o estado e o link de saída. `POST /v1/generations/videos` continua retornando HTTP 503 até a integração do motor de vídeo. Consulte `GET /v1/capabilities` antes de iniciar uma geração.
+`POST /v1/generations/images` cria uma tarefa real somente quando o motor SDXL está pronto; caso contrário, exige token e retorna HTTP 503. `GET /v1/jobs/{job_id}` devolve o estado e o link de saída. `POST /v1/generations/videos` cria um job Wan2.2 TI2V quando o runtime está pronto; caso contrário, retorna HTTP 503. Consulte `GET /v1/capabilities` antes de iniciar uma geração.
