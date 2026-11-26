@@ -201,7 +201,7 @@ class RenderServerTests(unittest.TestCase):
                 main.OUTPUT_DIR = Path(temp_dir)
 
                 def fake_ffmpeg(arguments):
-                    Path(arguments[-1]).write_bytes(b"\\x00\\x00\\x00\\x18ftypisom\\x00\\x00\\x02\\x00")
+                    Path(arguments[-1]).write_bytes(b"\x00\x00\x00\x18ftypisom\x00\x00\x02\x00")
 
                 upload = UploadFile(filename="first-scene.mp4", file=BytesIO(b"fake-source-video"))
                 with patch.object(main, "run_ffmpeg", side_effect=fake_ffmpeg) as mocked:
