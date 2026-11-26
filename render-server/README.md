@@ -139,3 +139,17 @@ O endpoint `GET /v1/capabilities` é a fonte de verdade sobre os recursos instal
 ### Endpoints de geração de imagem e vídeo
 
 `POST /v1/generations/images` cria uma tarefa real quando SDXL local ou um Space Hugging Face remoto está configurado; a disponibilidade remota depende da fila e da cota do Space. `GET /v1/jobs/{job_id}` devolve o estado e o link de saída. `POST /v1/generations/videos` cria um job Wan2.2 TI2V quando o runtime está pronto; caso contrário, retorna HTTP 503. Consulte `GET /v1/capabilities` antes de iniciar uma geração.
+
+
+## Implantação guiada no Render
+
+O arquivo `render.yaml` na raiz do repositório permite iniciar a implantação do backend pelo fluxo **New + Blueprint** do Render:
+
+1. Entre no Render e escolha **New + Blueprint**.
+2. Conecte o repositório `rafaproerd-cpu/estudio-animacao-2d` e confirme a implantação.
+3. O Render cria o serviço Docker, gera `ESTUDIO_RENDER_TOKEN` e solicita os valores opcionais `HF_SPACE_ID` e `HF_TOKEN`.
+4. Depois que o serviço ficar disponível, copie o endereço HTTPS e o valor de `ESTUDIO_RENDER_TOKEN` para a opção **Conectar motor** no app.
+
+O endpoint público `/healthz` é somente um sinal mínimo para o health check da hospedagem. Os endpoints de geração, capacidades, montagem e o endpoint detalhado `/health` continuam protegidos por Bearer token.
+
+**Limites do plano gratuito:** o serviço pode dormir após inatividade, não oferece GPU para executar SDXL/Wan2.2 e não inclui disco persistente. Para gerar imagens, ainda é necessário configurar um Space ZeroGPU próprio e informar seu ID em `HF_SPACE_ID`; o token Hugging Face, se necessário, deve ficar somente nos segredos do Render. A implantação do backend, por si só, não ativa geração de imagem nem vídeo. O plano gratuito também não é adequado para guardar permanentemente arquivos de projetos e resultados.
