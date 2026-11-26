@@ -50,7 +50,7 @@ class WanOutputValidationTests(unittest.TestCase):
             with patch.object(video_engine, "WAN_OUTPUT_DIR", Path(output_dir)), patch.object(
                 video_engine.shutil, "which", return_value="/usr/bin/ffmpeg"
             ), patch.object(video_engine.subprocess, "run", side_effect=fake_run) as run:
-                output = video_engine._generate_camera_motion_video(b"fake image bytes", 3)
+                output = video_engine._generate_camera_motion_video(b"\\x89PNG\\r\\n\\x1a\\n" + b"x" * 100, 3)
 
             self.assertTrue(output.is_file())
             self.assertTrue(output.name.endswith(".mp4"))
