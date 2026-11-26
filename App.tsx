@@ -650,7 +650,8 @@ export default function App() {
 
   const generateAiNarration = async () => {
     if (!selected) return;
-    const segments = selected.scenes.map(scene => ({ text: (scene.dialogue || "").trim(), voice: scene.voiceId || selectedTtsVoice, duration_seconds: 4 }));
+    const sceneDuration = sceneClipDurationSeconds(selected);
+    const segments = selected.scenes.map(scene => ({ text: (scene.dialogue || "").trim(), voice: scene.voiceId || selectedTtsVoice, duration_seconds: sceneDuration }));
     if (!segments.some(segment => segment.text)) { Alert.alert("Roteiro sem diálogos", "Adicione pelo menos uma fala às cenas antes de gerar a narração."); return; }
     if (!selectedTtsVoice) { Alert.alert("Escolha uma voz", "Atualize a lista e selecione uma voz Piper disponível."); return; }
     let baseUrl = (engineConfig.renderBaseUrl || "").trim();
