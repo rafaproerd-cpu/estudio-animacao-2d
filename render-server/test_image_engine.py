@@ -37,7 +37,7 @@ class HuggingFaceImageEngineTests(unittest.TestCase):
                         return {"path": str(source)}
 
                 fake_module = types.SimpleNamespace(Client=FakeClient)
-                with patch.dict(sys.modules, {"gradio_client": fake_module}):
+                with patch.dict(sys.modules, {"gradio_client": fake_module}), patch.object(\n                    image_engine,\n                    "huggingface_image_engine_status",\n                    return_value={"available": True, "status": "configured_unverified"},\n                ):
                     output = image_engine.generate_huggingface_image(
                         prompt="cinematic anime scene",
                         width=512,
