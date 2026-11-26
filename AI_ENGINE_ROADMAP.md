@@ -77,7 +77,7 @@ Referências oficiais consultadas:
 
 ## Diagnóstico de hardware no backend
 
-- [x] O endpoint autenticado `GET /v1/capabilities` agora tenta detectar GPUs NVIDIA via `nvidia-smi` e informa nome e memória total reportada.
+- [x] O endpoint autenticado `GET /v1/capabilities` detecta GPUs NVIDIA via `nvidia-smi` e informa nome, memória total, memória livre e versão do driver reportadas.
 - [x] A detecção é opcional: se `nvidia-smi` não existir ou falhar, a API continua funcionando e retorna `gpu_detection: not_detected`.
-- [ ] Essa leitura não comprova compatibilidade CUDA, VRAM livre ou capacidade de executar SDXL/Wan; validar o ambiente real antes de instalar pesos.
-- [ ] O próximo passo após CI verde é ampliar o diagnóstico para memória livre e versões de runtime quando o servidor GPU for escolhido.
+- [ ] Essas métricas são apenas um retrato do driver no momento da consulta; não comprovam compatibilidade CUDA nem capacidade de executar SDXL/Wan. Validar o ambiente real antes de instalar pesos.
+- [ ] Quando um servidor GPU for escolhido, validar runtime CUDA, compatibilidade das bibliotecas e memória disponível durante uma inferência real.
