@@ -709,11 +709,12 @@ export default function App() {
           <View style={styles.privatePill}><Text style={styles.privateText}>PESSOAL</Text></View>
         </View>
 
-        <TouchableOpacity style={styles.settingsButton} disabled={!!busyScene} onPress={() => setShowSettings(value => !value)}><Text style={styles.backText}>{showSettings ? "FECHAR CONFIGURAÇÕES" : "⚙  CONFIGURAR MOTORES DE GERAÇÃO"}</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.settingsButton} disabled={!!busyScene} onPress={() => setShowSettings(value => !value)}><Text style={styles.backText}>{showSettings ? "FECHAR OPÇÕES TÉCNICAS" : "⚙  OPÇÕES TÉCNICAS (EM DESENVOLVIMENTO)"}</Text></TouchableOpacity>
         {showSettings && <View style={styles.panel}>
-          <Text style={styles.step}>MOTOR DE IMAGENS · SERVIDOR PRÓPRIO</Text>
-          <Text style={styles.panelTitle}>Conectar ComfyUI</Text>
-          <Text style={styles.note}>Este modo usa um servidor ComfyUI que você controla. O aplicativo não cobra créditos, mas precisa de um computador/servidor com modelo de imagem instalado e acessível pela rede.</Text>
+          <Text style={styles.step}>PAINEL TÉCNICO PROVISÓRIO</Text>
+          <Text style={styles.panelTitle}>Motores de geração</Text>
+          <Text style={styles.note}>Esta área ainda é provisória e exige configuração manual. Ela não representa a experiência final que estamos construindo. A meta é substituir estas etapas por motores integrados ao Estúdio 2D, sem exigir que você cole workflows ou configure serviços externos. Até essa integração ficar pronta, a geração de imagens e vídeos ainda não funciona automaticamente.</Text>
+          <Text style={styles.step}>MOTOR DE IMAGENS · CONEXÃO EXPERIMENTAL</Text>
           <Text style={styles.label}>ENDEREÇO DO SERVIDOR</Text>
           <TextInput value={comfyConfig.baseUrl} onChangeText={value => setComfyConfig(prev => ({ ...prev, baseUrl: value }))} autoCapitalize="none" placeholder="https://seu-servidor:8188" placeholderTextColor="#777789" style={styles.input} />
           <Text style={styles.label}>WORKFLOW API JSON DE IMAGEM</Text>
