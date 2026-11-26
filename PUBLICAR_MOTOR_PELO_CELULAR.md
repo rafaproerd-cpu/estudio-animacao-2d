@@ -14,6 +14,8 @@ Este guia ativa o backend do Estúdio 2D. A prévia web pode funcionar sem esta 
 
 A cota ZeroGPU gratuita é limitada e depende da elegibilidade da conta e da fila. O primeiro motor gera imagens 16:9; ainda não gera vídeo nem mantém sozinho a aparência do personagem entre cenas.
 
+**Importante sobre vídeos:** publicar o Space de imagens e o servidor Render não ativa o Wan2.2. No servidor sem GPU CUDA compatível, o Estúdio só consegue criar clipes com movimento de câmera sobre imagens estáticas. A animação real de personagens por IA exige um trabalhador de vídeo separado com GPU compatível e integração própria; essa etapa ainda não está publicada nem validada. Não contrate um plano pago nem altere configurações de GPU por causa deste guia.
+
 ## 2. Publicar o servidor no Render
 
 1. Entre em https://dashboard.render.com/.
