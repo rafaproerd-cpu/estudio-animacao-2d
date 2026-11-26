@@ -13,6 +13,14 @@ import main
 
 
 class RenderServerTests(unittest.TestCase):
+    def test_public_healthz_does_not_expose_or_require_render_token(self):
+        original = main.API_TOKEN
+        try:
+            main.API_TOKEN = ""
+            self.assertEqual(main.public_health_check(), {"ok": True})
+        finally:
+            main.API_TOKEN = original
+
     def test_accepts_supported_video_extensions(self):
         for name in ("clip.mp4", "clip.MOV", "clip.mkv", "clip.webm"):
             with self.subTest(name=name):
