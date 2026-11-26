@@ -119,9 +119,15 @@ def generation_capabilities(authorization: Annotated[str | None, Header()] = Non
     require_token(authorization)
     piper_available = shutil.which(PIPER) is not None
     voices = available_piper_voices()
+    gpus = available_nvidia_gpus()
     return {
         "product": "Estúdio 2D",
         "api_version": "v1",
+        "hardware": {
+            "nvidia_gpus": gpus,
+            "gpu_detection": "available" if gpus else "not_detected",
+            "note": "A detecção NVIDIA não confirma compatibilidade com um modelo; requisitos de VRAM e CUDA ainda precisam ser validados.",
+        },
         "engines": {
             "image": {
                 "available": False,
@@ -172,6 +178,31 @@ def request_video_generation(authorization: Annotated[str | None, Header()] = No
 def health(authorization: Annotated[str | None, Header()] = None) -> dict[str, str | bool]:
     require_token(authorization)
     return {"ok": True, "ffmpeg_available": shutil.which(FFMPEG) is not None, "token_configured": True}
+
+
+def available_nvidia_gpus() -> list[dict[str, str]]:
+    """Detecta GPUs NVIDIA sem tornar CUDA/NVML uma dependência obrigatória."""
+    executable = shutil.which("nvidia-smi")
+    if not executable:
+        return []
+    try:
+        result = subprocess.run(
+            [executable, "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    if result.returncode != 0:
+        return []
+    gpus: list[dict[str, str]] = []
+    for line in result.stdout.splitlines():
+        parts = [part.strip() for part in line.split(",", maxsplit=1)]
+        if len(parts) == 2 and parts[0]:
+            gpus.append({"name": parts[0], "memory_mb": parts[1]})
+    return gpus
 
 
 def available_piper_voices() -> list[str]:
