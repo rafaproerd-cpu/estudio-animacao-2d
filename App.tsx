@@ -850,7 +850,7 @@ export default function App() {
         <View style={styles.panel}>
           <Text style={styles.step}>ESTÚDIO 2D · PRÉVIA DE DESENVOLVIMENTO</Text>
           <Text style={styles.panelTitle}>Seu espaço de criação</Text>
-          <Text style={styles.note}>Você já pode organizar ideias, personagens e cenas. Os controles de imagem e animação estão conectados à API integrada; a geração só ficará ativa quando o servidor com os modelos e GPU estiver hospedado.</Text>
+          <Text style={styles.note}>Você já pode organizar ideias, personagens e cenas. A geração de imagens será ativada quando o servidor e o motor remoto de imagens estiverem configurados; o servidor não precisa ter GPU própria para usar o Hugging Face ZeroGPU.</Text>
         </View>
 
         <View style={styles.hero}>
@@ -865,7 +865,7 @@ export default function App() {
         {showSettings ? <View style={styles.panel}>
           <Text style={styles.step}>CONEXÃO SEGURA</Text>
           <Text style={styles.panelTitle}>Motor próprio do Estúdio 2D</Text>
-          <Text style={styles.note}>O aplicativo conversa diretamente com a API integrada. Não precisa de ComfyUI, workflows ou plugins. O servidor de IA precisa estar hospedado em uma máquina compatível.</Text>
+          <Text style={styles.note}>O aplicativo conversa diretamente com a API do estúdio. Não precisa de ComfyUI, workflows ou plugins. O servidor pode ficar no Render e chamar um Space do Hugging Face ZeroGPU para gerar imagens; esse caminho não exige uma GPU própria no servidor. A cota gratuita do Space é limitada.</Text>
           <Text style={styles.label}>ENDEREÇO HTTPS DO SERVIDOR</Text>
           <TextInput value={engineConfig.renderBaseUrl || ""} onChangeText={value => setEngineConfig(previous => ({ ...previous, renderBaseUrl: value }))} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="https://seu-servidor-do-estudio" placeholderTextColor="#777789" style={styles.smallInput} />
           <Text style={styles.label}>TOKEN DE ACESSO</Text>
