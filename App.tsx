@@ -27,6 +27,7 @@ type Project = {
   narrationUri?: string;
   musicUri?: string;
   createdAt: string;
+  storyEngine?: "local-template" | "ai-provider";
 };
 
 const STORAGE_KEY = "@estudio2d/projects-v1";
@@ -100,7 +101,8 @@ function buildProject(idea: string, genre: string, duration: string, generatedPl
       camera: scene.camera,
       lighting: scene.lighting
     })),
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    storyEngine: plan.generatedBy
   };
 }
 
@@ -960,7 +962,7 @@ export default function App() {
             <TouchableOpacity style={styles.primary} onPress={createProject}>
               <Text style={styles.primaryText}>✦  CRIAR HISTÓRIA E PREENCHER CENAS</Text><Text style={styles.arrow}>→</Text>
             </TouchableOpacity>
-            <Text style={styles.note}>Esta etapa organiza automaticamente o roteiro e preenche todas as cenas. Isso ainda é um planejador local, não uma IA generativa. A criação real de imagens, animações e vozes depende do motor de IA hospedado.</Text>
+            <Text style={styles.note}>Com o servidor e um provedor de texto configurados, a IA cria um roteiro original e preenche as cenas. Sem essa conexão, o Estúdio usa o planejador local. A geração de imagens, animações e vozes também depende dos respectivos motores hospedados.</Text>
           </View>
 
           <View style={styles.sectionHeader}>
@@ -986,7 +988,7 @@ export default function App() {
           <View style={styles.panel} pointerEvents={busyScene ? "none" : "auto"}>
             <Text style={styles.step}>PROJETO SALVO NO APARELHO</Text>
             <Text style={styles.panelTitle}>{selected.title}</Text>
-            <Text style={styles.projectMeta}>{selected.genre} · {selected.duration} · {selected.scenes.length} cenas</Text>
+            <Text style={styles.projectMeta}>{selected.genre} · {selected.duration} · {selected.scenes.length} cenas · {selected.storyEngine === "ai-provider" ? "roteiro por IA" : "planejamento local"}</Text>
             <Text style={styles.label}>IDEIA ORIGINAL</Text>
             <Text style={styles.body}>{selected.idea}</Text>
             <Text style={styles.label}>FICHA DO PERSONAGEM</Text>
