@@ -259,6 +259,25 @@ export default function App() {
     return download.uri;
   };
 
+  const persistGeneratedVideo = async (remoteUri: string, projectId: string, sceneTitle: string) => {
+    // No navegador, mantenha o link protegido; no iPhone, salve uma cópia local
+    // para que o projeto continue funcionando depois que o link temporário expirar.
+    if (Platform.OS === "web") return remoteUri;
+    const directory = (FileSystem.documentDirectory || "") + "scene-videos/";
+    const info = await FileSystem.getInfoAsync(directory);
+    if (!info.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
+    const filenameParam = remoteUri.match(/[?&]filename=([^&]+)/)?.[1];
+    const sourceFilename = filenameParam ? decodeURIComponent(filenameParam) : "";
+    const extension = sourceFilename.match(/\.(mp4|webm|mov|mkv)$/i)?.[1] || "mp4";
+    const safeName = sceneTitle.replace(/[^a-z0-9-_]/gi, "-").slice(0, 48) || "scene";
+    const destination = `${directory}${projectId}-${safeName}-${Date.now()}.${extension}`;
+    const download = await FileSystem.downloadAsync(remoteUri, destination);
+    if (download.status < 200 || download.status >= 300) {
+      throw new Error(`O clipe foi gerado, mas não foi possível salvá-lo no iPhone (HTTP ${download.status}).`);
+    }
+    return download.uri;
+  };
+
   const generateSceneImage = async (scene: Scene) => {
     if (!selected) return;
     const connection = getEngineConnection();
@@ -320,7 +339,8 @@ export default function App() {
       const provider = new HttpVideoGenerationProvider({ baseUrl: connection.baseUrl, token: connection.token });
       const result = await provider.generate({ prompt: scene.videoPrompt || scene.description, imageBase64, durationSeconds: 4, width: 1280, height: 704, fps: 24 });
       if (result.status !== "completed" || !result.outputUri) throw new Error(result.error || "O motor não retornou um clipe.");
-      const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, videoUri: result.outputUri, videoRemoteUri: result.outputUri } : item) };
+      const localVideoUri = await persistGeneratedVideo(result.outputUri, selected.id, scene.title);
+      const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, videoUri: localVideoUri, videoRemoteUri: result.outputUri } : item) };
       saveUpdatedProject(updated);
       Alert.alert("Clipe concluído", "A animação foi gerada pelo motor do Estúdio 2D. Você pode baixá-la para o iPhone.");
     } catch (error) {
@@ -390,7 +410,8 @@ export default function App() {
         const imageBase64 = await imageUriToBase64(scene.imageUri!);
         const result = await provider.generate({ prompt: scene.videoPrompt || scene.description, imageBase64, durationSeconds: 4, width: 1280, height: 704, fps: 24 });
         if (result.status !== "completed" || !result.outputUri) throw new Error(`${scene.title}: ${result.error || "o motor não retornou um clipe"}`);
-        workingProject = { ...workingProject, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: workingProject.scenes.map(item => item.title === scene.title ? { ...item, videoUri: result.outputUri, videoRemoteUri: result.outputUri } : item) };
+        const localVideoUri = await persistGeneratedVideo(result.outputUri, workingProject.id, scene.title);
+        workingProject = { ...workingProject, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: workingProject.scenes.map(item => item.title === scene.title ? { ...item, videoUri: localVideoUri, videoRemoteUri: result.outputUri } : item) };
         completed += 1;
         setSelected(workingProject);
         setProjects(previous => previous.map(item => item.id === workingProject.id ? workingProject : item));
