@@ -186,9 +186,9 @@ export default function App() {
   };
 
   const getEngineConnection = () => {
-    const baseUrl = (comfyConfig.renderBaseUrl || "").trim().replace(/\\/+$/, "");
+    const baseUrl = (comfyConfig.renderBaseUrl || "").trim().replace(/\/+$/, "");
     const token = (comfyConfig.renderToken || "").trim();
-    if (!/^https?:\\/\\//i.test(baseUrl) || !token) {
+    if (!/^https?:\/\//i.test(baseUrl) || !token) {
       Alert.alert("Conecte o motor do Estúdio 2D", "Informe o endereço HTTPS do servidor próprio e o token na opção Conectar motor.");
       setShowSettings(true);
       return null;
