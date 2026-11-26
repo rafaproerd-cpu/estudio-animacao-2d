@@ -35,13 +35,13 @@ def _duration_in_seconds(duration: str) -> int:
     minute_match = re.search(r"([0-9]+(?:[.,][0-9]+)?) *min", normalized)
     second_match = re.search(r"([0-9]+(?:[.,][0-9]+)?) *seg", normalized)
     total = 0.0
-    minute_match = re.search(r"([0-9]+(?:[.,][0-9]+)?) *min", normalized)
-    minute_match = re.search(r"([0-9]+(?:[.,][0-9]+)?) *min", normalized)
-    second_match = re.search(r"([0-9]+(?:[.,][0-9]+)?) *seg", normalized)
-    second_match = re.search(r"([0-9]+(?:[.,][0-9]+)?) *seg", normalized)
+    if minute_match:
+        total += float(minute_match.group(1).replace(",", ".")) * 60
+    if second_match:
+        total += float(second_match.group(1).replace(",", "."))
     if total <= 0:
         return 60
-    return max(10, round(total))
+    return max(1, round(total))
 
 def _extract_json(content: str) -> dict[str, Any]:
     value = content.strip()
