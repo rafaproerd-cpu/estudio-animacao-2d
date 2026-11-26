@@ -273,6 +273,44 @@ class RenderServerTests(unittest.TestCase):
                 main.generation_jobs.pop(created_job_id, None)
             main.API_TOKEN = original_token
 
+    def test_image_generation_accepts_png_reference_for_character_consistency(self):
+        original_token = main.API_TOKEN
+        created_job_id = None
+        try:
+            main.API_TOKEN = "generation-test-token"
+            reference_bytes = b"\\x89PNG\\r\\n\\x1a\\n" + (b"reference-image" * 8)
+            payload = main.ImageGenerationRequest(
+                prompt="same anime character in a new scene",
+                referenceImageBase64=base64.b64encode(reference_bytes).decode("ascii"),
+            )
+            tasks = BackgroundTasks()
+            with patch.object(main, "image_engine_status", return_value={"available": True, "message": "ready"}):
+                result = main.request_image_generation(payload, tasks, "Bearer generation-test-token")
+            created_job_id = result["job_id"]
+            self.assertEqual(result["status"], "queued")
+            self.assertEqual(len(tasks.tasks), 1)
+            self.assertEqual(tasks.tasks[0].args[2], reference_bytes)
+        finally:
+            if created_job_id:
+                main.generation_jobs.pop(created_job_id, None)
+            main.API_TOKEN = original_token
+
+    def test_image_generation_rejects_invalid_reference_image_signature(self):
+        original_token = main.API_TOKEN
+        try:
+            main.API_TOKEN = "generation-test-token"
+            reference_bytes = b"not-a-real-png" * 8
+            payload = main.ImageGenerationRequest(
+                prompt="anime character",
+                referenceImageBase64=base64.b64encode(reference_bytes).decode("ascii"),
+            )
+            with patch.object(main, "image_engine_status", return_value={"available": True, "message": "ready"}):
+                with self.assertRaises(HTTPException) as raised:
+                    main.request_image_generation(payload, BackgroundTasks(), "Bearer generation-test-token")
+            self.assertEqual(raised.exception.status_code, 415)
+        finally:
+            main.API_TOKEN = original_token
+
     def test_image_generation_rejects_reference_images_until_img2img_is_supported(self):
         original_token = main.API_TOKEN
         try:
