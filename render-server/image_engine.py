@@ -179,7 +179,7 @@ def generate_huggingface_image(
         verbose=False,
     )
     # Gradio Client handles the Space queue and waits for the API result.
-    result = client.predict(prompt=prompt, api_name="/generate")
+    result = client.predict(prompt, api_name="/generate")
 
     # Gradio image outputs are commonly returned as a FileData mapping or a path.
     candidate = result
@@ -188,8 +188,10 @@ def generate_huggingface_image(
             raise RuntimeError("O Space retornou uma resposta de imagem vazia.")
         candidate = candidate[0]
     if isinstance(candidate, dict):
-        candidate = candidate.get("path") or candidate.get("url")
-    if not isinstance(candidate, str) or not candidate:
+        candidate = candidate.get("path")
+    elif not isinstance(candidate, (str, Path)):
+        candidate = getattr(candidate, "path", None)
+    if not isinstance(candidate, (str, Path)) or not str(candidate):
         raise RuntimeError("O Space não retornou um arquivo de imagem reconhecido.")
 
     source = Path(candidate)
