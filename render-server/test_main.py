@@ -258,6 +258,55 @@ class RenderServerTests(unittest.TestCase):
         finally:
             main.API_TOKEN = original_token
 
+    def test_story_generation_endpoint_requires_authentication(self):
+        original_token = main.API_TOKEN
+        try:
+            main.API_TOKEN = "story-test-token"
+            payload = main.StoryGenerationRequest(idea="Uma aventura", genre="Aventura", duration="1 minuto")
+            with self.assertRaises(HTTPException) as raised:
+                main.request_story_generation(payload, "Bearer wrong-token")
+            self.assertEqual(raised.exception.status_code, 401)
+        finally:
+            main.API_TOKEN = original_token
+
+    def test_story_generation_endpoint_reports_unconfigured_provider(self):
+        original_token = main.API_TOKEN
+        try:
+            main.API_TOKEN = "story-test-token"
+            payload = main.StoryGenerationRequest(idea="Uma aventura", genre="Aventura", duration="1 minuto")
+            with patch.object(main, "story_engine_status", return_value={"available": False, "message": "Configure o provedor"}):
+                with self.assertRaises(HTTPException) as raised:
+                    main.request_story_generation(payload, "Bearer story-test-token")
+            self.assertEqual(raised.exception.status_code, 503)
+            self.assertIn("Configure", raised.exception.detail)
+        finally:
+            main.API_TOKEN = original_token
+
+    def test_story_generation_endpoint_returns_validated_ai_plan(self):
+        original_token = main.API_TOKEN
+        expected = {
+            "title": "A jornada",
+            "premise": "Uma aventura original",
+            "genre": "Aventura",
+            "duration": "1 minuto",
+            "estimatedSeconds": None,
+            "visualStyle": "2D cinematográfico",
+            "continuityRules": ["Manter personagem consistente"],
+            "scenes": [{"id": "scene-1", "title": "A descoberta"}],
+            "generatedBy": "ai-provider",
+        }
+        try:
+            main.API_TOKEN = "story-test-token"
+            payload = main.StoryGenerationRequest(idea="Uma aventura", genre="Aventura", duration="1 minuto", character="Herói de casaco azul")
+            with patch.object(main, "story_engine_status", return_value={"available": True, "message": "ready"}), patch.object(
+                main, "generate_story_plan", return_value=expected
+            ) as generator:
+                result = main.request_story_generation(payload, "Bearer story-test-token")
+            self.assertEqual(result, expected)
+            generator.assert_called_once_with("Uma aventura", "Aventura", "1 minuto", "Herói de casaco azul")
+        finally:
+            main.API_TOKEN = original_token
+
     def test_generation_endpoints_still_require_authentication(self):
         original_token = main.API_TOKEN
         try:
