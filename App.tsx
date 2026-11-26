@@ -216,11 +216,16 @@ export default function App() {
       const capabilitiesResponse = await fetch(`${url}/v1/capabilities`, { headers });
       const capabilities = await capabilitiesResponse.json();
       if (!capabilitiesResponse.ok) throw new Error(capabilities.detail || "Não foi possível consultar os motores.");
+      const story = capabilities.engines?.story;
       const image = capabilities.engines?.image;
       const video = capabilities.engines?.video;
-      const status = `Conectado · imagem: ${image?.status || "desconhecido"} · vídeo: ${video?.status || "desconhecido"}`;
+      const audio = capabilities.engines?.audio;
+      const status = `Conectado · roteiro: ${story?.status || "desconhecido"} · imagem: ${image?.status || "desconhecido"} · vídeo: ${video?.status || "desconhecido"}`;
       setConnectionStatus(status);
-      Alert.alert("Motor conectado", `API conectada. Imagem: ${image?.message || image?.status || "não informado"} Vídeo: ${video?.message || video?.status || "não informado"}`);
+      Alert.alert(
+        "Motor conectado",
+        `API conectada. Roteiro: ${story?.message || story?.status || "não informado"} Imagem: ${image?.message || image?.status || "não informado"} Vídeo: ${video?.message || video?.status || "não informado"} Áudio: ${audio?.message || audio?.status || "não informado"}`
+      );
     } catch (error) {
       setConnectionStatus("Falha na conexão");
       Alert.alert("Não conectou", error instanceof Error ? error.message : "Verifique endereço, rede e servidor.");
