@@ -256,6 +256,7 @@ class RenderServerTests(unittest.TestCase):
 
     def test_image_job_is_queued_only_when_engine_is_ready(self):
         original_token = main.API_TOKEN
+        created_job_id = None
         try:
             main.API_TOKEN = "generation-test-token"
             payload = main.ImageGenerationRequest(prompt="cinematic 2D anime scene", negativePrompt="blurry", width=1024, height=576, seed=123)
@@ -263,10 +264,13 @@ class RenderServerTests(unittest.TestCase):
             with patch.object(main, "image_engine_status", return_value={"available": True, "message": "ready"}):
                 result = main.request_image_generation(payload, tasks, "Bearer generation-test-token")
             self.assertEqual(result["status"], "queued")
+            created_job_id = result["job_id"]
             self.assertEqual(len(tasks.tasks), 1)
             job = main.get_generation_job(result["job_id"], "Bearer generation-test-token")
             self.assertEqual(job["status"], "queued")
         finally:
+            if created_job_id:
+                main.generation_jobs.pop(created_job_id, None)
             main.API_TOKEN = original_token
 
     def test_image_generation_rejects_reference_images_until_img2img_is_supported(self):
