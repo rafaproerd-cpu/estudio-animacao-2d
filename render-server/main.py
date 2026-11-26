@@ -227,11 +227,23 @@ class VideoGenerationRequest(BaseModel):
     seed: int | None = None
 
 
+def video_generation_completion_message(engine_status: dict[str, object]) -> str:
+    if engine_status.get("status") == "ready_motion_only":
+        return (
+            "Clipe criado com movimento de câmera sobre uma imagem estática. "
+            "Este modo não gera movimentos corporais por IA."
+        )
+    if engine_status.get("model") == "Wan2.2 TI2V 5B":
+        return "Clipe animado com Wan2.2: movimento gerado por IA."
+    return "Clipe de vídeo concluído. Consulte as capacidades do motor para identificar o modo usado."
+
+
 def run_video_generation_job(job_id: str, payload: VideoGenerationRequest, image_bytes: bytes) -> None:
     with generation_jobs_lock:
         generation_jobs[job_id].update({"status": "running", "message": "Preparando a imagem e criando o clipe de vídeo."})
     persist_generation_job(job_id)
     try:
+        engine_status = video_engine_status()
         output = generate_wan_video(
             prompt=payload.prompt.strip(),
             image_bytes=image_bytes,
@@ -244,7 +256,7 @@ def run_video_generation_job(job_id: str, payload: VideoGenerationRequest, image
             generation_jobs[job_id].update({
                 "status": "completed",
                 "progress": 1.0,
-                "message": "Clipe de vídeo concluído.",
+                "message": video_generation_completion_message(engine_status),
                 "output_url": "/v1/files/" + output.name + "?token=" + download_token,
             })
         persist_download_grant(output.name)
