@@ -478,6 +478,7 @@ class RenderServerTests(unittest.TestCase):
                 main.initialize_generation_state()
                 completed_id = "e" * 32
                 interrupted_id = "f" * 32
+                expired_id = "d" * 32
                 filename = "image-" + "a" * 32 + ".png"
                 main.generation_jobs[completed_id] = {
                     "status": "completed",
@@ -492,9 +493,15 @@ class RenderServerTests(unittest.TestCase):
                     "message": "Gerando imagem.",
                     "created_at": main.time.time(),
                 }
+                main.generation_jobs[expired_id] = {
+                    "status": "completed",
+                    "progress": 1.0,
+                    "created_at": main.time.time() - main.JOB_RETENTION_SECONDS - 10,
+                }
                 main.generation_download_tokens[filename] = ("private-token", main.time.time() + 300)
                 main.persist_generation_job(completed_id)
                 main.persist_generation_job(interrupted_id)
+                main.persist_generation_job(expired_id)
                 main.persist_download_grant(filename)
 
                 main.generation_jobs.clear()
@@ -503,6 +510,11 @@ class RenderServerTests(unittest.TestCase):
 
                 self.assertEqual(main.generation_jobs[completed_id]["status"], "completed")
                 self.assertEqual(main.generation_jobs[interrupted_id]["status"], "failed")
+                self.assertNotIn(expired_id, main.generation_jobs)
+                with main._state_connection() as connection:
+                    self.assertIsNone(connection.execute(
+                        "SELECT job_id FROM generation_jobs WHERE job_id=?", (expired_id,)
+                    ).fetchone())
                 self.assertIn("reiniciou", str(main.generation_jobs[interrupted_id]["message"]))
                 self.assertEqual(main.generation_download_tokens[filename][0], "private-token")
         finally:
