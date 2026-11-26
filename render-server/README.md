@@ -73,10 +73,11 @@ MAX_TTS_CHARACTERS=6000
 
 ## Limites atuais
 
-- A montagem atual é sequencial, sem transições, trilha ou narração.
-- O áudio é removido dos clipes; a faixa de voz/música será adicionada em uma etapa posterior.
-- Cada clipe tem limite padrão de 500 MB e cada montagem aceita até 80 clipes.
-- Os MP4 finais ficam em `outputs/`; proteja o disco e faça limpeza periódica dos arquivos.
+- A montagem concatena os clipes em sequência; transições e efeitos ainda não estão implementados.
+- O áudio original dos clipes é removido durante a normalização. Narração e música enviadas separadamente são mixadas no MP4 final.
+- A geração de voz por Piper funciona apenas quando o executável e os modelos `.onnx` estão instalados no servidor.
+- Cada clipe/arquivo de áudio tem limite padrão de 500 MB e cada montagem aceita até 80 clipes.
+- Os MP4 e WAV finais ficam em `RENDER_OUTPUT_DIR` (por padrão `outputs/`; no Docker, `/data/outputs`). Proteja o disco e faça limpeza periódica dos arquivos.
 - O token protege os endpoints, mas não substitui HTTPS/VPN. Não use uma porta pública sem uma camada de segurança.
 
 
