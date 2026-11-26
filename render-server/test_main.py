@@ -9,6 +9,7 @@ import base64
 from fastapi import BackgroundTasks, HTTPException
 from fastapi import UploadFile
 from pydantic import ValidationError
+from PIL import Image
 
 import main
 
