@@ -4,7 +4,7 @@
 A pessoa deve criar um projeto, descrever a história e produzir cenas, imagens, animações, vozes e MP4 sem precisar instalar plugins, colar workflows ou configurar endpoints manualmente.
 
 ## Situação real atual
-- O app organiza projetos e cria um storyboard local baseado em regras e modelos de texto. Isso ainda não é um modelo de IA generativa.
+- O app organiza projetos e cria um storyboard local baseado em regras e modelos de texto quando não há provedor conectado. Também possui integração opcional com um provedor compatível com Chat Completions para gerar roteiros originais; ela exige credenciais configuradas no servidor e ainda não está ativada no ambiente publicado.
 - Existe um adaptador HTTP genérico no app para um futuro motor integrado. A geração real ainda não está conectada.
 - O servidor FastAPI/FFmpeg monta clipes e tem endpoints opcionais de voz Piper, mas precisa ser hospedado e receber os modelos/binários necessários.
 - A interface web está publicada; isso não hospeda o motor de inferência.
@@ -26,6 +26,10 @@ A pessoa deve criar um projeto, descrever a história e produzir cenas, imagens,
 - Se não houver máquina compatível disponível, o app pode continuar oferecendo roteiro/storyboard local e montagem de arquivos enviados, mas geração automática de mídia ficará indisponível.
 
 ## Próximas etapas técnicas
+- [x] Implementar endpoint autenticado de roteiro original por provedor Chat Completions, validação do JSON e mapeamento de cenas para o app.
+- [x] Conectar o fluxo de criação do app ao provedor de roteiro quando disponível, com fallback local explícito.
+- [x] Exibir status do motor de roteiro e áudio ao testar a conexão do servidor.
+- [ ] Configurar credenciais de um provedor de texto no servidor hospedado e executar teste real de roteiro ponta a ponta.
 - [x] Empacotar o servidor de montagem em Docker.
 - [x] Confirmar uma execução bem-sucedida da etapa Docker no CI (imagem do servidor construída no GitHub Actions).
 - [ ] Separar a API interna do provedor ComfyUI, para que a UI não dependa de detalhes de workflow.
