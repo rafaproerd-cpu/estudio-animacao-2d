@@ -41,6 +41,11 @@ class WanOutputValidationTests(unittest.TestCase):
         self.assertIn("Não é geração de movimento por IA", status["message"])
 
     def test_fallback_creates_and_validates_an_mp4_file(self):
+        import io
+        from PIL import Image
+
+        image = io.BytesIO()
+        Image.new("RGB", (32, 18), "white").save(image, format="PNG")
         with tempfile.TemporaryDirectory() as output_dir:
             def fake_run(command, **kwargs):
                 target = Path(command[-1])
@@ -50,7 +55,7 @@ class WanOutputValidationTests(unittest.TestCase):
             with patch.object(video_engine, "WAN_OUTPUT_DIR", Path(output_dir)), patch.object(
                 video_engine.shutil, "which", return_value="/usr/bin/ffmpeg"
             ), patch.object(video_engine.subprocess, "run", side_effect=fake_run) as run:
-                output = video_engine._generate_camera_motion_video(b"\x89PNG\r\n\x1a\n" + b"x" * 100, 3)
+                output = video_engine._generate_camera_motion_video(image.getvalue(), 3)
 
             self.assertTrue(output.is_file())
             self.assertTrue(output.name.endswith(".mp4"))
