@@ -31,6 +31,22 @@ class RenderServerTests(unittest.TestCase):
             durationSeconds=4.0,
         )
         self.assertEqual(payload.duration_seconds, 4.0)
+
+    def test_video_completion_message_discloses_camera_motion_fallback(self):
+        message = main.video_generation_completion_message({
+            "status": "ready_motion_only",
+            "model": "FFmpeg Ken Burns",
+        })
+        self.assertIn("imagem estática", message)
+        self.assertIn("não gera movimentos corporais por IA", message)
+
+    def test_video_completion_message_identifies_wan_ai_animation(self):
+        message = main.video_generation_completion_message({
+            "status": "ready",
+            "model": "Wan2.2 TI2V 5B",
+        })
+        self.assertIn("Wan2.2", message)
+        self.assertIn("movimento gerado por IA", message)
     def test_public_healthz_does_not_expose_or_require_render_token(self):
         original = main.API_TOKEN
         try:
