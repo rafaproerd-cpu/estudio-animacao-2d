@@ -179,9 +179,9 @@ export default function App() {
       if (!response.ok || !data.ok || !data.ffmpeg_available || !data.token_configured) {
         throw new Error("Servidor respondeu, mas FFmpeg ou token não está configurado corretamente.");
       }
-      Alert.alert("Servidor de montagem conectado", "FFmpeg disponível e token configurado.");
+      setConnectionStatus("Conectado");\n      Alert.alert("Motor conectado", "A API do Estúdio 2D respondeu e o FFmpeg está disponível.");
     } catch (error) {
-      Alert.alert("Não conectou", error instanceof Error ? error.message : "Verifique endereço, rede e servidor.");
+      setConnectionStatus("Falha na conexão");\n      Alert.alert("Não conectou", error instanceof Error ? error.message : "Verifique endereço, rede e servidor.");
     }
   };
 
@@ -778,12 +778,12 @@ export default function App() {
               <Text style={styles.step}>LINHA DO TEMPO</Text>
               <Text style={styles.panelTitle}>Animação das cenas</Text>
               <Text style={styles.body}>{selected.scenes.filter(scene => !!scene.videoUri).length} de {selected.scenes.length} clipes gerados · {selected.scenes.filter(scene => !!scene.imageUri).length} imagens prontas</Text>
-              <TouchableOpacity style={styles.secondary} disabled>
-                <Text style={styles.secondaryText}>GERAÇÃO DE TODAS AS IMAGENS · EM DESENVOLVIMENTO</Text>
+              <TouchableOpacity style={styles.secondary} onPress={generateAllSceneImages} disabled={!!busyScene || !!batchProgress}>
+                <Text style={styles.secondaryText}>GERAR TODAS AS IMAGENS</Text>
               </TouchableOpacity>
               {batchProgress ? <Text style={styles.note}>Preparadas {batchProgress.current} de {batchProgress.total} cenas…</Text> : null}
-              <TouchableOpacity style={styles.primary} disabled>
-                <Text style={styles.primaryText}>ANIMAR TODAS AS CENAS · EM DESENVOLVIMENTO</Text><Text style={styles.arrow}>▶</Text>
+              <TouchableOpacity style={styles.primary} onPress={generateAllSceneVideos} disabled={!!busyScene || !!batchProgress || selected.scenes.some(scene => !scene.imageUri)}>
+                <Text style={styles.primaryText}>ANIMAR TODAS AS CENAS</Text><Text style={styles.arrow}>▶</Text>
               </TouchableOpacity>
               <Text style={styles.note}>O app não exige workflows ou ComfyUI. O motor pesado roda no backend próprio do Estúdio 2D e precisa de uma GPU compatível.</Text>
               <Text style={styles.step}>ÁUDIO DO PROJETO</Text>
