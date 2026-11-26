@@ -192,6 +192,31 @@ class RenderServerTests(unittest.TestCase):
             main.API_TOKEN = original_token
             main.PIPER_VOICES_DIR = original_voices
 
+    def test_image_and_video_generation_fail_clearly_until_models_are_installed(self):
+        original_token = main.API_TOKEN
+        try:
+            main.API_TOKEN = "generation-test-token"
+            for endpoint in (main.request_image_generation, main.request_video_generation):
+                with self.subTest(endpoint=endpoint.__name__):
+                    with self.assertRaises(HTTPException) as raised:
+                        endpoint("Bearer generation-test-token")
+                    self.assertEqual(raised.exception.status_code, 503)
+                    self.assertIn("/v1/capabilities", raised.exception.detail)
+        finally:
+            main.API_TOKEN = original_token
+
+    def test_generation_endpoints_still_require_authentication(self):
+        original_token = main.API_TOKEN
+        try:
+            main.API_TOKEN = "generation-test-token"
+            for endpoint in (main.request_image_generation, main.request_video_generation):
+                with self.subTest(endpoint=endpoint.__name__):
+                    with self.assertRaises(HTTPException) as raised:
+                        endpoint("Bearer wrong-token")
+                    self.assertEqual(raised.exception.status_code, 401)
+        finally:
+            main.API_TOKEN = original_token
+
     def test_rejects_requests_when_server_token_is_not_configured(self):
         original = main.API_TOKEN
         try:
