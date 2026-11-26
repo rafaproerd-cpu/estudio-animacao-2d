@@ -958,7 +958,12 @@ export default function App() {
               <TouchableOpacity style={styles.secondary} onPress={generateAllSceneImages} disabled={!!busyScene || !!batchProgress}>
                 <Text style={styles.secondaryText}>GERAR TODAS AS IMAGENS</Text>
               </TouchableOpacity>
-              {batchProgress ? <Text style={styles.note}>Preparadas {batchProgress.current} de {batchProgress.total} cenas…</Text> : null}
+              {batchProgress ? <View style={styles.progressPanel}>
+                <Text style={styles.progressTitle}>{busyScene?.startsWith("video:") ? "ANIMAÇÃO EM ANDAMENTO" : "GERAÇÃO DE IMAGENS EM ANDAMENTO"}</Text>
+                <Text style={styles.note}>{batchProgress.current} de {batchProgress.total} concluídas · {Math.round((batchProgress.current / Math.max(batchProgress.total, 1)) * 100)}%</Text>
+                <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.round((batchProgress.current / Math.max(batchProgress.total, 1)) * 100)}%` }]} /></View>
+                <Text style={styles.note}>Cena atual: {busyScene?.replace(/^video:/, "") || "Preparando próxima cena"}</Text>
+              </View> : null}
               <TouchableOpacity style={styles.primary} onPress={generateAllSceneVideos} disabled={!!busyScene || !!batchProgress || selected.scenes.some(scene => !scene.imageUri)}>
                 <Text style={styles.primaryText}>ANIMAR TODAS AS CENAS</Text><Text style={styles.arrow}>▶</Text>
               </TouchableOpacity>
@@ -1041,6 +1046,10 @@ const styles = StyleSheet.create({
   videoPlayer: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, marginTop: 10, backgroundColor: "#000" },
   imagePlaceholder: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, marginTop: 10, backgroundColor: "#11111B", borderWidth: 1, borderColor: "#39394D", alignItems: "center", justifyContent: "center" },
   timelinePanel: { backgroundColor: "#202033", borderColor: "#514174", borderWidth: 1, borderRadius: 18, padding: 15, marginTop: 20 },
+  progressPanel: { marginTop: 12, padding: 12, borderRadius: 12, backgroundColor: "#151522", borderWidth: 1, borderColor: "#514174" },
+  progressTitle: { color: "#D8CCFF", fontSize: 10, fontWeight: "900", letterSpacing: 1 },
+  progressTrack: { height: 8, borderRadius: 8, overflow: "hidden", backgroundColor: "#39394D", marginTop: 10 },
+  progressFill: { height: "100%", borderRadius: 8, backgroundColor: "#A78BFA" },
   panel: { backgroundColor: "#1A1A27", borderColor: "#303044", borderWidth: 1, borderRadius: 22, padding: 17, marginBottom: 20 },
   step: { color: "#A78BFA", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
   panelTitle: { color: "#F7F5FF", fontSize: 22, fontWeight: "800", marginTop: 10, marginBottom: 13 },
