@@ -304,7 +304,7 @@ class RenderServerTests(unittest.TestCase):
                 token = "one-time-private-download-token"
                 main.generation_download_tokens[filename] = (token, __import__("time").time() + 60)
                 response = main.download_generated_image(filename, token, None)
-                self.assertEqual(response.path, str(Path(temp_dir) / filename))
+                self.assertEqual(Path(response.path), Path(temp_dir) / filename)
                 with self.assertRaises(HTTPException) as invalid:
                     main.download_generated_image(filename, "wrong-token", None)
                 self.assertEqual(invalid.exception.status_code, 401)
