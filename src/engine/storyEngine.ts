@@ -242,9 +242,11 @@ function durationInSeconds(duration: string): number {
   const normalized = duration.toLowerCase();
   const minutes = normalized.match(/(\d+(?:[.,]\d+)?)\s*min/);
   const seconds = normalized.match(/(\d+(?:[.,]\d+)?)\s*seg/);
-  if (minutes) return Math.max(15, Math.round(Number(minutes[1].replace(",", ".")) * 60));
-  if (seconds) return Math.max(10, Math.round(Number(seconds[1].replace(",", "."))));
-  return 60;
+  const total =
+    (minutes ? Number(minutes[1].replace(",", ".")) * 60 : 0) +
+    (seconds ? Number(seconds[1].replace(",", ".")) : 0);
+  if (!Number.isFinite(total) || total <= 0) return 60;
+  return Math.max(10, Math.round(total));
 }
 
 /** Divide a duração em clipes de até ~5 segundos, respeitando o limite do gerador de vídeo. */
