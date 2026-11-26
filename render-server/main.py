@@ -49,6 +49,7 @@ generation_jobs_lock = threading.Lock()
 generation_download_tokens: dict[str, tuple[str, float]] = {}
 MAX_ACTIVE_IMAGE_JOBS = max(1, int(os.getenv("MAX_ACTIVE_IMAGE_JOBS", "1")))
 JOB_RETENTION_SECONDS = max(3600, int(os.getenv("JOB_RETENTION_SECONDS", "86400")))
+GENERATION_DOWNLOAD_TTL_SECONDS = max(3600, int(os.getenv("GENERATION_DOWNLOAD_TTL_SECONDS", "604800")))
 
 
 def prune_generation_state() -> None:
@@ -89,7 +90,7 @@ def run_image_generation_job(job_id: str, payload: ImageGenerationRequest) -> No
         )
         download_token = secrets.token_urlsafe(32)
         with generation_jobs_lock:
-            generation_download_tokens[output.name] = (download_token, time.time() + 3600)
+            generation_download_tokens[output.name] = (download_token, time.time() + GENERATION_DOWNLOAD_TTL_SECONDS)
             generation_jobs[job_id].update({
                 "status": "completed",
                 "progress": 1.0,
