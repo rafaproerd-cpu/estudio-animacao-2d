@@ -109,5 +109,53 @@ class RemoteImageQueueTests(unittest.TestCase):
         self.assertEqual(persist_job.call_count, 2)
 
 
+class VideoGenerationQueueTests(unittest.TestCase):
+    def setUp(self):
+        self.original_token = main.API_TOKEN
+        main.API_TOKEN = "video-test-token"
+        self.original_jobs = dict(main.generation_jobs)
+        main.generation_jobs.clear()
+
+    def tearDown(self):
+        main.API_TOKEN = self.original_token
+        main.generation_jobs.clear()
+        main.generation_jobs.update(self.original_jobs)
+
+    def test_video_request_queues_when_motion_fallback_is_available(self):
+        image = base64.b64encode(b"\\x89PNG\\r\\n\\x1a\\n" + b"x" * 100).decode("ascii")
+        payload = main.VideoGenerationRequest(
+            prompt="slow cinematic camera movement",
+            imageBase64=image,
+            durationSeconds=3,
+        )
+        background = BackgroundTasks()
+        with patch.object(main, "video_engine_status", return_value={
+            "available": True,
+            "status": "ready_motion_only",
+            "model": "FFmpeg Ken Burns",
+        }), patch.object(main, "prune_generation_state"), patch.object(main, "persist_generation_job"):
+            result = main.request_video_generation(payload, background, "Bearer video-test-token")
+
+        self.assertEqual(result["status"], "queued")
+        self.assertEqual(len(background.tasks), 1)
+        self.assertIs(background.tasks[0].func, main.run_video_generation_job)
+
+    def test_video_request_rejects_when_no_video_engine_is_available(self):
+        image = base64.b64encode(b"\\x89PNG\\r\\n\\x1a\\n" + b"x" * 100).decode("ascii")
+        payload = main.VideoGenerationRequest(
+            prompt="slow cinematic camera movement",
+            imageBase64=image,
+            durationSeconds=3,
+        )
+        with patch.object(main, "video_engine_status", return_value={
+            "available": False,
+            "message": "No video engine",
+        }):
+            with self.assertRaises(HTTPException) as raised:
+                main.request_video_generation(payload, BackgroundTasks(), "Bearer video-test-token")
+
+        self.assertEqual(raised.exception.status_code, 503)
+
+
 if __name__ == "__main__":
     unittest.main()
