@@ -49,3 +49,27 @@ O app agora possui adaptadores genéricos em `src/engine/providers/httpGeneratio
 A API responde com `job_id`; a consulta de status devolve `queued`, `running`, `completed`, `failed` ou `cancelled`. Ao concluir, informa `output_url`. O app resolve URLs relativas contra o endereço-base e aceita token Bearer opcional.
 
 **Importante:** os endpoints `POST /v1/generations/images` e `POST /v1/generations/videos` já existem no backend, mas retornam HTTP 503 de forma intencional até que modelos reais sejam instalados. Ainda não há fila de jobs nem geração de imagem/vídeo ativa. Os adaptadores do app não ativam geração por si só. Próxima etapa: definir e testar o contrato de capacidades e jobs antes de instalar um modelo real.
+
+
+## Avaliação inicial de modelos abertos (não instalados)
+
+Esta é uma shortlist para protótipo, não uma promessa de geração já disponível:
+
+| Etapa | Candidato | Motivo para avaliar | Limite conhecido |
+|---|---|---|---|
+| Imagem | SDXL 1.0 Base | Modelo de texto-para-imagem conhecido, pode rodar sozinho sem o refiner e tem licença OpenRAIL++-M | Precisa de GPU compatível para uso prático; a licença tem condições e restrições de uso. A consistência de personagens precisa ser testada com referências/LoRAs. |
+| Vídeo | Wan2.1 T2V 1.3B | Pesos Apache-2.0; versão compacta com geração 480p | A documentação do modelo informa 8,19 GB de VRAM e cerca de 4 minutos para 5 segundos em RTX 4090; isso ainda é hardware caro e não roda no iPhone. |
+
+### Plano de avaliação antes de instalar
+1. Confirmar licença e requisitos da versão exata dos pesos e de todos os componentes auxiliares.
+2. Fazer teste de imagem com a mesma ficha de personagem em 10 cenas diferentes; medir consistência de rosto, roupa e paleta.
+3. Fazer teste de vídeo image-to-video/text-to-video com movimento de câmera e movimento corporal; medir artefatos, duração, resolução e tempo por clipe.
+4. Só então criar o adaptador backend. O modelo de vídeo escolhido pode mudar se o teste não atingir qualidade 2D/anime desejada.
+5. Manter os pesos fora do repositório Git; baixar em volume persistente durante o provisionamento do servidor.
+
+Referências oficiais consultadas:
+- SDXL 1.0 Base (model card e licença): https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0
+- Wan2.1 T2V 1.3B (model card, licença e requisitos): https://huggingface.co/Wan-AI/Wan2.1-T2V-1.3B
+- Wan2.1 (tarefas e resoluções suportadas): https://github.com/Wan-Video/Wan2.1
+
+**Decisão atual:** candidatos para teste apenas. Nenhum peso foi baixado, nenhum motor foi instalado e nenhuma geração foi ativada no servidor.
