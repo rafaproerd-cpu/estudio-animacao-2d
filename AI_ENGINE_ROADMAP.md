@@ -40,7 +40,7 @@ A pessoa deve criar um projeto, descrever a história e produzir cenas, imagens,
 - [x] Registrar jobs e tokens temporários de download em SQLite e limitar concorrência de jobs de imagem. A execução continua em memória; tarefas interrompidas por reinício são marcadas como falhas. Cancelamento e progresso granular ainda faltam.
 - [ ] Selecionar modelos abertos compatíveis com GPU/VRAM e licenças adequadas; testar qualidade, tempo e requisitos reais antes de fixar a escolha.
 - [x] Criar o primeiro adaptador backend de imagem SDXL via Diffusers, carregado sob demanda e ativado somente quando modelo, dependências e dispositivo estão disponíveis.
-- [x] Implementar image-to-image no motor SDXL local e suporte a referência no app. O Space Hugging Face atual aceita somente texto; o app tenta novamente sem referência quando necessário.
+- [x] Implementar image-to-image no motor SDXL local e no Space Hugging Face ZeroGPU, com envio opcional de imagem-base pelo backend. A referência ajuda na continuidade visual, mas não garante identidade perfeita; se o Space rejeitar a referência por incompatibilidade, o app pode repetir a geração sem ela.
 - [x] Criar adaptador experimental de vídeo Wan2.2 TI2V 5B usando o CLI oficial, upload Base64 de imagem, fila e link de saída protegido.
 - [ ] Instalar runtime oficial Wan2.2, pesos TI2V 5B e testar uma geração I2V real em GPU com pelo menos 24 GB de VRAM total (guardião do backend: cerca de 23 GB livres).
 - [ ] Hospedar backend em hardware compatível e conectar o app com autenticação.
@@ -57,7 +57,7 @@ O app agora possui adaptadores genéricos em `src/engine/providers/httpGeneratio
 
 A API responde com `job_id`; a consulta de status devolve `queued`, `running`, `completed`, `failed` ou `cancelled`. Ao concluir, informa `output_url`. O app resolve URLs relativas contra o endereço-base e aceita token Bearer opcional.
 
-**Estado atualizado:** `POST /v1/generations/images` aceita prompts e cria jobs SDXL apenas quando `IMAGE_MODEL_ID`, Diffusers, PyTorch e o dispositivo configurado estão prontos. Os jobs podem ser consultados em `GET /v1/jobs/{job_id}`; o resultado é servido por link privado temporário. O estado dos jobs e as permissões temporárias de download são persistidos em SQLite; a execução permanece em memória e tarefas em andamento são marcadas como interrompidas após reinício. A UI consulta os jobs pelos adaptadores HTTP. O SDXL local aceita referência image-to-image; o Space ZeroGPU atual aceita somente texto. `POST /v1/generations/videos` aceita prompt e imagem Base64 e cria jobs Wan2.2 TI2V somente quando o CLI oficial, checkpoint, PyTorch/CUDA e memória livre suficiente estão configurados. Nenhum modelo foi instalado no ambiente publicado e nenhuma inferência real foi executada ainda.
+**Estado atualizado:** `POST /v1/generations/images` aceita prompts e cria jobs SDXL apenas quando `IMAGE_MODEL_ID`, Diffusers, PyTorch e o dispositivo configurado estão prontos. Os jobs podem ser consultados em `GET /v1/jobs/{job_id}`; o resultado é servido por link privado temporário. O estado dos jobs e as permissões temporárias de download são persistidos em SQLite; a execução permanece em memória e tarefas em andamento são marcadas como interrompidas após reinício. A UI consulta os jobs pelos adaptadores HTTP. Tanto o SDXL local quanto o Space ZeroGPU possuem entrada image-to-image opcional; o Space recebe a imagem de referência como arquivo temporário via Gradio Client e a remove após a chamada. `POST /v1/generations/videos` aceita prompt e imagem Base64 e cria jobs Wan2.2 TI2V somente quando o CLI oficial, checkpoint, PyTorch/CUDA e memória livre suficiente estão configurados. Nenhum modelo foi instalado no ambiente publicado e nenhuma inferência real foi executada ainda.
 
 
 ## Avaliação inicial de modelos abertos (não instalados)
@@ -95,3 +95,8 @@ Referências oficiais consultadas:
 - [ ] Instalar o runtime opcional em GPU compatível, carregar o checkpoint e medir VRAM/tempo/qualidade com uma inferência real.
 - [x] Criar adaptador experimental Wan2.2 TI2V 5B via CLI oficial, com verificação de script, checkpoint e VRAM e fila autenticada.
 - [ ] Quando um servidor GPU for escolhido, validar runtime CUDA, compatibilidade das bibliotecas e memória disponível durante inferências reais.
+
+
+## Validação CI mais recente
+
+Em 26/11/2026, no commit `9243f7fe8312cdf07ee17e7a27a88a916e5e7153`, os workflows **Mobile app validation**, **Render server checks** e **Deploy browser preview** concluíram com sucesso. Isso valida compilação, testes automatizados, construção do container e publicação da interface. Não valida uma geração real de imagem/vídeo no Hugging Face ou em GPU Wan2.2; esses testes ainda dependem de publicar e configurar os serviços externos.
