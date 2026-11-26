@@ -221,7 +221,7 @@ class VideoGenerationRequest(BaseModel):
 
 def run_video_generation_job(job_id: str, payload: VideoGenerationRequest, image_bytes: bytes) -> None:
     with generation_jobs_lock:
-        generation_jobs[job_id].update({"status": "running", "message": "Preparando imagem de referência e gerando o clipe com Wan2.2."})
+        generation_jobs[job_id].update({"status": "running", "message": "Preparando a imagem e criando o clipe de vídeo."})
     persist_generation_job(job_id)
     try:
         output = generate_wan_video(
@@ -236,7 +236,7 @@ def run_video_generation_job(job_id: str, payload: VideoGenerationRequest, image
             generation_jobs[job_id].update({
                 "status": "completed",
                 "progress": 1.0,
-                "message": "Clipe de vídeo gerado.",
+                "message": "Clipe de vídeo concluído.",
                 "output_url": "/v1/files/" + output.name + "?token=" + download_token,
             })
         persist_download_grant(output.name)
@@ -462,7 +462,7 @@ def request_video_generation(
     background_tasks: BackgroundTasks,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, object]:
-    """Enfileira Wan2.2 TI2V somente quando runtime, pesos e GPU estão prontos."""
+    """Enfileira animação de cena quando Wan2.2 ou o fallback FFmpeg estão disponíveis."""
     require_token(authorization)
     status = video_engine_status()
     if not status["available"]:
