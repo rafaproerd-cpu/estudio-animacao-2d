@@ -24,6 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from image_engine import IMAGE_OUTPUT_DIR, active_image_engine_status, generate_image, image_engine_status, huggingface_image_engine_status
 from video_engine import WAN_OUTPUT_DIR, generate_wan_video, video_engine_status
+from story_engine import generate_story_plan, story_engine_status
 
 APP_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = Path(os.getenv("RENDER_OUTPUT_DIR", str(APP_DIR / "outputs"))).resolve()
@@ -163,6 +164,13 @@ def prune_generation_state() -> None:
 
 
 initialize_generation_state()
+
+
+class StoryGenerationRequest(BaseModel):
+    idea: str = Field(min_length=1, max_length=700)
+    genre: str = Field(min_length=1, max_length=40)
+    duration: str = Field(min_length=1, max_length=40)
+    character: str = Field(default="Personagem principal a definir", max_length=3000)
 
 
 class ImageGenerationRequest(BaseModel):
@@ -352,6 +360,7 @@ def generation_capabilities(authorization: Annotated[str | None, Header()] = Non
             "note": "A detecção NVIDIA não confirma compatibilidade com um modelo; requisitos de VRAM e CUDA ainda precisam ser validados.",
         },
         "engines": {
+            "story": story_engine_status(),
             "image": active_image_engine_status(),
             "image_local": image_engine_status(),
             "image_remote": huggingface_image_engine_status(),
@@ -369,6 +378,25 @@ def generation_capabilities(authorization: Annotated[str | None, Header()] = Non
             },
         },
     }
+
+
+@app.post("/v1/stories/generate")
+def request_story_generation(
+    payload: StoryGenerationRequest,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, object]:
+    """Gera roteiro original com provedor configurado no servidor; nunca expõe a chave ao app."""
+    require_token(authorization)
+    if not payload.idea.strip():
+        raise HTTPException(status_code=400, detail="Informe a ideia da animação.")
+    if not story_engine_status()["available"]:
+        raise HTTPException(status_code=503, detail=str(story_engine_status()["message"]))
+    try:
+        return generate_story_plan(payload.idea, payload.genre, payload.duration, payload.character)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except RuntimeError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
 
 
 @app.post("/v1/generations/images")
