@@ -10,6 +10,8 @@ class RemoteImageQueueTests(unittest.TestCase):
     def setUp(self):
         self.original_token = main.API_TOKEN
         main.API_TOKEN = "remote-image-test-token"
+        self.original_jobs = dict(main.generation_jobs)
+        main.generation_jobs.clear()
         self.engine_status = {
             "available": True,
             "status": "configured_unverified",
@@ -18,6 +20,8 @@ class RemoteImageQueueTests(unittest.TestCase):
 
     def tearDown(self):
         main.API_TOKEN = self.original_token
+        main.generation_jobs.clear()
+        main.generation_jobs.update(self.original_jobs)
 
     def test_remote_space_can_accept_an_image_job(self):
         background = BackgroundTasks()
