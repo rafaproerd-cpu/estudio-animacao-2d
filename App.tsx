@@ -383,7 +383,17 @@ export default function App() {
         setBusyScene(scene.title);
         const referenceScene = workingProject.scenes.find(item => item.imageUri);
         const referenceImageBase64 = referenceScene?.imageUri ? await imageUriToBase64(referenceScene.imageUri) : undefined;
-        const result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, referenceImageBase64 });
+        let result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, referenceImageBase64 });
+        // O Space gratuito atual aceita somente texto. Se o backend informar
+        // que não suporta referência, repetir a cena sem a imagem-base em vez
+        // de interromper toda a fila depois da primeira cena.
+        if (
+          result.status !== "completed" &&
+          referenceImageBase64 &&
+          /somente texto|referência.*não.*suportada|não.*suporta.*referência/i.test(result.error || "")
+        ) {
+          result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576 });
+        }
         if (result.status !== "completed" || !result.outputUri) throw new Error(`${scene.title}: ${result.error || "o motor não retornou uma imagem"}`);
         const localUri = await persistGeneratedImage(result.outputUri, workingProject.id, scene.title);
         workingProject = { ...workingProject, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: workingProject.scenes.map(item => item.title === scene.title ? { ...item, imageUri: localUri, videoUri: undefined, videoRemoteUri: undefined } : item) };
