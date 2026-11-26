@@ -1,24 +1,29 @@
 import gradio as gr
 import spaces
 import torch
-from diffusers import AutoPipelineForText2Image
+from PIL import Image
+from diffusers import AutoPipelineForImage2Image, AutoPipelineForText2Image
 
 MODEL_ID = "stabilityai/sdxl-turbo"
-_pipe = None
+_text_pipe = None
+_image_pipe = None
 
-def get_pipeline():
-    global _pipe
-    if _pipe is None:
-        _pipe = AutoPipelineForText2Image.from_pretrained(
-            MODEL_ID,
-            torch_dtype=torch.float16,
-            variant="fp16",
-            use_safetensors=True,
+def get_pipeline(use_reference: bool = False):
+    global _text_pipe, _image_pipe
+    if use_reference:
+        if _image_pipe is None:
+            _image_pipe = AutoPipelineForImage2Image.from_pretrained(
+                MODEL_ID, torch_dtype=torch.float16, variant="fp16", use_safetensors=True
+            ).to("cuda")
+        return _image_pipe
+    if _text_pipe is None:
+        _text_pipe = AutoPipelineForText2Image.from_pretrained(
+            MODEL_ID, torch_dtype=torch.float16, variant="fp16", use_safetensors=True
         ).to("cuda")
-    return _pipe
+    return _text_pipe
 
 @spaces.GPU(duration=60)
-def generate_image(prompt: str, seed: int = 12345):
+def generate_image(prompt: str, seed: int = 12345, reference_image=None):
     prompt = (prompt or "").strip()
     if len(prompt) < 8:
         raise gr.Error("Descreva a cena com pelo menos 8 caracteres.")
@@ -27,15 +32,19 @@ def generate_image(prompt: str, seed: int = 12345):
 
     safe_seed = int(seed) % (2**32)
     generator = torch.Generator(device="cuda").manual_seed(safe_seed)
-    pipeline = get_pipeline()
-    result = pipeline(
-        prompt=prompt,
-        num_inference_steps=4,
-        guidance_scale=0.0,
-        height=432,
-        width=768,
-        generator=generator,
-    )
+    pipeline = get_pipeline(reference_image is not None)
+    if reference_image is not None:
+        with Image.open(reference_image) as source:
+            reference = source.convert("RGB").resize((768, 432))
+        result = pipeline(
+            prompt=prompt, image=reference, strength=0.55,
+            num_inference_steps=4, guidance_scale=0.0, generator=generator,
+        )
+    else:
+        result = pipeline(
+            prompt=prompt, num_inference_steps=4, guidance_scale=0.0,
+            height=432, width=768, generator=generator,
+        )
     return result.images[0]
 
 with gr.Blocks(title="Estúdio 2D - teste de imagem") as demo:
@@ -51,9 +60,10 @@ with gr.Blocks(title="Estúdio 2D - teste de imagem") as demo:
         max_lines=6,
     )
     seed = gr.Number(label="Semente do projeto", value=12345, precision=0)
+    reference = gr.Image(label="Imagem de referência (opcional)", type="filepath")
     generate = gr.Button("Gerar imagem", variant="primary")
     output = gr.Image(label="Imagem gerada", type="pil")
-    generate.click(generate_image, inputs=[prompt, seed], outputs=output, api_name="generate")
+    generate.click(generate_image, inputs=[prompt, seed, reference], outputs=output, api_name="generate")
 
 demo.queue()
 demo.launch()
