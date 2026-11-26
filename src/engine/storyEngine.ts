@@ -247,9 +247,9 @@ function durationInSeconds(duration: string): number {
   return 60;
 }
 
-/** Estima uma cena a cada ~8 segundos, sem teto artificial de quatro cenas. */
+/** Divide a duração em clipes de até ~5 segundos, respeitando o limite do gerador de vídeo. */
 function sceneCountFor(duration: string): number {
-  return Math.max(4, Math.ceil(durationInSeconds(duration) / 8));
+  return Math.max(4, Math.ceil(durationInSeconds(duration) / 5));
 }
 
 function makeScene(
