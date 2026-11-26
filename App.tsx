@@ -263,19 +263,27 @@ export default function App() {
     // No navegador, mantenha o link protegido; no iPhone, salve uma cópia local
     // para que o projeto continue funcionando depois que o link temporário expirar.
     if (Platform.OS === "web") return remoteUri;
-    const directory = (FileSystem.documentDirectory || "") + "scene-videos/";
-    const info = await FileSystem.getInfoAsync(directory);
-    if (!info.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
-    const filenameParam = remoteUri.match(/[?&]filename=([^&]+)/)?.[1];
-    const sourceFilename = filenameParam ? decodeURIComponent(filenameParam) : "";
-    const extension = sourceFilename.match(/\.(mp4|webm|mov|mkv)$/i)?.[1] || "mp4";
-    const safeName = sceneTitle.replace(/[^a-z0-9-_]/gi, "-").slice(0, 48) || "scene";
-    const destination = `${directory}${projectId}-${safeName}-${Date.now()}.${extension}`;
-    const download = await FileSystem.downloadAsync(remoteUri, destination);
-    if (download.status < 200 || download.status >= 300) {
-      throw new Error(`O clipe foi gerado, mas não foi possível salvá-lo no iPhone (HTTP ${download.status}).`);
+    try {
+      const directory = (FileSystem.documentDirectory || "") + "scene-videos/";
+      if (!FileSystem.documentDirectory) throw new Error("Armazenamento local indisponível.");
+      const info = await FileSystem.getInfoAsync(directory);
+      if (!info.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
+      const filenameParam = remoteUri.match(/[?&]filename=([^&]+)/)?.[1];
+      const sourceFilename = filenameParam ? decodeURIComponent(filenameParam) : "";
+      const extension = sourceFilename.match(/\.(mp4|webm|mov|mkv)$/i)?.[1] || "mp4";
+      const safeName = sceneTitle.replace(/[^a-z0-9-_]/gi, "-").slice(0, 48) || "scene";
+      const destination = `${directory}${projectId}-${safeName}-${Date.now()}.${extension}`;
+      const download = await FileSystem.downloadAsync(remoteUri, destination);
+      if (download.status < 200 || download.status >= 300) {
+        throw new Error(`HTTP ${download.status}`);
+      }
+      return download.uri;
+    } catch (error) {
+      // Não descarte um clipe que já foi gerado: preserve o link remoto para
+      // permitir nova tentativa de download durante a montagem do MP4.
+      console.warn("Clipe gerado, mas a cópia local falhou:", error);
+      return remoteUri;
     }
-    return download.uri;
   };
 
   const generateSceneImage = async (scene: Scene) => {
