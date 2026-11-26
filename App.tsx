@@ -253,7 +253,17 @@ export default function App() {
         canvas.height = 576;
         const context = canvas.getContext("2d");
         if (!context) throw new Error("O navegador não conseguiu preparar a imagem.");
-        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        // Preencher o quadro 16:9 sem deformar o personagem ou o cenário.
+        const scale = Math.max(canvas.width / image.naturalWidth, canvas.height / image.naturalHeight);
+        const sourceWidth = canvas.width / scale;
+        const sourceHeight = canvas.height / scale;
+        const sourceX = (image.naturalWidth - sourceWidth) / 2;
+        const sourceY = (image.naturalHeight - sourceHeight) / 2;
+        context.drawImage(
+          image,
+          sourceX, sourceY, sourceWidth, sourceHeight,
+          0, 0, canvas.width, canvas.height
+        );
         return canvas.toDataURL("image/jpeg", 0.82);
       } finally {
         URL.revokeObjectURL(objectUrl);
