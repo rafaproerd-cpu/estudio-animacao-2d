@@ -34,6 +34,14 @@ ALLOWED_EXTENSIONS = {".mp4", ".mov", ".mkv", ".webm"}
 ALLOWED_AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac"}
 
 app = FastAPI(title="Estúdio 2D Render Server", version="1.1.0")
+_allowed_origins = [origin.strip() for origin in os.getenv("ESTUDIO_ALLOWED_ORIGINS", "*").split(",") if origin.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_origins or ["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
+)
 
 generation_jobs: dict[str, dict[str, object]] = {}
 generation_jobs_lock = threading.Lock()
