@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert, Linking, SafeAreaView, ScrollView, Share, StatusBar, StyleSheet,
-  Text, TextInput, TouchableOpacity, View, Image
+  Text, TextInput, TouchableOpacity, View, Image, Platform
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
@@ -37,6 +37,27 @@ type EngineConfig = {
 };
 const genres = ["Aventura", "Comédia", "Fantasia", "Ação", "Drama", "Mistério"];
 const durations = ["30 segundos", "1 minuto", "2 minutos", "3 minutos", "5 minutos", "10 minutos"];
+const RENDER_TOKEN_KEY = "@estudio2d/render-token";
+
+async function readRenderToken(): Promise<string | null> {
+  if (Platform.OS === "web") {
+    return typeof window === "undefined" ? null : window.sessionStorage.getItem(RENDER_TOKEN_KEY);
+  }
+  return SecureStore.getItemAsync(RENDER_TOKEN_KEY);
+}
+
+async function writeRenderToken(token: string): Promise<void> {
+  if (Platform.OS === "web") {
+    if (typeof window !== "undefined") {
+      if (token) window.sessionStorage.setItem(RENDER_TOKEN_KEY, token);
+      else window.sessionStorage.removeItem(RENDER_TOKEN_KEY);
+    }
+    return;
+  }
+  if (token) await SecureStore.setItemAsync(RENDER_TOKEN_KEY, token);
+  else await SecureStore.deleteItemAsync(RENDER_TOKEN_KEY);
+}
+
 
 function buildProject(idea: string, genre: string, duration: string): Project {
   const character = "Personagem principal\nNome: a definir\nAparência: a definir\nRoupa: a definir\nPersonalidade: a definir\nVoz: a definir\nRegra de continuidade: manter o mesmo rosto, cabelo, roupa, cores e proporções em todas as cenas.";
@@ -114,13 +135,13 @@ export default function App() {
   useEffect(() => {
     Promise.all([
       AsyncStorage.getItem(ENGINE_STORAGE_KEY),
-      SecureStore.getItemAsync("@estudio2d/render-token"),
+      readRenderToken(),
     ])
       .then(async ([value, token]) => {
         const saved = value ? JSON.parse(value) as Partial<EngineConfig> : {};
         const legacyToken = saved.renderToken;
         delete saved.renderToken;
-        if (!token && legacyToken) await SecureStore.setItemAsync("@estudio2d/render-token", legacyToken);
+        if (!token && legacyToken) await writeRenderToken(legacyToken);
         if (value && legacyToken) await AsyncStorage.setItem(ENGINE_STORAGE_KEY, JSON.stringify(saved));
         setEngineConfig(prev => ({ ...prev, ...saved, renderToken: token || legacyToken || "" }));
       })
@@ -147,8 +168,7 @@ export default function App() {
     try {
       const { renderToken, ...publicConfig } = engineConfig;
       await AsyncStorage.setItem(ENGINE_STORAGE_KEY, JSON.stringify(publicConfig));
-      if (renderToken?.trim()) await SecureStore.setItemAsync("@estudio2d/render-token", renderToken.trim());
-      else await SecureStore.deleteItemAsync("@estudio2d/render-token");
+      await writeRenderToken(renderToken?.trim() || "");
       Alert.alert("Conexão salva", "O endereço do motor foi guardado no aparelho; o token fica no armazenamento seguro do iPhone.");
     } catch {
       Alert.alert("Erro", "Não foi possível salvar as configurações. Verifique o armazenamento do aparelho.");
