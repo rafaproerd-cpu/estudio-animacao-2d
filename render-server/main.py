@@ -235,11 +235,7 @@ def generation_capabilities(authorization: Annotated[str | None, Header()] = Non
         },
         "engines": {
             "image": image_engine_status(),
-            "video": {
-                "available": False,
-                "status": "not_configured",
-                "message": "Nenhum modelo de animação de vídeo foi instalado neste servidor.",
-            },
+            "video": video_engine_status(),
             "audio": {
                 "available": piper_available and bool(voices),
                 "status": "ready" if piper_available and voices else "not_configured",
