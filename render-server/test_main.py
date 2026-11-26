@@ -466,5 +466,50 @@ class RenderServerTests(unittest.TestCase):
             main.WAN_OUTPUT_DIR = original_output
 
 
+    def test_generation_jobs_and_download_tokens_survive_server_restart(self):
+        original_db = main.GENERATION_STATE_DB
+        original_jobs = dict(main.generation_jobs)
+        original_tokens = dict(main.generation_download_tokens)
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                main.GENERATION_STATE_DB = Path(temp_dir) / "generation-state.sqlite3"
+                main.generation_jobs.clear()
+                main.generation_download_tokens.clear()
+                completed_id = "e" * 32
+                interrupted_id = "f" * 32
+                filename = "image-" + "a" * 32 + ".png"
+                main.generation_jobs[completed_id] = {
+                    "status": "completed",
+                    "progress": 1.0,
+                    "message": "Imagem gerada.",
+                    "output_url": "/v1/files/" + filename + "?token=private-token",
+                    "created_at": main.time.time(),
+                }
+                main.generation_jobs[interrupted_id] = {
+                    "status": "running",
+                    "progress": 0.5,
+                    "message": "Gerando imagem.",
+                    "created_at": main.time.time(),
+                }
+                main.generation_download_tokens[filename] = ("private-token", main.time.time() + 300)
+                main.persist_generation_job(completed_id)
+                main.persist_generation_job(interrupted_id)
+                main.persist_download_grant(filename)
+
+                main.generation_jobs.clear()
+                main.generation_download_tokens.clear()
+                main.initialize_generation_state()
+
+                self.assertEqual(main.generation_jobs[completed_id]["status"], "completed")
+                self.assertEqual(main.generation_jobs[interrupted_id]["status"], "failed")
+                self.assertIn("reiniciou", str(main.generation_jobs[interrupted_id]["message"]))
+                self.assertEqual(main.generation_download_tokens[filename][0], "private-token")
+        finally:
+            main.GENERATION_STATE_DB = original_db
+            main.generation_jobs.clear()
+            main.generation_jobs.update(original_jobs)
+            main.generation_download_tokens.clear()
+            main.generation_download_tokens.update(original_tokens)
+
 if __name__ == "__main__":
     unittest.main()
