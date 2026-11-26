@@ -818,6 +818,7 @@ export default function App() {
             <Text style={styles.body}>{selected.idea}</Text>
             <Text style={styles.label}>FICHA DO PERSONAGEM</Text>
             <TextInput value={selected.character} onChangeText={updateCharacter} multiline textAlignVertical="top" placeholder="Descreva aparência, roupa, personalidade e voz do personagem..." placeholderTextColor="#777789" style={styles.characterInput} />
+            <Text style={styles.note}>Para manter o personagem parecido entre cenas, a primeira imagem pronta é reutilizada como referência visual nas próximas gerações.</Text>
             {selected.scenes.map(scene => <View key={scene.title} style={styles.scene}>
               <Text style={styles.sceneTitle}>{scene.title}</Text>
               {scene.imageUri ? <Image source={{ uri: scene.imageUri }} style={styles.generatedImage} resizeMode="cover" /> : <View style={styles.imagePlaceholder}><Text style={styles.note}>Imagem ainda não gerada</Text></View>}
