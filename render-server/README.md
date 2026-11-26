@@ -116,7 +116,7 @@ Como alternativa ao SDXL instalado em uma GPU própria, o servidor pode chamar u
 3. Para Space privado, configure também `HF_TOKEN` como segredo do servidor. Nunca coloque esse token no aplicativo ou no código público.
 4. Instale `render-server/requirements.txt` e consulte `GET /v1/capabilities`.
 
-Quando o SDXL local não estiver pronto, o backend tentará usar o Space remoto. O Space de teste gera imagens horizontais 16:9 (768×432), não recebe imagem de referência, não mantém identidade de personagens por conta própria e não gera vídeo. O status `configured_unverified` significa que as configurações existem; somente uma chamada real confirma que o Space está acordado, autorizado e com cota disponível.
+Quando o SDXL local não estiver pronto, o backend tentará usar o Space remoto. O Space de teste gera imagens horizontais 16:9 (768×432) e recebe imagem de referência opcional por image-to-image. Isso pode ajudar na continuidade visual, mas não garante identidade perfeita e não gera vídeo. O status `configured_unverified` significa que as configurações existem; somente uma chamada real confirma que o Space está acordado, autorizado e com cota disponível.
 
 Exemplo de variáveis:
 ```bash
