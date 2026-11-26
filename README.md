@@ -46,6 +46,16 @@ Nenhum desses modelos foi baixado ou ativado no servidor. A escolha final depend
 
 O motor inicial é apenas texto-para-imagem: referências visuais de personagens são recusadas explicitamente até a etapa image-to-image. A fila e os estados são em memória, adequados ao protótipo de uma única instância, não a uma implantação escalável.
 
+### Ativar o motor experimental de vídeo Wan2.2
+
+1. Clone o repositório oficial `https://github.com/Wan-Video/Wan2.2` em uma máquina Linux com GPU NVIDIA.
+2. Instale PyTorch/CUDA compatíveis e as dependências oficiais desse repositório; a documentação do modelo pede PyTorch 2.4 ou superior.
+3. Baixe os pesos oficiais `Wan-AI/Wan2.2-TI2V-5B` para um diretório persistente.
+4. Configure `WAN_GENERATE_SCRIPT`, `WAN_CHECKPOINT_DIR`, `WAN_PYTHON` e `WAN_SIZE=1280*704`. O backend verifica a GPU e exige aproximadamente 24 GB livres.
+5. O endpoint recebe `imageBase64` (PNG/JPEG) e prompt. O primeiro fluxo gera cerca de 4 segundos a 24 FPS.
+
+O adaptador usa o `generate.py` oficial em subprocesso, sem shell, e valida o MP4 de saída. Ainda precisa de uma inferência real de ponta a ponta antes de ser considerado pronto.
+
 ## Custos e infraestrutura
 Pesos de modelos abertos podem ser usados sem pagar créditos por chamada de API, respeitando suas licenças. Isso **não** torna a geração ilimitada gratuita: inferência de vídeo exige GPU, energia, armazenamento e hospedagem. O iPhone é a interface de controle; os modelos pesados precisam executar em hardware compatível. Não prometemos geração gratuita ilimitada na nuvem.
 
