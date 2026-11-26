@@ -36,7 +36,8 @@ A pessoa deve criar um projeto, descrever a história e produzir cenas, imagens,
 - [ ] Selecionar modelos abertos compatíveis com GPU/VRAM e licenças adequadas; testar qualidade, tempo e requisitos reais antes de fixar a escolha.
 - [x] Criar o primeiro adaptador backend de imagem SDXL via Diffusers, carregado sob demanda e ativado somente quando modelo, dependências e dispositivo estão disponíveis.
 - [ ] Implementar image-to-image para referências de personagem, incluindo upload seguro dos arquivos do aparelho.
-- [ ] Criar o adaptador backend de vídeo Wan2.2 TI2V 5B depois de validar runtime e memória.
+- [x] Criar adaptador experimental de vídeo Wan2.2 TI2V 5B usando o CLI oficial, upload Base64 de imagem, fila e link de saída protegido.
+- [ ] Instalar runtime oficial Wan2.2, pesos TI2V 5B e testar uma geração I2V real em GPU com pelo menos 24 GB livres.
 - [ ] Hospedar backend em hardware compatível e conectar o app com autenticação.
 - [ ] Testar ponta a ponta em iPhone: ideia → cenas → imagens → animação → voz → MP4.
 
@@ -51,7 +52,7 @@ O app agora possui adaptadores genéricos em `src/engine/providers/httpGeneratio
 
 A API responde com `job_id`; a consulta de status devolve `queued`, `running`, `completed`, `failed` ou `cancelled`. Ao concluir, informa `output_url`. O app resolve URLs relativas contra o endereço-base e aceita token Bearer opcional.
 
-**Estado atualizado:** `POST /v1/generations/images` aceita prompts e cria jobs SDXL apenas quando `IMAGE_MODEL_ID`, Diffusers, PyTorch e o dispositivo configurado estão prontos. Os jobs podem ser consultados em `GET /v1/jobs/{job_id}`; o resultado é servido por link privado temporário. A fila é volátil e ainda não é usada pela UI. Referências de personagem são recusadas por enquanto porque o primeiro pipeline é text-to-image. `POST /v1/generations/videos` continua retornando HTTP 503 até que o pipeline Wan seja integrado. Nenhum modelo foi instalado no ambiente publicado e nenhuma inferência real foi executada ainda.
+**Estado atualizado:** `POST /v1/generations/images` aceita prompts e cria jobs SDXL apenas quando `IMAGE_MODEL_ID`, Diffusers, PyTorch e o dispositivo configurado estão prontos. Os jobs podem ser consultados em `GET /v1/jobs/{job_id}`; o resultado é servido por link privado temporário. A fila é volátil e ainda não é usada pela UI. Referências de personagem são recusadas por enquanto porque o primeiro pipeline é text-to-image. `POST /v1/generations/videos` aceita prompt e imagem Base64 e cria jobs Wan2.2 TI2V somente quando o CLI oficial, checkpoint, PyTorch/CUDA e memória livre suficiente estão configurados. Nenhum modelo foi instalado no ambiente publicado e nenhuma inferência real foi executada ainda.
 
 
 ## Avaliação inicial de modelos abertos (não instalados)
@@ -74,6 +75,7 @@ Referências oficiais consultadas:
 - SDXL 1.0 Base (model card e licença): https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0
 - Wan2.1 T2V 1.3B (model card, licença e requisitos; candidato anterior, apenas T2V): https://huggingface.co/Wan-AI/Wan2.1-T2V-1.3B
 - Wan2.2 TI2V 5B (model card oficial, tarefas T2V/I2V, licença e requisitos): https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B
+- Wan2.2 official inference script and CLI options: https://github.com/Wan-Video/Wan2.2/blob/main/generate.py
 - Wan2.1 (tarefas e resoluções suportadas): https://github.com/Wan-Video/Wan2.1
 
 **Decisão atual (revisada em 25/11/2026):** SDXL 1.0 Base segue como candidato para imagens; Wan2.2 TI2V 5B passa a ser o principal candidato para animação image-to-video. São candidatos para teste apenas: nenhum peso foi baixado, nenhum motor foi instalado e nenhuma geração foi ativada no servidor.
@@ -86,4 +88,5 @@ Referências oficiais consultadas:
 - [ ] Essas métricas são apenas um retrato do driver no momento da consulta; não comprovam compatibilidade CUDA nem capacidade de executar SDXL/Wan. Validar o ambiente real antes de instalar pesos.
 - [x] Adicionar runtime opcional SDXL via Diffusers, sem incluir PyTorch/CUDA pesado na imagem Docker padrão.
 - [ ] Instalar o runtime opcional em GPU compatível, carregar o checkpoint e medir VRAM/tempo/qualidade com uma inferência real.
-- [ ] Quando um servidor GPU for escolhido, validar runtime CUDA, compatibilidade das bibliotecas e memória disponível durante uma inferência real.
+- [x] Criar adaptador experimental Wan2.2 TI2V 5B via CLI oficial, com verificação de script, checkpoint e VRAM e fila autenticada.
+- [ ] Quando um servidor GPU for escolhido, validar runtime CUDA, compatibilidade das bibliotecas e memória disponível durante inferências reais.
