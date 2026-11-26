@@ -30,14 +30,10 @@ type Project = {
 };
 
 const STORAGE_KEY = "@estudio2d/projects-v1";
-const COMFY_STORAGE_KEY = "@estudio2d/comfyui-v1";
-type ComfyConfig = {
-  baseUrl: string; workflowText: string; positiveNode: string; negativeNode: string;
-  widthNode: string; heightNode: string; seedNode: string;
-  videoWorkflowText?: string; videoImageNode?: string; videoPositiveNode?: string;
-  videoNegativeNode?: string; videoWidthNode?: string; videoHeightNode?: string;
-  videoFramesNode?: string; videoFpsNode?: string; videoSeedNode?: string;
-  renderBaseUrl?: string; renderToken?: string;
+const ENGINE_STORAGE_KEY = "@estudio2d/comfyui-v1";
+type EngineConfig = {
+  renderBaseUrl?: string;
+  renderToken?: string;
 };
 const genres = ["Aventura", "Comédia", "Fantasia", "Ação", "Drama", "Mistério"];
 const durations = ["30 segundos", "1 minuto", "2 minutos", "3 minutos", "5 minutos", "10 minutos"];
@@ -108,7 +104,7 @@ export default function App() {
   const [selected, setSelected] = useState<Project | null>(null);
   const [ready, setReady] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [comfyConfig, setComfyConfig] = useState<ComfyConfig>({ baseUrl: "", workflowText: "", positiveNode: "", negativeNode: "", widthNode: "", heightNode: "", seedNode: "", videoWorkflowText: "", videoImageNode: "", videoPositiveNode: "", videoNegativeNode: "", videoWidthNode: "", videoHeightNode: "", videoFramesNode: "", videoFpsNode: "", videoSeedNode: "", renderBaseUrl: "", renderToken: "" });
+  const [engineConfig, setEngineConfig] = useState<EngineConfig>({ renderBaseUrl: "", renderToken: "" });
   const [connectionStatus, setConnectionStatus] = useState("Não testada");
   const [busyScene, setBusyScene] = useState<string | null>(null);
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
@@ -117,16 +113,16 @@ export default function App() {
 
   useEffect(() => {
     Promise.all([
-      AsyncStorage.getItem(COMFY_STORAGE_KEY),
+      AsyncStorage.getItem(ENGINE_STORAGE_KEY),
       SecureStore.getItemAsync("@estudio2d/render-token"),
     ])
       .then(async ([value, token]) => {
-        const saved = value ? JSON.parse(value) as Partial<ComfyConfig> : {};
+        const saved = value ? JSON.parse(value) as Partial<EngineConfig> : {};
         const legacyToken = saved.renderToken;
         delete saved.renderToken;
         if (!token && legacyToken) await SecureStore.setItemAsync("@estudio2d/render-token", legacyToken);
-        if (value && legacyToken) await AsyncStorage.setItem(COMFY_STORAGE_KEY, JSON.stringify(saved));
-        setComfyConfig(prev => ({ ...prev, ...saved, renderToken: token || legacyToken || "" }));
+        if (value && legacyToken) await AsyncStorage.setItem(ENGINE_STORAGE_KEY, JSON.stringify(saved));
+        setEngineConfig(prev => ({ ...prev, ...saved, renderToken: token || legacyToken || "" }));
       })
       .catch(() => Alert.alert("Aviso", "Não foi possível carregar as configurações seguras do servidor."));
   }, []);
@@ -147,10 +143,10 @@ export default function App() {
     }
   }, [projects, ready]);
 
-  const saveComfyConfig = async () => {
+  const saveEngineConfig = async () => {
     try {
-      const { renderToken, ...publicConfig } = comfyConfig;
-      await AsyncStorage.setItem(COMFY_STORAGE_KEY, JSON.stringify(publicConfig));
+      const { renderToken, ...publicConfig } = engineConfig;
+      await AsyncStorage.setItem(ENGINE_STORAGE_KEY, JSON.stringify(publicConfig));
       if (renderToken?.trim()) await SecureStore.setItemAsync("@estudio2d/render-token", renderToken.trim());
       else await SecureStore.deleteItemAsync("@estudio2d/render-token");
       Alert.alert("Conexão salva", "O endereço do motor foi guardado no aparelho; o token fica no armazenamento seguro do iPhone.");
@@ -159,22 +155,15 @@ export default function App() {
     }
   };
 
-  const testComfyConnection = async () => {
-    const url = comfyConfig.baseUrl.trim().replace(/\/+$/, "");
-    if (!/^https?:\/\//i.test(url)) { Alert.alert("Endereço inválido", "Informe o endereço completo do ComfyUI."); return; }
-    setConnectionStatus("Testando…");
-    try { const response = await fetch(`${url}/system_stats`); if (!response.ok) throw new Error(`HTTP ${response.status}`); await response.json(); setConnectionStatus("Conectado"); Alert.alert("Conexão confirmada", "O aplicativo conseguiu acessar o servidor ComfyUI."); }
-    catch (error) { setConnectionStatus("Falha na conexão"); Alert.alert("Não conectou", error instanceof Error ? error.message : "Verifique endereço, rede e HTTPS."); }
-  };
 
   const testRenderConnection = async () => {
-    const url = (comfyConfig.renderBaseUrl || "").trim().replace(/\/+$/, "");
+    const url = (engineConfig.renderBaseUrl || "").trim().replace(/\/+$/, "");
     if (!/^https?:\/\//i.test(url)) {
       Alert.alert("Endereço inválido", "Informe o endereço do servidor de montagem, incluindo http:// ou https://.");
       return;
     }
     try {
-      const response = await fetch(`${url}/health`, { headers: { Authorization: `Bearer ${(comfyConfig.renderToken || "").trim()}` } });
+      const response = await fetch(`${url}/health`, { headers: { Authorization: `Bearer ${(engineConfig.renderToken || "").trim()}` } });
       const data = await response.json();
       if (!response.ok || !data.ok || !data.ffmpeg_available || !data.token_configured) {
         throw new Error("Servidor respondeu, mas FFmpeg ou token não está configurado corretamente.");
@@ -188,8 +177,8 @@ export default function App() {
   };
 
   const getEngineConnection = () => {
-    const baseUrl = (comfyConfig.renderBaseUrl || "").trim().replace(/\/+$/, "");
-    const token = (comfyConfig.renderToken || "").trim();
+    const baseUrl = (engineConfig.renderBaseUrl || "").trim().replace(/\/+$/, "");
+    const token = (engineConfig.renderToken || "").trim();
     if (!/^https?:\/\//i.test(baseUrl) || !token) {
       Alert.alert("Conecte o motor do Estúdio 2D", "Informe o endereço HTTPS do servidor próprio e o token na opção Conectar motor.");
       setShowSettings(true);
@@ -413,9 +402,9 @@ export default function App() {
   };
 
   const loadTtsVoices = async () => {
-    let baseUrl = (comfyConfig.renderBaseUrl || "").trim();
+    let baseUrl = (engineConfig.renderBaseUrl || "").trim();
     while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-    const token = (comfyConfig.renderToken || "").trim();
+    const token = (engineConfig.renderToken || "").trim();
     if (!baseUrl || !token) {
       Alert.alert("Configure a montagem", "Informe o endereço e o token do servidor nas configurações.");
       setShowSettings(true);
@@ -439,9 +428,9 @@ export default function App() {
     const segments = selected.scenes.map(scene => ({ text: (scene.dialogue || "").trim(), voice: scene.voiceId || selectedTtsVoice, duration_seconds: 4 }));
     if (!segments.some(segment => segment.text)) { Alert.alert("Roteiro sem diálogos", "Adicione pelo menos uma fala às cenas antes de gerar a narração."); return; }
     if (!selectedTtsVoice) { Alert.alert("Escolha uma voz", "Atualize a lista e selecione uma voz Piper disponível."); return; }
-    let baseUrl = (comfyConfig.renderBaseUrl || "").trim();
+    let baseUrl = (engineConfig.renderBaseUrl || "").trim();
     while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-    const token = (comfyConfig.renderToken || "").trim();
+    const token = (engineConfig.renderToken || "").trim();
     if (!baseUrl || !token) { Alert.alert("Configure a montagem", "Informe o endereço e o token do servidor nas configurações."); setShowSettings(true); return; }
     setBusyScene("tts:project");
     try {
@@ -475,8 +464,8 @@ export default function App() {
       Alert.alert("Faltam animações", `Ainda faltam ${missingClips.length} clipes. Gere todas as cenas antes de montar o MP4.`);
       return;
     }
-    const renderBaseUrl = (comfyConfig.renderBaseUrl || "").trim().replace(/\/+$/, "");
-    const renderToken = (comfyConfig.renderToken || "").trim();
+    const renderBaseUrl = (engineConfig.renderBaseUrl || "").trim().replace(/\/+$/, "");
+    const renderToken = (engineConfig.renderToken || "").trim();
     if (!renderBaseUrl || !renderToken) {
       Alert.alert("Configure a montagem", "Informe o endereço e o token do servidor de montagem nas configurações.");
       setShowSettings(true);
@@ -693,10 +682,10 @@ export default function App() {
           <Text style={styles.panelTitle}>Motor próprio do Estúdio 2D</Text>
           <Text style={styles.note}>O aplicativo conversa diretamente com a API integrada. Não precisa de ComfyUI, workflows ou plugins. O servidor de IA precisa estar hospedado em uma máquina compatível.</Text>
           <Text style={styles.label}>ENDEREÇO HTTPS DO SERVIDOR</Text>
-          <TextInput value={comfyConfig.renderBaseUrl || ""} onChangeText={value => setComfyConfig(previous => ({ ...previous, renderBaseUrl: value }))} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="https://seu-servidor-do-estudio" placeholderTextColor="#777789" style={styles.smallInput} />
+          <TextInput value={engineConfig.renderBaseUrl || ""} onChangeText={value => setEngineConfig(previous => ({ ...previous, renderBaseUrl: value }))} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="https://seu-servidor-do-estudio" placeholderTextColor="#777789" style={styles.smallInput} />
           <Text style={styles.label}>TOKEN DE ACESSO</Text>
-          <TextInput value={comfyConfig.renderToken || ""} onChangeText={value => setComfyConfig(previous => ({ ...previous, renderToken: value }))} autoCapitalize="none" autoCorrect={false} secureTextEntry placeholder="Token privado do servidor" placeholderTextColor="#777789" style={styles.smallInput} />
-          <TouchableOpacity style={styles.primary} onPress={saveComfyConfig}><Text style={styles.primaryText}>SALVAR CONEXÃO</Text><Text style={styles.arrow}>✓</Text></TouchableOpacity>
+          <TextInput value={engineConfig.renderToken || ""} onChangeText={value => setEngineConfig(previous => ({ ...previous, renderToken: value }))} autoCapitalize="none" autoCorrect={false} secureTextEntry placeholder="Token privado do servidor" placeholderTextColor="#777789" style={styles.smallInput} />
+          <TouchableOpacity style={styles.primary} onPress={saveEngineConfig}><Text style={styles.primaryText}>SALVAR CONEXÃO</Text><Text style={styles.arrow}>✓</Text></TouchableOpacity>
           <TouchableOpacity style={styles.secondary} onPress={testRenderConnection}><Text style={styles.secondaryText}>TESTAR CONEXÃO DO MOTOR</Text></TouchableOpacity>
           <Text style={styles.note}>Status: {connectionStatus}. O endereço e o token são guardados no aparelho; o token fica no armazenamento seguro.</Text>
         </View> : null}
