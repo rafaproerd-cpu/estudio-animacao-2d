@@ -281,7 +281,7 @@ class RenderServerTests(unittest.TestCase):
                     audio_command = mocked.call_args_list[-1].args[0]
                     audio_filter = audio_command[audio_command.index("-filter_complex") + 1]
                     self.assertEqual(audio_filter, expected_filter)
-                    self.assertIn("[aout]", audio_command[audio_command.index("-map") + 2])
+                    self.assertEqual(audio_command[audio_command.index("-map", audio_command.index("-map") + 1) + 1], "[aout]")
                     self.assertIn("-shortest", audio_command)
                     self.assertTrue((main.OUTPUT_DIR / f"{result.id}.mp4").is_file())
         finally:
