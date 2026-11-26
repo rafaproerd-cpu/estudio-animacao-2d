@@ -84,3 +84,8 @@ MAX_TTS_CHARACTERS=6000
 ## Estado dos motores integrados
 
 O endpoint `GET /v1/capabilities` é a fonte de verdade sobre os recursos instalados. Ele não marca imagem ou vídeo como disponíveis só porque o app possui adaptadores HTTP: os modelos precisam estar instalados e conectados no backend. Neste momento, a API informa imagem e vídeo como `not_configured`. Isso evita que a interface prometa uma geração que o servidor ainda não consegue executar.
+
+
+### Endpoints de geração de imagem e vídeo
+
+Os endpoints `POST /v1/generations/images` e `POST /v1/generations/videos` já existem como respostas explícitas de indisponibilidade: ambos exigem token e retornam HTTP 503 enquanto não houver um modelo real instalado. Consulte `GET /v1/capabilities` para verificar os recursos disponíveis. Eles não criam jobs fictícios nem simulam progresso.
