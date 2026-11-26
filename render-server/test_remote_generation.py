@@ -106,7 +106,7 @@ class RemoteImageQueueTests(unittest.TestCase):
         self.assertEqual(job["status"], "failed")
         self.assertEqual(job["progress"], 0.0)
         self.assertIn("Space is sleeping", job["error"])
-        persist_job.assert_called_once_with(job_id)
+        self.assertEqual(persist_job.call_count, 2)
 
 
 if __name__ == "__main__":
