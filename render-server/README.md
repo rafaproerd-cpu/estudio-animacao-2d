@@ -9,7 +9,24 @@ Este serviço opcional transforma os clipes gerados no app em um único MP4. Ele
 - Piper instalado no servidor (opcional, para voz local) e modelos de voz `.onnx` licenciados para uso
 - Rede privada/VPN; não exponha este serviço diretamente à internet pública
 
-## Instalação
+## Imagem de contêiner (Docker)
+
+O repositório inclui um Dockerfile para empacotar a API e o FFmpeg juntos. Isso facilita hospedar o serviço em uma máquina compatível com Docker; **não cria uma hospedagem gratuita automaticamente** e não inclui modelos de voz.
+
+Na raiz do repositório:
+
+```bash
+docker build -t estudio2d-render ./render-server
+docker run --detach --name estudio2d-render \
+  --publish 8765:8765 \
+  --env ESTUDIO_RENDER_TOKEN="gere-um-token-longo" \
+  --volume estudio2d-data:/data \
+  estudio2d-render
+```
+
+Os arquivos MP4 ficam no volume persistente `/data/outputs`. Para ativar Piper dentro do contêiner, instale o pacote Piper compatível e coloque os modelos de voz licenciados em `/data/voices`; sem o executável e os modelos, a geração de voz permanece indisponível. Não exponha a porta publicamente sem HTTPS e uma camada de proteção.
+
+## Instalação manual
 
 ```bash
 cd render-server
