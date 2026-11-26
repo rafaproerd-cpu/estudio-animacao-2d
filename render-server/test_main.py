@@ -5,6 +5,7 @@ from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch
 
+import base64
 from fastapi import BackgroundTasks, HTTPException
 from fastapi import UploadFile
 
@@ -224,7 +225,7 @@ class RenderServerTests(unittest.TestCase):
                 self.assertEqual(image_error.exception.status_code, 503)
                 self.assertIn("/v1/capabilities", image_error.exception.detail)
             with self.assertRaises(HTTPException) as video_error:
-                main.request_video_generation("Bearer generation-test-token")
+                main.request_video_generation(main.VideoGenerationRequest(prompt="anime action", imageBase64="a" * 120), BackgroundTasks(), "Bearer generation-test-token")
             self.assertEqual(video_error.exception.status_code, 503)
             self.assertIn("/v1/capabilities", video_error.exception.detail)
         finally:
@@ -238,7 +239,7 @@ class RenderServerTests(unittest.TestCase):
                 main.request_image_generation(main.ImageGenerationRequest(prompt="anime cinematic scene"), BackgroundTasks(), "Bearer wrong-token")
             self.assertEqual(image_error.exception.status_code, 401)
             with self.assertRaises(HTTPException) as video_error:
-                main.request_video_generation("Bearer wrong-token")
+                main.request_video_generation(main.VideoGenerationRequest(prompt="anime action", imageBase64="a" * 120), BackgroundTasks(), "Bearer wrong-token")
             self.assertEqual(video_error.exception.status_code, 401)
         finally:
             main.API_TOKEN = original_token
@@ -303,10 +304,10 @@ class RenderServerTests(unittest.TestCase):
                 (Path(temp_dir) / filename).write_bytes(b"fake-png")
                 token = "one-time-private-download-token"
                 main.generation_download_tokens[filename] = (token, __import__("time").time() + 60)
-                response = main.download_generated_image(filename, token, None)
+                response = main.download_generated_media(filename, token, None)
                 self.assertEqual(Path(response.path), Path(temp_dir) / filename)
                 with self.assertRaises(HTTPException) as invalid:
-                    main.download_generated_image(filename, "wrong-token", None)
+                    main.download_generated_media(filename, "wrong-token", None)
                 self.assertEqual(invalid.exception.status_code, 401)
         finally:
             main.IMAGE_OUTPUT_DIR = original_output
@@ -348,6 +349,60 @@ class RenderServerTests(unittest.TestCase):
             main.generation_jobs.pop(job_id, None)
             main.generation_download_tokens.pop(output.name, None)
             main.IMAGE_OUTPUT_DIR = original_output
+
+    def test_video_job_is_queued_when_wan_runtime_is_ready(self):
+        original_token = main.API_TOKEN
+        try:
+            main.API_TOKEN = "generation-test-token"
+            image_bytes = b"\\x89PNG\\r\\n\\x1a\\n" + b"placeholder-image-data"
+            payload = main.VideoGenerationRequest(
+                prompt="cinematic anime character moves gently",
+                imageBase64=base64.b64encode(image_bytes).decode("ascii"),
+                durationSeconds=4,
+                seed=42,
+            )
+            tasks = BackgroundTasks()
+            with patch.object(main, "video_engine_status", return_value={"available": True, "message": "ready"}):
+                result = main.request_video_generation(payload, tasks, "Bearer generation-test-token")
+            self.assertEqual(result["status"], "queued")
+            self.assertEqual(len(tasks.tasks), 1)
+            job = main.get_generation_job(result["job_id"], "Bearer generation-test-token")
+            self.assertEqual(job["status"], "queued")
+        finally:
+            main.API_TOKEN = original_token
+
+    def test_video_generation_rejects_non_image_base64(self):
+        original_token = main.API_TOKEN
+        try:
+            main.API_TOKEN = "generation-test-token"
+            payload = main.VideoGenerationRequest(prompt="anime", imageBase64=base64.b64encode(b"not-an-image").decode("ascii").ljust(100, "A"))
+            with patch.object(main, "video_engine_status", return_value={"available": True, "message": "ready"}):
+                with self.assertRaises(HTTPException) as raised:
+                    main.request_video_generation(payload, BackgroundTasks(), "Bearer generation-test-token")
+            self.assertEqual(raised.exception.status_code, 415)
+        finally:
+            main.API_TOKEN = original_token
+
+    def test_video_job_worker_publishes_completed_result(self):
+        original_output = main.WAN_OUTPUT_DIR
+        job_id = "e" * 32
+        output = None
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                main.WAN_OUTPUT_DIR = Path(temp_dir)
+                output = Path(temp_dir) / ("video-" + "f" * 32 + ".mp4")
+                output.write_bytes(b"fake-mp4")
+                main.generation_jobs[job_id] = {"status": "queued", "created_at": __import__("time").time()}
+                with patch.object(main, "generate_wan_video", return_value=output):
+                    main.run_video_generation_job(job_id, main.VideoGenerationRequest(prompt="anime", imageBase64="a" * 120), b"image")
+                job = main.generation_jobs[job_id]
+                self.assertEqual(job["status"], "completed")
+                self.assertIn("/v1/files/" + output.name + "?token=", job["output_url"])
+        finally:
+            main.generation_jobs.pop(job_id, None)
+            if output is not None:
+                main.generation_download_tokens.pop(output.name, None)
+            main.WAN_OUTPUT_DIR = original_output
 
 
 if __name__ == "__main__":
