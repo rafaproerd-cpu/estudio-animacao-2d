@@ -46,6 +46,15 @@ class RenderServerTests(unittest.TestCase):
             main.API_TOKEN = original
 
 
+    def test_detects_nvidia_gpus_from_nvidia_smi(self):
+        completed = type("Result", (), {"returncode": 0, "stdout": "NVIDIA RTX 4090, 24564", "stderr": ""})()
+        with patch.object(main.shutil, "which", return_value="/usr/bin/nvidia-smi"), patch.object(main.subprocess, "run", return_value=completed):
+            self.assertEqual(main.available_nvidia_gpus(), [{"name": "NVIDIA RTX 4090", "memory_mb": "24564"}])
+
+    def test_gpu_detection_is_optional_when_nvidia_smi_is_missing(self):
+        with patch.object(main.shutil, "which", return_value=None):
+            self.assertEqual(main.available_nvidia_gpus(), [])
+
     def test_lists_local_piper_voice_models(self):
         original = main.PIPER_VOICES_DIR
         try:
@@ -188,6 +197,8 @@ class RenderServerTests(unittest.TestCase):
             self.assertFalse(result["engines"]["video"]["available"])
             self.assertFalse(result["engines"]["audio"]["available"])
             self.assertTrue(result["engines"]["render"]["available"])
+            self.assertEqual(result["hardware"]["gpu_detection"], "not_detected")
+            self.assertEqual(result["hardware"]["nvidia_gpus"], [])
         finally:
             main.API_TOKEN = original_token
             main.PIPER_VOICES_DIR = original_voices
