@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Build web app for GitHub Pages
-        run: npx expo export --platform web --base-url /estudio-animacao-2d/
+        run: npx expo export --platform web
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
