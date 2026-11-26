@@ -27,7 +27,7 @@ A pessoa deve criar um projeto, descrever a história e produzir cenas, imagens,
 
 ## Próximas etapas técnicas
 - [x] Empacotar o servidor de montagem em Docker.
-- [ ] Confirmar uma execução bem-sucedida da etapa Docker no CI após sua inclusão no workflow.
+- [x] Confirmar uma execução bem-sucedida da etapa Docker no CI (imagem do servidor construída no GitHub Actions).
 - [ ] Separar a API interna do provedor ComfyUI, para que a UI não dependa de detalhes de workflow.
 - [x] Definir o contrato HTTP do lado cliente para envio e consulta de jobs de imagem/vídeo.
 - [x] Criar respostas autenticadas e explícitas de indisponibilidade para os endpoints de imagem/vídeo (HTTP 503, sem simular jobs).
