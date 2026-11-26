@@ -127,7 +127,9 @@ function requestedDurationSeconds(duration: string): number {
 function sceneClipDurationSeconds(project: Project): number {
   const targetSeconds = requestedDurationSeconds(project.duration);
   const sceneCount = Math.max(1, project.scenes.length);
-  return Math.min(5, Math.max(1, Math.round(targetSeconds / sceneCount)));
+  // Mantém a duração fracionária para que a soma dos clipes acompanhe
+  // a duração escolhida, sem perder segundos ao arredondar cada cena.
+  return Math.min(5, Math.max(1, targetSeconds / sceneCount));
 }
 
 function estimatedGeneratedDurationSeconds(project: Project): number {
