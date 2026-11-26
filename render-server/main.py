@@ -7,11 +7,12 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
 import uuid
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import BackgroundTasks, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -33,6 +34,7 @@ app = FastAPI(title="Estúdio 2D Render Server", version="1.1.0")
 
 generation_jobs: dict[str, dict[str, object]] = {}
 generation_jobs_lock = threading.Lock()
+generation_download_tokens: dict[str, tuple[str, float]] = {}
 
 
 class ImageGenerationRequest(BaseModel):
@@ -56,12 +58,14 @@ def run_image_generation_job(job_id: str, payload: ImageGenerationRequest) -> No
             height=payload.height,
             seed=payload.seed,
         )
+        download_token = secrets.token_urlsafe(32)
         with generation_jobs_lock:
+            generation_download_tokens[output.name] = (download_token, time.time() + 3600)
             generation_jobs[job_id].update({
                 "status": "completed",
                 "progress": 1.0,
                 "message": "Imagem gerada.",
-                "output_url": "/v1/files/" + output.name,
+                "output_url": "/v1/files/" + output.name + "?token=" + download_token,
             })
     except Exception as error:
         with generation_jobs_lock:
@@ -231,10 +235,20 @@ def get_generation_job(job_id: str, authorization: Annotated[str | None, Header(
 
 
 @app.get("/v1/files/{filename}")
-def download_generated_image(filename: str, authorization: Annotated[str | None, Header()] = None) -> FileResponse:
-    require_token(authorization)
+def download_generated_image(
+    filename: str,
+    token: Annotated[str | None, Query()] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> FileResponse:
     if not re.fullmatch(r"image-[a-f0-9]{32}\.png", filename):
         raise HTTPException(status_code=404, detail="Imagem não encontrada.")
+    if authorization:
+        require_token(authorization)
+    else:
+        with generation_jobs_lock:
+            grant = generation_download_tokens.get(filename)
+        if not token or not grant or grant[1] < time.time() or not secrets.compare_digest(token, grant[0]):
+            raise HTTPException(status_code=401, detail="Link de imagem inválido ou expirado.")
     image_path = IMAGE_OUTPUT_DIR / filename
     if not image_path.is_file():
         raise HTTPException(status_code=404, detail="Imagem não encontrada ou já removida.")
