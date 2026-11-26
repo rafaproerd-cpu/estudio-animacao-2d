@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import os
 import threading
 import uuid
@@ -13,6 +14,7 @@ IMAGE_MIN_FREE_VRAM_MB = max(6000, int(os.getenv("IMAGE_MIN_FREE_VRAM_MB", "8000
 IMAGE_OUTPUT_DIR = Path(os.getenv("IMAGE_OUTPUT_DIR", os.getenv("RENDER_OUTPUT_DIR", "outputs"))).resolve()
 
 _pipeline: Any = None
+_pipeline_kind: str | None = None
 _pipeline_lock = threading.Lock()
 
 
@@ -57,36 +59,62 @@ def image_engine_status() -> dict[str, object]:
     return {"available": True, "status": "ready", "model": IMAGE_MODEL_ID, "device": IMAGE_DEVICE, "message": "Motor SDXL configurado; o primeiro uso pode baixar pesos e demorar."}
 
 
-def generate_sdxl_image(prompt: str, negative_prompt: str | None, width: int, height: int, seed: int | None) -> Path:
-    global _pipeline
+def generate_sdxl_image(
+    prompt: str,
+    negative_prompt: str | None,
+    width: int,
+    height: int,
+    seed: int | None,
+    reference_image_bytes: bytes | None = None,
+) -> Path:
+    global _pipeline, _pipeline_kind
     status = image_engine_status()
     if not status["available"]:
         raise RuntimeError(str(status["message"]))
     import torch
-    from diffusers import StableDiffusionXLPipeline
+    from PIL import Image
+    from diffusers import StableDiffusionXLImg2ImgPipeline, StableDiffusionXLPipeline
 
     IMAGE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    pipeline_kind = "img2img" if reference_image_bytes else "txt2img"
     with _pipeline_lock:
-        if _pipeline is None:
+        if _pipeline is None or _pipeline_kind != pipeline_kind:
+            if _pipeline is not None:
+                del _pipeline
+                _pipeline = None
+                if IMAGE_DEVICE == "cuda":
+                    torch.cuda.empty_cache()
             dtype = torch.float16 if IMAGE_DEVICE == "cuda" else torch.float32
             kwargs: dict[str, object] = {"torch_dtype": dtype, "use_safetensors": True}
             if IMAGE_DEVICE == "cuda":
                 kwargs["variant"] = "fp16"
-            _pipeline = StableDiffusionXLPipeline.from_pretrained(IMAGE_MODEL_ID, **kwargs)
+            pipeline_class = StableDiffusionXLImg2ImgPipeline if reference_image_bytes else StableDiffusionXLPipeline
+            _pipeline = pipeline_class.from_pretrained(IMAGE_MODEL_ID, **kwargs)
             _pipeline = _pipeline.to(IMAGE_DEVICE)
             if IMAGE_DEVICE == "cuda":
                 _pipeline.enable_attention_slicing()
+            _pipeline_kind = pipeline_kind
+
         generator = torch.Generator(device=IMAGE_DEVICE)
         if seed is not None:
             generator = generator.manual_seed(seed)
-        result = _pipeline(
-            prompt=prompt,
-            negative_prompt=negative_prompt or None,
-            width=width,
-            height=height,
-            num_inference_steps=IMAGE_STEPS,
-            generator=generator,
-        )
+        arguments: dict[str, object] = {
+            "prompt": prompt,
+            "negative_prompt": negative_prompt or None,
+            "num_inference_steps": IMAGE_STEPS,
+            "generator": generator,
+        }
+        if reference_image_bytes:
+            with Image.open(io.BytesIO(reference_image_bytes)) as source:
+                reference = source.convert("RGB").resize((width, height), Image.Resampling.LANCZOS)
+            arguments.update({
+                "image": reference,
+                "strength": max(0.25, min(float(os.getenv("IMAGE_REFERENCE_STRENGTH", "0.55")), 0.8)),
+                "guidance_scale": 7.0,
+            })
+        else:
+            arguments.update({"width": width, "height": height})
+        result = _pipeline(**arguments)
         image = result.images[0]
         output = IMAGE_OUTPUT_DIR / ("image-" + uuid.uuid4().hex + ".png")
         image.save(output, format="PNG")
