@@ -39,6 +39,17 @@ const genres = ["Aventura", "Comédia", "Fantasia", "Ação", "Drama", "Mistéri
 const durations = ["30 segundos", "1 minuto", "2 minutos", "3 minutos", "5 minutos", "10 minutos"];
 const RENDER_TOKEN_KEY = "@estudio2d/render-token";
 
+function isAllowedEngineUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value.trim());
+    if (parsed.protocol === "https:") return true;
+    const host = parsed.hostname.toLowerCase();
+    return parsed.protocol === "http:" && (host === "localhost" || host === "127.0.0.1" || host === "[::1]");
+  } catch {
+    return false;
+  }
+}
+
 async function readRenderToken(): Promise<string | null> {
   if (Platform.OS === "web") {
     return typeof window === "undefined" ? null : window.sessionStorage.getItem(RENDER_TOKEN_KEY);
