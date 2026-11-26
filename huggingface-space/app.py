@@ -18,13 +18,15 @@ def get_pipeline():
     return _pipe
 
 @spaces.GPU(duration=60)
-def generate_image(prompt: str):
+def generate_image(prompt: str, seed: int = 12345):
     prompt = (prompt or "").strip()
     if len(prompt) < 8:
         raise gr.Error("Descreva a cena com pelo menos 8 caracteres.")
     if len(prompt) > 1200:
         raise gr.Error("A descrição deve ter no máximo 1.200 caracteres.")
 
+    safe_seed = int(seed) % (2**32)
+    generator = torch.Generator(device="cuda").manual_seed(safe_seed)
     pipeline = get_pipeline()
     result = pipeline(
         prompt=prompt,
@@ -32,6 +34,7 @@ def generate_image(prompt: str):
         guidance_scale=0.0,
         height=512,
         width=512,
+        generator=generator,
     )
     return result.images[0]
 
@@ -47,9 +50,10 @@ with gr.Blocks(title="Estúdio 2D - teste de imagem") as demo:
         lines=4,
         max_lines=6,
     )
+    seed = gr.Number(label="Semente do projeto", value=12345, precision=0)
     generate = gr.Button("Gerar imagem", variant="primary")
     output = gr.Image(label="Imagem gerada", type="pil")
-    generate.click(generate_image, inputs=prompt, outputs=output, api_name="generate")
+    generate.click(generate_image, inputs=[prompt, seed], outputs=output, api_name="generate")
 
 demo.queue()
 demo.launch()
