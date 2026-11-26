@@ -159,6 +159,11 @@ class VideoGenerationQueueTests(unittest.TestCase):
             "message": "Aguardando o motor de vídeo.",
             "created_at": 1.0,
         }
+        from io import BytesIO
+        from PIL import Image
+        image_buffer = BytesIO()
+        Image.new("RGB", (32, 18), "white").save(image_buffer, format="PNG")
+        image = base64.b64encode(image_buffer.getvalue()).decode("ascii")
         payload = main.VideoGenerationRequest(
             prompt="slow cinematic camera movement",
             imageBase64=image,
