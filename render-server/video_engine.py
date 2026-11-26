@@ -12,7 +12,7 @@ WAN_GENERATE_SCRIPT = Path(os.getenv("WAN_GENERATE_SCRIPT", "")).expanduser()
 WAN_CHECKPOINT_DIR = Path(os.getenv("WAN_CHECKPOINT_DIR", "")).expanduser()
 WAN_PYTHON = os.getenv("WAN_PYTHON", sys.executable)
 WAN_SIZE = os.getenv("WAN_SIZE", "1280*704")
-WAN_MIN_FREE_VRAM_MB = max(24000, int(os.getenv("WAN_MIN_FREE_VRAM_MB", "24576")))
+WAN_MIN_FREE_VRAM_MB = max(22000, int(os.getenv("WAN_MIN_FREE_VRAM_MB", "23000")))
 WAN_TIMEOUT_SECONDS = max(600, int(os.getenv("WAN_TIMEOUT_SECONDS", "10800")))
 WAN_OUTPUT_DIR = Path(os.getenv("IMAGE_OUTPUT_DIR", os.getenv("RENDER_OUTPUT_DIR", "outputs"))).resolve()
 
