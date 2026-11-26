@@ -215,6 +215,29 @@ export default function App() {
   };
 
   const persistGeneratedImage = async (remoteUri: string, projectId: string, sceneTitle: string) => {
+    if (Platform.OS === "web") {
+      const response = await fetch(remoteUri);
+      if (!response.ok) throw new Error(`Não foi possível baixar a imagem gerada (HTTP ${response.status}).`);
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      try {
+        const image = document.createElement("img");
+        await new Promise<void>((resolve, reject) => {
+          image.onload = () => resolve();
+          image.onerror = () => reject(new Error("Não foi possível preparar a imagem para salvar no navegador."));
+          image.src = objectUrl;
+        });
+        const canvas = document.createElement("canvas");
+        canvas.width = 1024;
+        canvas.height = 576;
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("O navegador não conseguiu preparar a imagem.");
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL("image/jpeg", 0.82);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    }
     const directory = (FileSystem.documentDirectory || "") + "generated-images/";
     const info = await FileSystem.getInfoAsync(directory);
     if (!info.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
@@ -243,6 +266,23 @@ export default function App() {
   };
 
   const imageUriToBase64 = async (imageUri: string) => {
+    if (imageUri.startsWith("data:")) return imageUri.split(",", 2)[1] || "";
+    if (Platform.OS === "web") {
+      const response = await fetch(imageUri);
+      if (!response.ok) throw new Error(`Não foi possível carregar a imagem de referência (HTTP ${response.status}).`);
+      const blob = await response.blob();
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = String(reader.result || "");
+          const encoded = dataUrl.split(",", 2)[1];
+          if (encoded) resolve(encoded);
+          else reject(new Error("Não foi possível converter a imagem de referência."));
+        };
+        reader.onerror = () => reject(new Error("Falha ao ler a imagem de referência."));
+        reader.readAsDataURL(blob);
+      });
+    }
     let localUri = imageUri;
     if (!localUri.startsWith("file://")) {
       const cachePath = (FileSystem.cacheDirectory || FileSystem.documentDirectory || "") + "estudio2d-reference-" + Date.now() + ".png";
