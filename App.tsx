@@ -322,7 +322,21 @@ export default function App() {
       const provider = new HttpImageGenerationProvider({ baseUrl: connection.baseUrl, token: connection.token });
       const referenceScene = selected.scenes.find(item => item.title !== scene.title && item.imageUri);
       const referenceImageBase64 = referenceScene?.imageUri ? await imageUriToBase64(referenceScene.imageUri) : undefined;
-      const result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, seed: stableProjectSeed(`${selected.id}:${scene.title}`), referenceImageBase64 });
+      let result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, seed: stableProjectSeed(`${selected.id}:${scene.title}`), referenceImageBase64 });
+      // O Space gratuito aceita somente texto. Se a referência visual não for
+      // suportada, repetir sem ela para que a geração individual também funcione.
+      if (
+        result.status !== "completed" &&
+        referenceImageBase64 &&
+        /somente texto|referência.*não.*suportada|não.*suporta.*referência/i.test(result.error || "")
+      ) {
+        result = await provider.generate({
+          prompt: scene.imagePrompt,
+          width: 1024,
+          height: 576,
+          seed: stableProjectSeed(`${selected.id}:${scene.title}`),
+        });
+      }
       if (result.status !== "completed" || !result.outputUri) throw new Error(result.error || "O motor não retornou uma imagem.");
       const localUri = await persistGeneratedImage(result.outputUri, selected.id, scene.title);
       const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, imageUri: localUri, videoUri: undefined, videoRemoteUri: undefined } : item) };
