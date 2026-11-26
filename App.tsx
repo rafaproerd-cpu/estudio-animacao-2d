@@ -932,7 +932,7 @@ export default function App() {
             <Text style={styles.body}>{selected.idea}</Text>
             <Text style={styles.label}>FICHA DO PERSONAGEM</Text>
             <TextInput value={selected.character} onChangeText={updateCharacter} multiline textAlignVertical="top" placeholder="Descreva aparência, roupa, personalidade e voz do personagem..." placeholderTextColor="#777789" style={styles.characterInput} />
-            <Text style={styles.note}>Para manter o personagem parecido entre cenas, a primeira imagem pronta é reutilizada como referência visual nas próximas gerações.</Text>
+            <Text style={styles.note}>A ficha do personagem é incluída nos prompts das cenas. A semelhança visual pode variar: o motor remoto gratuito atual ainda não aceita imagem de referência.</Text>
             {selected.scenes.map(scene => <View key={scene.title} style={styles.scene}>
               <Text style={styles.sceneTitle}>{scene.title}</Text>
               {scene.imageUri ? <Image source={{ uri: scene.imageUri }} style={styles.generatedImage} resizeMode="cover" /> : <View style={styles.imagePlaceholder}><Text style={styles.note}>Imagem ainda não gerada</Text></View>}
@@ -962,7 +962,7 @@ export default function App() {
               <TouchableOpacity style={styles.primary} onPress={generateAllSceneVideos} disabled={!!busyScene || !!batchProgress || selected.scenes.some(scene => !scene.imageUri)}>
                 <Text style={styles.primaryText}>ANIMAR TODAS AS CENAS</Text><Text style={styles.arrow}>▶</Text>
               </TouchableOpacity>
-              <Text style={styles.note}>O app não exige workflows ou ComfyUI. O motor pesado roda no backend próprio do Estúdio 2D e precisa de uma GPU compatível.</Text>
+              <Text style={styles.note}>O app não exige workflows ou ComfyUI. As imagens podem usar o Space remoto Hugging Face ZeroGPU (com cota diária limitada). A animação de vídeo ainda depende de um servidor com GPU compatível e modelo Wan2.2 configurado.</Text>
               <Text style={styles.step}>ÁUDIO DO PROJETO</Text>
               <Text style={styles.note}>Adicione uma narração e/ou música de fundo. A voz será mixada em volume normal e a música em volume reduzido.</Text>
               <Text style={styles.note}>Carregue as vozes instaladas no servidor para gerar uma narração por cena. Você também pode usar um arquivo de áudio próprio.</Text>
