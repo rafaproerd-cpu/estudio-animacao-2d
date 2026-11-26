@@ -1085,11 +1085,13 @@ export default function App() {
               </TouchableOpacity>
               {selected.finalVideoUri ? <>
                 <Text style={styles.label}>VÍDEO COMPLETO DO PROJETO</Text>
-                <SceneVideoPlayer uri={selected.finalVideoUri} />
+                {selected.finalVideoUri.startsWith("file://")
+                  ? <SceneVideoPlayer uri={selected.finalVideoUri} />
+                  : <Text style={styles.note}>O MP4 está pronto no servidor. Baixe-o para o iPhone para assistir e compartilhar.</Text>}
                 {!selected.finalVideoUri.startsWith("file://") ? <TouchableOpacity style={styles.secondary} disabled={!!busyScene} onPress={downloadFinalVideo}><Text style={styles.secondaryText}>{busyScene === "download:final" ? "BAIXANDO MP4…" : "BAIXAR MP4 PARA O IPHONE"}</Text></TouchableOpacity> : null}
                 <TouchableOpacity style={styles.secondary} onPress={async () => {
                   if (!selected.finalVideoUri?.startsWith("file://")) {
-                    Alert.alert("Arquivo indisponível", "Baixe novamente o MP4 final para exportá-lo.");
+                    Alert.alert("Arquivo indisponível", "Baixe primeiro o MP4 final para exportá-lo.");
                     return;
                   }
                   try {
