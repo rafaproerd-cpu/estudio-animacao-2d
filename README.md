@@ -13,7 +13,7 @@ Aplicativo mobile-first em Expo/React Native para uso pessoal no iPhone e Androi
 
 A interface de criação de roteiro e cenas funciona no navegador e no aplicativo. A organização da história ainda usa um planejador local baseado em modelos; não é uma IA generativa. Os botões de imagem e vídeo já chamam os adaptadores HTTP do backend, mas **a geração real ainda não foi validada de ponta a ponta**.
 
-- **Imagem:** há dois caminhos preparados: SDXL local em uma máquina com GPU CUDA compatível ou um Space Gradio no Hugging Face ZeroGPU. O segundo caminho permite que o Render chame o Space sem ter GPU própria, mas depende da elegibilidade, fila e cota diária do Hugging Face. O Space de teste foi atualizado para produzir imagens horizontais 16:9 (768×432), sem imagem de referência e sem garantia de consistência de personagem.
+- **Imagem:** há dois caminhos preparados: SDXL local em uma máquina com GPU CUDA compatível ou um Space Gradio no Hugging Face ZeroGPU. O segundo caminho permite que o Render chame o Space sem ter GPU própria, mas depende da elegibilidade, fila e cota diária do Hugging Face. O Space de teste produz imagens horizontais 16:9 (768×432) e agora inclui entrada image-to-image opcional para reutilizar uma imagem de referência; a consistência visual precisa ser validada em uma inferência real.
 - **Vídeo:** o adaptador experimental Wan2.2 TI2V 5B está preparado, mas precisa de runtime, pesos e GPU compatível. O caminho gratuito de imagem via ZeroGPU não gera vídeo.
 - **Voz:** Piper local é opcional e depende do executável e de modelos de voz licenciados.
 - **Montagem:** FFmpeg concatena clipes enviados e pode mixar narração/música; isso não substitui a geração dos clipes.
