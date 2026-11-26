@@ -354,8 +354,8 @@ export default function App() {
       const referenceScene = selected.scenes.find(item => item.title !== scene.title && item.imageUri);
       const referenceImageBase64 = referenceScene?.imageUri ? await imageUriToBase64(referenceScene.imageUri) : undefined;
       let result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, seed: stableProjectSeed(selected.id), referenceImageBase64 });
-      // O Space gratuito aceita somente texto. Se a referência visual não for
-      // suportada, repetir sem ela para que a geração individual também funcione.
+      // Se o motor remoto rejeitar a referência visual, repetir sem ela para
+      // que a geração individual ainda possa funcionar.
       if (
         result.status !== "completed" &&
         referenceImageBase64 &&
@@ -449,9 +449,8 @@ export default function App() {
         const referenceScene = workingProject.scenes.find(item => item.imageUri);
         const referenceImageBase64 = referenceScene?.imageUri ? await imageUriToBase64(referenceScene.imageUri) : undefined;
         let result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, seed: stableProjectSeed(workingProject.id), referenceImageBase64 });
-        // O Space gratuito atual aceita somente texto. Se o backend informar
-        // que não suporta referência, repetir a cena sem a imagem-base em vez
-        // de interromper toda a fila depois da primeira cena.
+        // Se o motor remoto rejeitar a referência visual, repetir sem a imagem-base
+        // em vez de interromper toda a fila.
         if (
           result.status !== "completed" &&
           referenceImageBase64 &&
@@ -1021,7 +1020,7 @@ export default function App() {
             <Text style={styles.body}>{selected.idea}</Text>
             <Text style={styles.label}>FICHA DO PERSONAGEM</Text>
             <TextInput value={selected.character} onChangeText={updateCharacter} multiline textAlignVertical="top" placeholder="Descreva aparência, roupa, personalidade e voz do personagem..." placeholderTextColor="#777789" style={styles.characterInput} />
-            <Text style={styles.note}>A ficha do personagem é incluída nos prompts das cenas. A semelhança visual pode variar: o motor remoto gratuito atual ainda não aceita imagem de referência.</Text>
+            <Text style={styles.note}>A ficha do personagem entra nos prompts. Quando disponível, a primeira imagem gerada também é usada como referência nas cenas seguintes; isso ajuda, mas não garante identidade idêntica.</Text>
             {selected.scenes.map(scene => <View key={scene.title} style={styles.scene}>
               <Text style={styles.sceneTitle}>{scene.title}</Text>
               {scene.imageUri ? <><View style={styles.statusPill}><Text style={styles.statusReady}>✓ IMAGEM PRONTA</Text></View><Image source={{ uri: scene.imageUri }} style={styles.generatedImage} resizeMode="cover" /></> : <View style={styles.imagePlaceholder}><Text style={styles.note}>{busyScene === scene.title ? "GERANDO IMAGEM… aguarde a conclusão" : "IMAGEM PENDENTE · esta cena ainda não foi gerada"}</Text></View>}
