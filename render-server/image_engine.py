@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import os
 import threading
+import tempfile
 import uuid
 from pathlib import Path
 from typing import Any
@@ -162,10 +163,6 @@ def generate_huggingface_image(
     reference_image_bytes: bytes | None = None,
 ) -> Path:
     """Generate an image through a hosted Gradio Space and copy its result locally."""
-    if reference_image_bytes:
-        raise RuntimeError(
-            "O Space remoto atual aceita somente texto; imagem de referência ainda não é suportada."
-        )
     status = huggingface_image_engine_status()
     if not status["available"]:
         raise RuntimeError(str(status["message"]))
@@ -178,8 +175,22 @@ def generate_huggingface_image(
         hf_token=HF_TOKEN or None,
         verbose=False,
     )
-    # Gradio Client handles the Space queue and waits for the API result.
-    result = client.predict(prompt, int(seed or 12345), api_name="/generate")
+    # Gradio Image inputs accept a temporary local file path.
+    reference_path = None
+    try:
+        if reference_image_bytes:
+            suffix = ".png" if reference_image_bytes.startswith(b"\\x89PNG") else ".jpg"
+            with tempfile.NamedTemporaryFile(prefix="estudio-reference-", suffix=suffix, delete=False) as temporary:
+                temporary.write(reference_image_bytes)
+                reference_path = Path(temporary.name)
+        result = client.predict(
+            prompt, int(seed or 12345),
+            str(reference_path) if reference_path else None,
+            api_name="/generate",
+        )
+    finally:
+        if reference_path:
+            reference_path.unlink(missing_ok=True)
 
     # Gradio image outputs are commonly returned as a FileData mapping or a path.
     candidate = result
