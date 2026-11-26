@@ -23,7 +23,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from image_engine import IMAGE_OUTPUT_DIR, active_image_engine_status, generate_image, image_engine_status, huggingface_image_engine_status
-from video_engine import WAN_OUTPUT_DIR, generate_wan_video, video_engine_status
+from video_engine import WAN_OUTPUT_DIR, generate_wan_video, validate_reference_image, video_engine_status
 from story_engine import generate_story_plan, story_engine_status
 
 APP_DIR = Path(__file__).resolve().parent
@@ -504,8 +504,10 @@ def request_video_generation(
         raise HTTPException(status_code=400, detail="A imagem de referência não está em Base64 válido.") from error
     if not image_bytes or len(image_bytes) > 18 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="A imagem de referência deve ter até 18 MB.")
-    if not (image_bytes.startswith(b"\x89PNG\r\n\x1a\n") or image_bytes.startswith(b"\xff\xd8\xff")):
-        raise HTTPException(status_code=415, detail="Envie uma imagem PNG ou JPEG válida.")
+    try:
+        validate_reference_image(image_bytes)
+    except ValueError as error:
+        raise HTTPException(status_code=415, detail=str(error)) from error
     prune_generation_state()
     job_id = uuid.uuid4().hex
     with generation_jobs_lock:
