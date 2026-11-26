@@ -153,3 +153,10 @@ O arquivo `render.yaml` na raiz do repositório permite iniciar a implantação 
 O endpoint público `/healthz` é somente um sinal mínimo para o health check da hospedagem. Os endpoints de geração, capacidades, montagem e o endpoint detalhado `/health` continuam protegidos por Bearer token.
 
 **Limites do plano gratuito:** o serviço pode dormir após inatividade, não oferece GPU para executar SDXL/Wan2.2 e não inclui disco persistente. Para gerar imagens, ainda é necessário configurar um Space ZeroGPU próprio e informar seu ID em `HF_SPACE_ID`; o token Hugging Face, se necessário, deve ficar somente nos segredos do Render. A implantação do backend, por si só, não ativa geração de imagem nem vídeo. O plano gratuito também não é adequado para guardar permanentemente arquivos de projetos e resultados.
+
+
+## Hospedagem gratuita: limites importantes
+
+O blueprint `render.yaml` permite criar o serviço no Render Free para testes, mas esse plano pode suspender o serviço após inatividade e não oferece disco persistente. Portanto, arquivos de imagem/áudio/vídeo e o banco SQLite gravados no disco local podem desaparecer em reinicializações ou novas implantações. Não trate essa hospedagem gratuita como armazenamento permanente nem guarde nela a única cópia de um projeto. Para uso contínuo, será necessário configurar armazenamento externo persistente ou um plano/servidor com disco persistente.
+
+O endpoint público `GET /healthz` existe apenas para o Render verificar se o processo está respondendo e retorna somente `{ "ok": true }`. Ele não comprova que os motores de IA estão prontos. A verificação autenticada `GET /health` e `GET /v1/capabilities` continua sendo necessária para conferir o servidor e os recursos de geração.
