@@ -202,7 +202,7 @@ class RenderServerTests(unittest.TestCase):
             main.API_TOKEN = "capabilities-test-token"
             with tempfile.TemporaryDirectory() as temp_dir:
                 main.PIPER_VOICES_DIR = Path(temp_dir)
-                with patch.object(main.shutil, "which", side_effect=lambda command: "/usr/bin/ffmpeg" if command == "ffmpeg" else None):
+                with patch.object(main.shutil, "which", side_effect=lambda command: "/usr/bin/ffmpeg" if command == "ffmpeg" else None), patch.object(main, "video_engine_status", return_value={"available": False, "status": "wan_runtime_missing", "message": "Wan runtime ausente"}):
                     result = main.generation_capabilities("Bearer capabilities-test-token")
             self.assertFalse(result["engines"]["image"]["available"])
             self.assertEqual(result["engines"]["image"]["status"], "not_configured")
