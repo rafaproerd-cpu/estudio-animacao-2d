@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import os
 import re
 import secrets
@@ -17,6 +19,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from image_engine import IMAGE_OUTPUT_DIR, generate_sdxl_image, image_engine_status
+from video_engine import WAN_OUTPUT_DIR, generate_wan_video, video_engine_status
 
 APP_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = Path(os.getenv("RENDER_OUTPUT_DIR", str(APP_DIR / "outputs"))).resolve()
@@ -91,6 +94,43 @@ def run_image_generation_job(job_id: str, payload: ImageGenerationRequest) -> No
                 "progress": 0.0,
                 "message": "A geração de imagem falhou.",
                 "error": str(error)[:1200],
+            })
+
+
+class VideoGenerationRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    prompt: str = Field(min_length=1, max_length=12000)
+    image_base64: str = Field(alias="imageBase64", min_length=100, max_length=24_000_000)
+    duration_seconds: float = Field(default=4.0, alias="durationSeconds", ge=1.0, le=5.0)
+    seed: int | None = None
+
+
+def run_video_generation_job(job_id: str, payload: VideoGenerationRequest, image_bytes: bytes) -> None:
+    with generation_jobs_lock:
+        generation_jobs[job_id].update({"status": "running", "message": "Preparando imagem de referência e gerando o clipe com Wan2.2."})
+    try:
+        output = generate_wan_video(
+            prompt=payload.prompt.strip(),
+            image_bytes=image_bytes,
+            duration_seconds=payload.duration_seconds,
+            seed=payload.seed,
+        )
+        download_token = secrets.token_urlsafe(32)
+        with generation_jobs_lock:
+            generation_download_tokens[output.name] = (download_token, time.time() + 3600)
+            generation_jobs[job_id].update({
+                "status": "completed",
+                "progress": 1.0,
+                "message": "Clipe de vídeo gerado.",
+                "output_url": "/v1/files/" + output.name + "?token=" + download_token,
+            })
+    except Exception as error:
+        with generation_jobs_lock:
+            generation_jobs[job_id].update({
+                "status": "failed",
+                "progress": 0.0,
+                "message": "A geração de vídeo falhou.",
+                "error": str(error)[:1600],
             })
 
 
@@ -262,34 +302,66 @@ def get_generation_job(job_id: str, authorization: Annotated[str | None, Header(
 
 
 @app.get("/v1/files/{filename}")
-def download_generated_image(
+def download_generated_media(
     filename: str,
     token: Annotated[str | None, Query()] = None,
     authorization: Annotated[str | None, Header()] = None,
 ) -> FileResponse:
-    if not re.fullmatch(r"image-[a-f0-9]{32}\.png", filename):
-        raise HTTPException(status_code=404, detail="Imagem não encontrada.")
+    if not re.fullmatch(r"(?:image-[a-f0-9]{32}\\.png|video-[a-f0-9]{32}\\.mp4)", filename):
+        raise HTTPException(status_code=404, detail="Arquivo gerado não encontrado.")
     if authorization:
         require_token(authorization)
     else:
         with generation_jobs_lock:
             grant = generation_download_tokens.get(filename)
         if not token or not grant or grant[1] < time.time() or not secrets.compare_digest(token, grant[0]):
-            raise HTTPException(status_code=401, detail="Link de imagem inválido ou expirado.")
-    image_path = IMAGE_OUTPUT_DIR / filename
-    if not image_path.is_file():
-        raise HTTPException(status_code=404, detail="Imagem não encontrada ou já removida.")
-    return FileResponse(image_path, media_type="image/png", filename=filename)
+            raise HTTPException(status_code=401, detail="Link de arquivo inválido ou expirado.")
+    media_dir = WAN_OUTPUT_DIR if filename.startswith("video-") else IMAGE_OUTPUT_DIR
+    media_path = media_dir / filename
+    if not media_path.is_file():
+        raise HTTPException(status_code=404, detail="Arquivo gerado não encontrado ou já removido.")
+    media_type = "video/mp4" if filename.startswith("video-") else "image/png"
+    return FileResponse(media_path, media_type=media_type, filename=filename)
 
 
 @app.post("/v1/generations/videos")
-def request_video_generation(authorization: Annotated[str | None, Header()] = None) -> None:
-    """Falha explicitamente até um modelo de vídeo real ser instalado."""
+def request_video_generation(
+    payload: VideoGenerationRequest,
+    background_tasks: BackgroundTasks,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, object]:
+    """Enfileira Wan2.2 TI2V somente quando runtime, pesos e GPU estão prontos."""
     require_token(authorization)
-    raise HTTPException(
-        status_code=503,
-        detail="A geração de animações ainda não está configurada neste servidor. Consulte /v1/capabilities.",
-    )
+    status = video_engine_status()
+    if not status["available"]:
+        raise HTTPException(status_code=503, detail=str(status["message"]) + " Consulte /v1/capabilities.")
+    if not payload.prompt.strip():
+        raise HTTPException(status_code=400, detail="Informe um prompt de animação.")
+    encoded = payload.image_base64
+    if encoded.startswith("data:") and "," in encoded:
+        encoded = encoded.split(",", 1)[1]
+    try:
+        image_bytes = base64.b64decode(encoded, validate=True)
+    except (binascii.Error, ValueError) as error:
+        raise HTTPException(status_code=400, detail="A imagem de referência não está em Base64 válido.") from error
+    if not image_bytes or len(image_bytes) > 18 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="A imagem de referência deve ter até 18 MB.")
+    if not (image_bytes.startswith(b"\\x89PNG\\r\\n\\x1a\\n") or image_bytes.startswith(b"\\xff\\xd8\\xff")):
+        raise HTTPException(status_code=415, detail="Envie uma imagem PNG ou JPEG válida.")
+    prune_generation_state()
+    job_id = uuid.uuid4().hex
+    with generation_jobs_lock:
+        active_jobs = sum(1 for job in generation_jobs.values() if job.get("status") in {"queued", "running"})
+        if active_jobs >= MAX_ACTIVE_IMAGE_JOBS:
+            raise HTTPException(status_code=429, detail="O motor de mídia já está ocupado. Aguarde a tarefa atual terminar.")
+        generation_jobs[job_id] = {
+            "status": "queued",
+            "progress": 0.0,
+            "message": "Aguardando o motor de vídeo.",
+            "created_at": time.time(),
+        }
+    background_tasks.add_task(run_video_generation_job, job_id, payload, image_bytes)
+    return {"job_id": job_id, "status": "queued", "progress": 0.0, "message": "Animação adicionada à fila."}
 
 
 @app.get("/health")
