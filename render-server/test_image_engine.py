@@ -107,5 +107,64 @@ class HuggingFaceImageEngineTests(unittest.TestCase):
             image_engine.IMAGE_OUTPUT_DIR = original_output
 
 
+class ImageEngineDispatchTests(unittest.TestCase):
+    def test_generate_image_prefers_local_engine_when_available(self):
+        expected = Path("/tmp/local-image.png")
+        with patch.object(image_engine, "image_engine_status", return_value={
+            "available": True, "status": "ready", "model": "local-sdxl",
+        }), patch.object(
+            image_engine, "generate_sdxl_image", return_value=expected
+        ) as local, patch.object(
+            image_engine, "generate_huggingface_image"
+        ) as remote:
+            result = image_engine.generate_image(
+                prompt="cinematic anime scene",
+                negative_prompt=None,
+                width=1024,
+                height=576,
+                seed=77,
+                reference_image_bytes=b"reference",
+            )
+
+        self.assertEqual(result, expected)
+        local.assert_called_once_with(
+            prompt="cinematic anime scene",
+            negative_prompt=None,
+            width=1024,
+            height=576,
+            seed=77,
+            reference_image_bytes=b"reference",
+        )
+        remote.assert_not_called()
+
+    def test_generate_image_uses_huggingface_when_local_engine_is_unavailable(self):
+        expected = Path("/tmp/remote-image.png")
+        with patch.object(image_engine, "image_engine_status", return_value={
+            "available": False, "status": "gpu_unavailable",
+        }), patch.object(
+            image_engine, "generate_sdxl_image"
+        ) as local, patch.object(
+            image_engine, "generate_huggingface_image", return_value=expected
+        ) as remote:
+            result = image_engine.generate_image(
+                prompt="cinematic anime scene",
+                negative_prompt="blur",
+                width=1024,
+                height=576,
+                seed=88,
+                reference_image_bytes=None,
+            )
+
+        self.assertEqual(result, expected)
+        local.assert_not_called()
+        remote.assert_called_once_with(
+            prompt="cinematic anime scene",
+            width=1024,
+            height=576,
+            seed=88,
+            reference_image_bytes=None,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
