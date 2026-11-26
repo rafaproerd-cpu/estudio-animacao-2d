@@ -22,7 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from image_engine import IMAGE_OUTPUT_DIR, active_image_engine_status, generate_image, image_engine_status, huggingface_image_engine_status
+from image_engine import IMAGE_OUTPUT_DIR, active_image_engine_status, generate_huggingface_image, generate_sdxl_image, image_engine_status, huggingface_image_engine_status
 from video_engine import WAN_OUTPUT_DIR, generate_wan_video, video_engine_status
 
 APP_DIR = Path(__file__).resolve().parent
@@ -181,14 +181,23 @@ def run_image_generation_job(job_id: str, payload: ImageGenerationRequest, refer
         generation_jobs[job_id].update({"status": "running", "message": "Carregando o motor de imagem e gerando a cena."})
     persist_generation_job(job_id)
     try:
-        output = generate_image(
-            prompt=payload.prompt.strip(),
-            negative_prompt=payload.negative_prompt,
-            width=payload.width,
-            height=payload.height,
-            seed=payload.seed,
-            reference_image_bytes=reference_image_bytes,
-        )
+        if image_engine_status()["available"]:
+            output = generate_sdxl_image(
+                prompt=payload.prompt.strip(),
+                negative_prompt=payload.negative_prompt,
+                width=payload.width,
+                height=payload.height,
+                seed=payload.seed,
+                reference_image_bytes=reference_image_bytes,
+            )
+        else:
+            output = generate_huggingface_image(
+                prompt=payload.prompt.strip(),
+                width=payload.width,
+                height=payload.height,
+                seed=payload.seed,
+                reference_image_bytes=reference_image_bytes,
+            )
         download_token = secrets.token_urlsafe(32)
         with generation_jobs_lock:
             generation_download_tokens[output.name] = (download_token, time.time() + GENERATION_DOWNLOAD_TTL_SECONDS)
@@ -379,9 +388,6 @@ def request_image_generation(
 ) -> dict[str, object]:
     """Enfileira geração de imagem quando o motor local ou remoto está configurado."""
     require_token(authorization)
-    status = active_image_engine_status()
-    if not status["available"]:
-        raise HTTPException(status_code=503, detail=str(status["message"]) + " Consulte /v1/capabilities.")
     if not payload.prompt.strip():
         raise HTTPException(status_code=400, detail="Informe um prompt de imagem.")
     if payload.width % 8 or payload.height % 8:
@@ -398,6 +404,14 @@ def request_image_generation(
             raise HTTPException(status_code=413, detail="A imagem de referência deve ter até 18 MB.")
         if not (reference_image_bytes.startswith(b"\x89PNG\r\n\x1a\n") or reference_image_bytes.startswith(b"\xff\xd8\xff")):
             raise HTTPException(status_code=415, detail="A referência deve ser uma imagem PNG ou JPEG.")
+    status = image_engine_status()
+    if not status["available"]:
+        status = huggingface_image_engine_status()
+    if not status["available"]:
+        combined = active_image_engine_status()
+        raise HTTPException(status_code=503, detail=str(combined["message"]) + " Consulte /v1/capabilities.")
+    if reference_image_bytes and status.get("provider") == "Hugging Face Gradio Space":
+        raise HTTPException(status_code=422, detail="O Space remoto atual aceita somente texto; imagem de referência ainda não é suportada.")
     prune_generation_state()
     job_id = uuid.uuid4().hex
     with generation_jobs_lock:
