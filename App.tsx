@@ -70,11 +70,11 @@ async function writeRenderToken(token: string): Promise<void> {
 }
 
 
-function stableProjectSeed(projectId: string): number {
-  // Uma semente fixa por projeto torna as gerações reproduzíveis entre tentativas.
+function stableProjectSeed(seedKey: string): number {
+  // Uma semente fixa por projeto e cena torna cada cena reproduzível sem repetir a mesma composição em todas.
   let hash = 2166136261;
-  for (let index = 0; index < projectId.length; index += 1) {
-    hash ^= projectId.charCodeAt(index);
+  for (let index = 0; index < seedKey.length; index += 1) {
+    hash ^= seedKey.charCodeAt(index);
     hash = Math.imul(hash, 16777619);
   }
   return hash >>> 0;
@@ -322,7 +322,7 @@ export default function App() {
       const provider = new HttpImageGenerationProvider({ baseUrl: connection.baseUrl, token: connection.token });
       const referenceScene = selected.scenes.find(item => item.title !== scene.title && item.imageUri);
       const referenceImageBase64 = referenceScene?.imageUri ? await imageUriToBase64(referenceScene.imageUri) : undefined;
-      const result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, seed: stableProjectSeed(selected.id), referenceImageBase64 });
+      const result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, seed: stableProjectSeed(`${selected.id}:${scene.title}`), referenceImageBase64 });
       if (result.status !== "completed" || !result.outputUri) throw new Error(result.error || "O motor não retornou uma imagem.");
       const localUri = await persistGeneratedImage(result.outputUri, selected.id, scene.title);
       const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, imageUri: localUri, videoUri: undefined, videoRemoteUri: undefined } : item) };
@@ -412,7 +412,7 @@ export default function App() {
           referenceImageBase64 &&
           /somente texto|referência.*não.*suportada|não.*suporta.*referência/i.test(result.error || "")
         ) {
-          result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, seed: stableProjectSeed(workingProject.id) });
+          result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, seed: stableProjectSeed(`${workingProject.id}:${scene.title}`) });
         }
         if (result.status !== "completed" || !result.outputUri) throw new Error(`${scene.title}: ${result.error || "o motor não retornou uma imagem"}`);
         const localUri = await persistGeneratedImage(result.outputUri, workingProject.id, scene.title);
