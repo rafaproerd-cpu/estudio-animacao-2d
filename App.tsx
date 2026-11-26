@@ -955,7 +955,7 @@ export default function App() {
         {showSettings ? <View style={styles.panel}>
           <Text style={styles.step}>CONEXÃO SEGURA</Text>
           <Text style={styles.panelTitle}>Motor próprio do Estúdio 2D</Text>
-          <Text style={styles.note}>O aplicativo conversa diretamente com a API do estúdio. Não precisa de ComfyUI, workflows ou plugins. O servidor pode ficar no Render e chamar um Space do Hugging Face ZeroGPU para gerar imagens; esse caminho não exige uma GPU própria no servidor. A cota gratuita do Space é limitada.</Text>
+          <Text style={styles.note}>O aplicativo conversa diretamente com a API do estúdio. Não precisa de ComfyUI, workflows ou plugins. Para imagens, o servidor pode chamar um Space do Hugging Face ZeroGPU, sujeito a fila e cota gratuita limitada. Atenção: esse Space não gera vídeos. Sem um servidor separado com GPU compatível e Wan2.2 configurado, o vídeo disponível usa apenas movimento de câmera sobre uma imagem estática; não anima personagens.</Text>
           <Text style={styles.label}>ENDEREÇO HTTPS DO SERVIDOR</Text>
           <TextInput value={engineConfig.renderBaseUrl || ""} onChangeText={value => setEngineConfig(previous => ({ ...previous, renderBaseUrl: value }))} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="https://seu-servidor-do-estudio" placeholderTextColor="#777789" style={styles.smallInput} />
           <Text style={styles.label}>TOKEN DE ACESSO</Text>
