@@ -201,7 +201,7 @@ class RenderServerTests(unittest.TestCase):
                 main.OUTPUT_DIR = Path(temp_dir)
 
                 def fake_ffmpeg(arguments):
-                    Path(arguments[-1]).write_bytes(b"fake-mp4")
+                    Path(arguments[-1]).write_bytes(b"\\x00\\x00\\x00\\x18ftypisom\\x00\\x00\\x02\\x00")
 
                 upload = UploadFile(filename="first-scene.mp4", file=BytesIO(b"fake-source-video"))
                 with patch.object(main, "run_ffmpeg", side_effect=fake_ffmpeg) as mocked:
@@ -218,6 +218,28 @@ class RenderServerTests(unittest.TestCase):
                 rendered_file = main.OUTPUT_DIR / f"{result.id}.mp4"
                 self.assertTrue(rendered_file.is_file())
                 self.assertGreater(rendered_file.stat().st_size, 0)
+        finally:
+            main.API_TOKEN = original_token
+            main.OUTPUT_DIR = original_output
+
+    def test_render_endpoint_rejects_invalid_final_mp4_output(self):
+        original_token = main.API_TOKEN
+        original_output = main.OUTPUT_DIR
+        try:
+            main.API_TOKEN = "integration-test-token"
+            with tempfile.TemporaryDirectory() as temp_dir:
+                main.OUTPUT_DIR = Path(temp_dir)
+                def fake_ffmpeg(arguments):
+                    Path(arguments[-1]).write_bytes(b"not-a-valid-mp4-file")
+                upload = UploadFile(filename="first-scene.mp4", file=BytesIO(b"fake-source-video"))
+                with patch.object(main, "run_ffmpeg", side_effect=fake_ffmpeg):
+                    with self.assertRaises(HTTPException) as raised:
+                        asyncio.run(main.render_video(
+                            [upload], None, None, "Minha história", "Bearer integration-test-token"
+                        ))
+                self.assertEqual(raised.exception.status_code, 500)
+                self.assertIn("MP4 final válido", raised.exception.detail)
+                self.assertEqual(list(main.OUTPUT_DIR.glob("*.mp4")), [])
         finally:
             main.API_TOKEN = original_token
             main.OUTPUT_DIR = original_output
