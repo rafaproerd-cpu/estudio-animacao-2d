@@ -25,3 +25,5 @@ jobs:
       - name: Run unit tests
         working-directory: render-server
         run: python -m unittest -v
+      - name: Build production Docker image
+        run: docker build --file render-server/Dockerfile --tag estudio-2d-render:ci render-server
