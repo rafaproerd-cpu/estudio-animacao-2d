@@ -18,7 +18,7 @@ O backend FastAPI tem agora os primeiros adaptadores reais preparados:
 - **Renderização:** FFmpeg concatena clipes enviados e mixa narração/música.
 - **Voz:** Piper local é opcional e só funciona com executável e modelos `.onnx` instalados.
 
-**Nenhuma inferência de imagem ou vídeo foi executada ainda.** Os modelos não foram baixados e o backend não está hospedado nem conectado à prévia. As filas atuais são voláteis: reiniciar o processo apaga o estado dos jobs. O ambiente publicado não tem GPU, pesos SDXL/Wan ou Piper. A prévia GitHub Pages é somente a interface; não gera mídia sozinha.
+**Nenhuma inferência de imagem ou vídeo foi executada ainda.** Os modelos não foram baixados e o backend não está hospedado nem conectado à prévia. O estado dos jobs e os tokens temporários de download são persistidos em SQLite dentro do diretório de saída (`generation_state.sqlite3`). Após reinicialização, jobs que estavam em andamento são marcados como interrompidos; jobs concluídos e links de mídia continuam recuperáveis enquanto o volume persistente e os arquivos de saída forem preservados. Em produção, monte `/data` como volume persistente (o Dockerfile usa `/data/outputs`). O ambiente publicado não tem GPU, pesos SDXL/Wan ou Piper. A prévia GitHub Pages é somente a interface; não gera mídia sozinha.
 
 ## Modelos e requisitos
 - **Imagem:** SDXL 1.0 Base; precisa de PyTorch/CUDA e Diffusers, além de GPU compatível. O backend agora aceita uma imagem de referência PNG/JPEG em Base64 via SDXL image-to-image; o app reutiliza a primeira cena como referência para cenas seguintes. A consistência visual ainda precisa ser validada em uma inferência real.
