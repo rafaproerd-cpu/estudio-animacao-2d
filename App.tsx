@@ -179,9 +179,11 @@ export default function App() {
       if (!response.ok || !data.ok || !data.ffmpeg_available || !data.token_configured) {
         throw new Error("Servidor respondeu, mas FFmpeg ou token não está configurado corretamente.");
       }
-      setConnectionStatus("Conectado");\n      Alert.alert("Motor conectado", "A API do Estúdio 2D respondeu e o FFmpeg está disponível.");
+      setConnectionStatus("Conectado");
+      Alert.alert("Motor conectado", "A API do Estúdio 2D respondeu e o FFmpeg está disponível.");
     } catch (error) {
-      setConnectionStatus("Falha na conexão");\n      Alert.alert("Não conectou", error instanceof Error ? error.message : "Verifique endereço, rede e servidor.");
+      setConnectionStatus("Falha na conexão");
+      Alert.alert("Não conectou", error instanceof Error ? error.message : "Verifique endereço, rede e servidor.");
     }
   };
 
