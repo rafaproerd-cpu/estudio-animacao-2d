@@ -28,15 +28,19 @@ class HuggingFaceImageEngineTests(unittest.TestCase):
 
                 class FakeClient:
                     last_seed = None
+                    last_reference = None
+                    reference_was_available = False
 
                     def __init__(self, space_id, **kwargs):
                         self.space_id = space_id
                         self.kwargs = kwargs
 
-                    def predict(self, prompt, seed, api_name):
+                    def predict(self, prompt, seed, reference_image, api_name):
                         self.prompt = prompt
                         self.seed = seed
                         FakeClient.last_seed = seed
+                        FakeClient.last_reference = reference_image
+                        FakeClient.reference_was_available = bool(reference_image and Path(reference_image).is_file())
                         self.api_name = api_name
                         return {"path": str(source)}
 
@@ -63,15 +67,44 @@ class HuggingFaceImageEngineTests(unittest.TestCase):
             image_engine.HF_TOKEN = original_token
             image_engine.IMAGE_OUTPUT_DIR = original_output
 
-    def test_remote_generation_rejects_reference_image(self):
-        with self.assertRaisesRegex(RuntimeError, "somente texto"):
-            image_engine.generate_huggingface_image(
-                prompt="scene",
-                width=512,
-                height=512,
-                seed=None,
-                reference_image_bytes=b"reference",
-            )
+    def test_remote_generation_passes_reference_image_to_gradio_and_cleans_temp_file(self):
+        original_space = image_engine.HF_SPACE_ID
+        original_token = image_engine.HF_TOKEN
+        original_output = image_engine.IMAGE_OUTPUT_DIR
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                source = root / "source.png"
+                Image.new("RGB", (32, 24), (20, 40, 60)).save(source, format="PNG")
+                image_engine.HF_SPACE_ID = "owner/test-space"
+                image_engine.HF_TOKEN = ""
+                image_engine.IMAGE_OUTPUT_DIR = root / "outputs"
+
+                class FakeClient:
+                    reference_path = None
+                    reference_was_available = False
+                    def __init__(self, space_id, **kwargs):
+                        pass
+                    def predict(self, prompt, seed, reference_image, api_name):
+                        self.__class__.reference_path = reference_image
+                        self.__class__.reference_was_available = Path(reference_image).is_file()
+                        return {"path": str(source)}
+
+                fake_module = types.SimpleNamespace(Client=FakeClient)
+                with patch.dict(sys.modules, {"gradio_client": fake_module}), patch.object(
+                    image_engine, "huggingface_image_engine_status",
+                    return_value={"available": True, "status": "configured_unverified"},
+                ):
+                    image_engine.generate_huggingface_image(
+                        prompt="cinematic anime scene", width=512, height=512,
+                        seed=123, reference_image_bytes=b"\x89PNG\r\n\x1a\nreference",
+                    )
+                self.assertTrue(FakeClient.reference_was_available)
+                self.assertFalse(Path(FakeClient.reference_path).exists())
+        finally:
+            image_engine.HF_SPACE_ID = original_space
+            image_engine.HF_TOKEN = original_token
+            image_engine.IMAGE_OUTPUT_DIR = original_output
 
 
 if __name__ == "__main__":
