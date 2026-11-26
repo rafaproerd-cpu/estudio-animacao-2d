@@ -403,7 +403,7 @@ export default function App() {
         setBusyScene(scene.title);
         const referenceScene = workingProject.scenes.find(item => item.imageUri);
         const referenceImageBase64 = referenceScene?.imageUri ? await imageUriToBase64(referenceScene.imageUri) : undefined;
-        let result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, seed: stableProjectSeed(selected.id), referenceImageBase64 });
+        let result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, seed: stableProjectSeed(`${workingProject.id}:${scene.title}`), referenceImageBase64 });
         // O Space gratuito atual aceita somente texto. Se o backend informar
         // que não suporta referência, repetir a cena sem a imagem-base em vez
         // de interromper toda a fila depois da primeira cena.
