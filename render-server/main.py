@@ -148,6 +148,26 @@ def generation_capabilities(authorization: Annotated[str | None, Header()] = Non
     }
 
 
+@app.post("/v1/generations/images")
+def request_image_generation(authorization: Annotated[str | None, Header()] = None) -> None:
+    """Falha explicitamente até um modelo de imagem real ser instalado."""
+    require_token(authorization)
+    raise HTTPException(
+        status_code=503,
+        detail="A geração de imagens ainda não está configurada neste servidor. Consulte /v1/capabilities.",
+    )
+
+
+@app.post("/v1/generations/videos")
+def request_video_generation(authorization: Annotated[str | None, Header()] = None) -> None:
+    """Falha explicitamente até um modelo de vídeo real ser instalado."""
+    require_token(authorization)
+    raise HTTPException(
+        status_code=503,
+        detail="A geração de animações ainda não está configurada neste servidor. Consulte /v1/capabilities.",
+    )
+
+
 @app.get("/health")
 def health(authorization: Annotated[str | None, Header()] = None) -> dict[str, str | bool]:
     require_token(authorization)
