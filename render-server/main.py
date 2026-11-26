@@ -181,13 +181,17 @@ def health(authorization: Annotated[str | None, Header()] = None) -> dict[str, s
 
 
 def available_nvidia_gpus() -> list[dict[str, str]]:
-    """Detecta GPUs NVIDIA sem tornar CUDA/NVML uma dependência obrigatória."""
+    """Detecta GPUs NVIDIA e métricas reportadas pelo driver, sem exigir CUDA."""
     executable = shutil.which("nvidia-smi")
     if not executable:
         return []
     try:
         result = subprocess.run(
-            [executable, "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
+            [
+                executable,
+                "--query-gpu=name,memory.total,memory.free,driver_version",
+                "--format=csv,noheader,nounits",
+            ],
             capture_output=True,
             text=True,
             timeout=5,
@@ -199,9 +203,14 @@ def available_nvidia_gpus() -> list[dict[str, str]]:
         return []
     gpus: list[dict[str, str]] = []
     for line in result.stdout.splitlines():
-        parts = [part.strip() for part in line.split(",", maxsplit=1)]
-        if len(parts) == 2 and parts[0]:
-            gpus.append({"name": parts[0], "memory_mb": parts[1]})
+        parts = [part.strip() for part in line.split(",", maxsplit=3)]
+        if len(parts) == 4 and parts[0]:
+            gpus.append({
+                "name": parts[0],
+                "memory_total_mb": parts[1],
+                "memory_free_mb": parts[2],
+                "driver_version": parts[3],
+            })
     return gpus
 
 
