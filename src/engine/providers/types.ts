@@ -44,6 +44,8 @@ export type ImageGenerationRequest = {
 export type VideoGenerationRequest = {
   prompt: string;
   imageUri?: string;
+  /** Base64 de uma imagem PNG/JPEG local, para upload ao motor TI2V. */
+  imageBase64?: string;
   negativePrompt?: string;
   durationSeconds: number;
   width: number;
