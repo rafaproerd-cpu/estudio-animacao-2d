@@ -127,7 +127,7 @@ def run_video_generation_job(job_id: str, payload: VideoGenerationRequest, image
         )
         download_token = secrets.token_urlsafe(32)
         with generation_jobs_lock:
-            generation_download_tokens[output.name] = (download_token, time.time() + 3600)
+            generation_download_tokens[output.name] = (download_token, time.time() + GENERATION_DOWNLOAD_TTL_SECONDS)
             generation_jobs[job_id].update({
                 "status": "completed",
                 "progress": 1.0,
