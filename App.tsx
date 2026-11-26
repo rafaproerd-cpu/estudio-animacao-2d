@@ -108,8 +108,10 @@ function buildProject(idea: string, genre: string, duration: string, generatedPl
 
 function requestedDurationSeconds(duration: string): number {
   const value = duration.trim().toLowerCase();
-  if (value.includes("segundo")) return Math.max(1, Number.parseInt(value, 10) || 30);
-  if (value.includes("minuto")) return (Number.parseInt(value, 10) || 1) * 60;
+  const minutes = value.match(/(\\d+(?:[.,]\\d+)?)\\s*min/);
+  const seconds = value.match(/(\\d+(?:[.,]\\d+)?)\\s*seg/);
+  if (minutes) return Math.max(15, Math.round(Number(minutes[1].replace(",", ".")) * 60));
+  if (seconds) return Math.max(10, Math.round(Number(seconds[1].replace(",", "."))));
   return 60;
 }
 
