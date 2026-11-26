@@ -72,6 +72,14 @@ async function writeRenderToken(token: string): Promise<void> {
 }
 
 
+function findCharacterReference(scenes: Scene[], targetTitle?: string): Scene | undefined {
+  // A primeira cena funciona como referência-mestra para o elenco.
+  // Ao gerar a própria cena-mestra novamente, usa a primeira alternativa disponível.
+  const master = scenes[0];
+  if (master?.imageUri && master.title !== targetTitle) return master;
+  return scenes.find(item => item.title !== targetTitle && !!item.imageUri);
+}
+
 function stableProjectSeed(seedKey: string): number {
   // Uma semente fixa por projeto e cena torna cada cena reproduzível sem repetir a mesma composição em todas.
   let hash = 2166136261;
@@ -351,7 +359,7 @@ export default function App() {
     setBusyScene(scene.title);
     try {
       const provider = new HttpImageGenerationProvider({ baseUrl: connection.baseUrl, token: connection.token });
-      const referenceScene = selected.scenes.find(item => item.title !== scene.title && item.imageUri);
+      const referenceScene = findCharacterReference(selected.scenes, scene.title);
       const referenceImageBase64 = referenceScene?.imageUri ? await imageUriToBase64(referenceScene.imageUri) : undefined;
       let result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, seed: stableProjectSeed(`${selected.id}:${scene.title}`), referenceImageBase64 });
       // Se o motor remoto rejeitar a referência visual, repetir sem ela para
@@ -446,7 +454,7 @@ export default function App() {
       const provider = new HttpImageGenerationProvider({ baseUrl: connection.baseUrl, token: connection.token });
       for (const scene of pendingScenes) {
         setBusyScene(scene.title);
-        const referenceScene = workingProject.scenes.find(item => item.imageUri);
+        const referenceScene = findCharacterReference(workingProject.scenes, scene.title);
         const referenceImageBase64 = referenceScene?.imageUri ? await imageUriToBase64(referenceScene.imageUri) : undefined;
         let result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, seed: stableProjectSeed(`${workingProject.id}:${scene.title}`), referenceImageBase64 });
         // Se o motor remoto rejeitar a referência visual, repetir sem a imagem-base
