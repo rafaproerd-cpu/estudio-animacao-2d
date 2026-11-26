@@ -11,8 +11,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as SecureStore from "expo-secure-store";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { createStoryPlan, type Genre } from "./src/engine/storyEngine";
-import { ComfyUiImageProvider, type ComfyUiImageWorkflow } from "./src/engine/providers/comfyuiImageProvider";
-import { ComfyUiVideoProvider, type ComfyUiVideoWorkflow } from "./src/engine/providers/comfyuiVideoProvider";
+import { HttpImageGenerationProvider, HttpVideoGenerationProvider } from "./src/engine/providers/httpGenerationProvider";
 
 type Scene = { title: string; description: string; dialogue: string; imagePrompt: string; videoPrompt: string; shot: string; camera: string; lighting: string; voiceId?: string; imageUri?: string; videoUri?: string; videoRemoteUri?: string };
 type Project = {
@@ -154,7 +153,7 @@ export default function App() {
       await AsyncStorage.setItem(COMFY_STORAGE_KEY, JSON.stringify(publicConfig));
       if (renderToken?.trim()) await SecureStore.setItemAsync("@estudio2d/render-token", renderToken.trim());
       else await SecureStore.deleteItemAsync("@estudio2d/render-token");
-      Alert.alert("Configuração salva", "Workflows e endereços foram guardados no aparelho; o token fica no armazenamento seguro do iPhone.");
+      Alert.alert("Conexão salva", "O endereço do motor foi guardado no aparelho; o token fica no armazenamento seguro do iPhone.");
     } catch {
       Alert.alert("Erro", "Não foi possível salvar as configurações. Verifique o armazenamento do aparelho.");
     }
@@ -186,20 +185,54 @@ export default function App() {
     }
   };
 
+  const getEngineConnection = () => {
+    const baseUrl = (comfyConfig.renderBaseUrl || "").trim().replace(/\\/+$/, "");
+    const token = (comfyConfig.renderToken || "").trim();
+    if (!/^https?:\\/\\//i.test(baseUrl) || !token) {
+      Alert.alert("Conecte o motor do Estúdio 2D", "Informe o endereço HTTPS do servidor próprio e o token na opção Conectar motor.");
+      setShowSettings(true);
+      return null;
+    }
+    return { baseUrl, token };
+  };
+
+  const persistGeneratedImage = async (remoteUri: string, projectId: string, sceneTitle: string) => {
+    const directory = (FileSystem.documentDirectory || "") + "generated-images/";
+    const info = await FileSystem.getInfoAsync(directory);
+    if (!info.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
+    const safeName = sceneTitle.replace(/[^a-z0-9-_]/gi, "-").slice(0, 48) || "scene";
+    const destination = directory + projectId + "-" + safeName + "-" + Date.now() + ".png";
+    const download = await FileSystem.downloadAsync(remoteUri, destination);
+    if (download.status < 200 || download.status >= 300) throw new Error("A imagem foi gerada, mas não foi possível salvá-la no iPhone.");
+    return download.uri;
+  };
+
   const generateSceneImage = async (scene: Scene) => {
     if (!selected) return;
-    if (!comfyConfig.baseUrl.trim() || !comfyConfig.workflowText.trim() || !comfyConfig.positiveNode.trim()) { Alert.alert("Configure o ComfyUI", "Abra Configurar geração e informe servidor, workflow API e nó do prompt positivo."); setShowSettings(true); return; }
+    const connection = getEngineConnection();
+    if (!connection) return;
     setBusyScene(scene.title);
     try {
-      const workflow = JSON.parse(comfyConfig.workflowText) as ComfyUiImageWorkflow;
-      const provider = new ComfyUiImageProvider({ baseUrl: comfyConfig.baseUrl, workflow, positivePromptNodeId: comfyConfig.positiveNode.trim(), negativePromptNodeId: comfyConfig.negativeNode.trim() || undefined, widthNodeId: comfyConfig.widthNode.trim() || undefined, heightNodeId: comfyConfig.heightNode.trim() || undefined, seedNodeId: comfyConfig.seedNode.trim() || undefined });
+      const provider = new HttpImageGenerationProvider({ baseUrl: connection.baseUrl, token: connection.token });
       const result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576 });
-      if (result.status !== "completed" || !result.outputUri) throw new Error(result.error || "A geração não retornou uma imagem.");
-      const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, imageUri: result.outputUri, videoUri: undefined, videoRemoteUri: undefined } : item) };
+      if (result.status !== "completed" || !result.outputUri) throw new Error(result.error || "O motor não retornou uma imagem.");
+      const localUri = await persistGeneratedImage(result.outputUri, selected.id, scene.title);
+      const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, imageUri: localUri, videoUri: undefined, videoRemoteUri: undefined } : item) };
       saveUpdatedProject(updated);
-      Alert.alert("Imagem gerada", "A imagem desta cena foi salva no projeto.");
+      Alert.alert("Imagem gerada", "A imagem foi criada pelo motor do Estúdio 2D e salva no iPhone.");
     } catch (error) { Alert.alert("Erro na geração", error instanceof Error ? error.message : "Não foi possível gerar a imagem."); }
     finally { setBusyScene(null); }
+  };
+
+  const imageUriToBase64 = async (imageUri: string) => {
+    let localUri = imageUri;
+    if (!localUri.startsWith("file://")) {
+      const cachePath = (FileSystem.cacheDirectory || FileSystem.documentDirectory || "") + "estudio2d-reference-" + Date.now() + ".png";
+      const downloaded = await FileSystem.downloadAsync(localUri, cachePath);
+      if (downloaded.status < 200 || downloaded.status >= 300) throw new Error("Não foi possível baixar a imagem de referência.");
+      localUri = downloaded.uri;
+    }
+    return FileSystem.readAsStringAsync(localUri, { encoding: FileSystem.EncodingType.Base64 });
   };
 
   const generateSceneVideo = async (scene: Scene) => {
@@ -208,38 +241,17 @@ export default function App() {
       Alert.alert("Imagem necessária", "Gere primeiro a imagem desta cena para usá-la como referência do vídeo.");
       return;
     }
-    if (!comfyConfig.baseUrl.trim() || !comfyConfig.videoWorkflowText?.trim() || !comfyConfig.videoImageNode?.trim() || !comfyConfig.videoPositiveNode?.trim()) {
-      Alert.alert("Configure o motor de vídeo", "Abra Configurar geração e informe o workflow de vídeo, o nó LoadImage e o nó do prompt positivo.");
-      setShowSettings(true);
-      return;
-    }
-    setBusyScene(`video:${scene.title}`);
+    const connection = getEngineConnection();
+    if (!connection) return;
+    setBusyScene("video:" + scene.title);
     try {
-      const workflow = JSON.parse(comfyConfig.videoWorkflowText) as ComfyUiVideoWorkflow;
-      const provider = new ComfyUiVideoProvider({
-        baseUrl: comfyConfig.baseUrl,
-        workflow,
-        imageNodeId: comfyConfig.videoImageNode.trim(),
-        positivePromptNodeId: comfyConfig.videoPositiveNode.trim(),
-        negativePromptNodeId: comfyConfig.videoNegativeNode?.trim() || undefined,
-        widthNodeId: comfyConfig.videoWidthNode?.trim() || undefined,
-        heightNodeId: comfyConfig.videoHeightNode?.trim() || undefined,
-        framesNodeId: comfyConfig.videoFramesNode?.trim() || undefined,
-        fpsNodeId: comfyConfig.videoFpsNode?.trim() || undefined,
-        seedNodeId: comfyConfig.videoSeedNode?.trim() || undefined,
-      });
-      const result = await provider.generate({
-        prompt: scene.videoPrompt || scene.description,
-        imageUri: scene.imageUri,
-        durationSeconds: 4,
-        width: 1024,
-        height: 576,
-        fps: 16,
-      });
-      if (result.status !== "completed" || !result.outputUri) throw new Error(result.error || "O workflow não retornou um vídeo.");
-      const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, videoUri: result.outputUri, videoRemoteUri: undefined } : item) };
+      const imageBase64 = await imageUriToBase64(scene.imageUri);
+      const provider = new HttpVideoGenerationProvider({ baseUrl: connection.baseUrl, token: connection.token });
+      const result = await provider.generate({ prompt: scene.videoPrompt || scene.description, imageBase64, durationSeconds: 4, width: 1280, height: 704, fps: 24 });
+      if (result.status !== "completed" || !result.outputUri) throw new Error(result.error || "O motor não retornou um clipe.");
+      const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, videoUri: result.outputUri, videoRemoteUri: result.outputUri } : item) };
       saveUpdatedProject(updated);
-      Alert.alert("Clipe concluído", "O vídeo desta cena foi salvo no projeto.");
+      Alert.alert("Clipe concluído", "A animação foi gerada pelo motor do Estúdio 2D. Você pode baixá-la para o iPhone.");
     } catch (error) {
       Alert.alert("Erro na geração do vídeo", error instanceof Error ? error.message : "Não foi possível gerar o clipe.");
     } finally {
@@ -249,11 +261,8 @@ export default function App() {
 
   const generateAllSceneImages = async () => {
     if (!selected) return;
-    if (!comfyConfig.baseUrl.trim() || !comfyConfig.workflowText.trim() || !comfyConfig.positiveNode.trim()) {
-      Alert.alert("Configure o motor de imagens", "Informe o workflow API e o nó do prompt positivo.");
-      setShowSettings(true);
-      return;
-    }
+    const connection = getEngineConnection();
+    if (!connection) return;
     const pendingScenes = selected.scenes.filter(scene => !scene.imageUri);
     if (!pendingScenes.length) {
       Alert.alert("Imagens prontas", "Todas as cenas já possuem imagem. Você pode seguir para a animação.");
@@ -263,36 +272,19 @@ export default function App() {
     let completed = 0;
     setBatchProgress({ current: 0, total: pendingScenes.length });
     try {
-      const workflow = JSON.parse(comfyConfig.workflowText) as ComfyUiImageWorkflow;
-      const provider = new ComfyUiImageProvider({
-        baseUrl: comfyConfig.baseUrl,
-        workflow,
-        positivePromptNodeId: comfyConfig.positiveNode.trim(),
-        negativePromptNodeId: comfyConfig.negativeNode.trim() || undefined,
-        widthNodeId: comfyConfig.widthNode.trim() || undefined,
-        heightNodeId: comfyConfig.heightNode.trim() || undefined,
-        seedNodeId: comfyConfig.seedNode.trim() || undefined,
-      });
+      const provider = new HttpImageGenerationProvider({ baseUrl: connection.baseUrl, token: connection.token });
       for (const scene of pendingScenes) {
         setBusyScene(scene.title);
         const result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576 });
-        if (result.status !== "completed" || !result.outputUri) {
-          throw new Error(`${scene.title}: ${result.error || "o workflow não retornou uma imagem"}`);
-        }
-        workingProject = {
-          ...workingProject,
-          finalVideoUri: undefined,
-          finalVideoRemoteUri: undefined,
-          scenes: workingProject.scenes.map(item => item.title === scene.title
-            ? { ...item, imageUri: result.outputUri, videoUri: undefined, videoRemoteUri: undefined }
-            : item),
-        };
+        if (result.status !== "completed" || !result.outputUri) throw new Error(`${scene.title}: ${result.error || "o motor não retornou uma imagem"}`);
+        const localUri = await persistGeneratedImage(result.outputUri, workingProject.id, scene.title);
+        workingProject = { ...workingProject, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: workingProject.scenes.map(item => item.title === scene.title ? { ...item, imageUri: localUri, videoUri: undefined, videoRemoteUri: undefined } : item) };
         completed += 1;
         setSelected(workingProject);
         setProjects(previous => previous.map(item => item.id === workingProject.id ? workingProject : item));
         setBatchProgress({ current: completed, total: pendingScenes.length });
       }
-      Alert.alert("Imagens concluídas", `${completed} imagens foram geradas e salvas no projeto.`);
+      Alert.alert("Imagens concluídas", `${completed} imagens foram geradas e salvas no iPhone.`);
     } catch (error) {
       Alert.alert("Geração interrompida", `${completed} de ${pendingScenes.length} imagens concluídas. ${error instanceof Error ? error.message : "Falha desconhecida."}`);
     } finally {
@@ -303,6 +295,8 @@ export default function App() {
 
   const generateAllSceneVideos = async () => {
     if (!selected) return;
+    const connection = getEngineConnection();
+    if (!connection) return;
     const missingImages = selected.scenes.filter(scene => !scene.imageUri);
     if (missingImages.length) {
       Alert.alert("Faltam imagens", `Gere primeiro as imagens de todas as cenas. Ainda faltam ${missingImages.length}.`);
@@ -313,55 +307,23 @@ export default function App() {
       Alert.alert("Animações prontas", "Todas as cenas já possuem clipe. Baixe os vídeos ou avance para a montagem final.");
       return;
     }
-    if (!comfyConfig.baseUrl.trim() || !comfyConfig.videoWorkflowText?.trim() || !comfyConfig.videoImageNode?.trim() || !comfyConfig.videoPositiveNode?.trim()) {
-      Alert.alert("Configure o motor de vídeo", "Informe o workflow de vídeo e os nós LoadImage e prompt positivo.");
-      setShowSettings(true);
-      return;
-    }
     let workingProject = selected;
     let completed = 0;
     setBatchProgress({ current: 0, total: pendingScenes.length });
     try {
-      const workflow = JSON.parse(comfyConfig.videoWorkflowText) as ComfyUiVideoWorkflow;
-      const provider = new ComfyUiVideoProvider({
-        baseUrl: comfyConfig.baseUrl,
-        workflow,
-        imageNodeId: comfyConfig.videoImageNode.trim(),
-        positivePromptNodeId: comfyConfig.videoPositiveNode.trim(),
-        negativePromptNodeId: comfyConfig.videoNegativeNode?.trim() || undefined,
-        widthNodeId: comfyConfig.videoWidthNode?.trim() || undefined,
-        heightNodeId: comfyConfig.videoHeightNode?.trim() || undefined,
-        framesNodeId: comfyConfig.videoFramesNode?.trim() || undefined,
-        fpsNodeId: comfyConfig.videoFpsNode?.trim() || undefined,
-        seedNodeId: comfyConfig.videoSeedNode?.trim() || undefined,
-      });
+      const provider = new HttpVideoGenerationProvider({ baseUrl: connection.baseUrl, token: connection.token });
       for (const scene of pendingScenes) {
-        setBusyScene(`video:${scene.title}`);
-        const result = await provider.generate({
-          prompt: scene.videoPrompt || scene.description,
-          imageUri: scene.imageUri,
-          durationSeconds: 4,
-          width: 1024,
-          height: 576,
-          fps: 16,
-        });
-        if (result.status !== "completed" || !result.outputUri) {
-          throw new Error(`${scene.title}: ${result.error || "o workflow não retornou um clipe"}`);
-        }
-        workingProject = {
-          ...workingProject,
-          finalVideoUri: undefined,
-          finalVideoRemoteUri: undefined,
-          scenes: workingProject.scenes.map(item => item.title === scene.title
-            ? { ...item, videoUri: result.outputUri, videoRemoteUri: undefined }
-            : item),
-        };
+        setBusyScene("video:" + scene.title);
+        const imageBase64 = await imageUriToBase64(scene.imageUri!);
+        const result = await provider.generate({ prompt: scene.videoPrompt || scene.description, imageBase64, durationSeconds: 4, width: 1280, height: 704, fps: 24 });
+        if (result.status !== "completed" || !result.outputUri) throw new Error(`${scene.title}: ${result.error || "o motor não retornou um clipe"}`);
+        workingProject = { ...workingProject, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: workingProject.scenes.map(item => item.title === scene.title ? { ...item, videoUri: result.outputUri, videoRemoteUri: result.outputUri } : item) };
         completed += 1;
         setSelected(workingProject);
         setProjects(previous => previous.map(item => item.id === workingProject.id ? workingProject : item));
         setBatchProgress({ current: completed, total: pendingScenes.length });
       }
-      Alert.alert("Animação concluída", `${completed} novos clipes foram gerados. ${selected.scenes.length - pendingScenes.length} cenas já tinham vídeo.`);
+      Alert.alert("Animação concluída", `${completed} novos clipes foram gerados.`);
     } catch (error) {
       Alert.alert("Geração interrompida", `${completed} de ${pendingScenes.length} clipes pendentes concluídos. ${error instanceof Error ? error.message : "Falha desconhecida."}`);
     } finally {
