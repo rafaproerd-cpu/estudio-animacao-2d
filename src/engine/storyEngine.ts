@@ -205,6 +205,13 @@ const GENRE_DIALOGUE: Record<Genre, string[]> = {
   ],
 };
 
+const BEAT_PROGRESSIONS = [
+  "Estabelecer visualmente a situação e a posição dos personagens.",
+  "Mostrar uma reação ou detalhe novo que avance o momento.",
+  "Aproximar a câmera da consequência emocional ou física da ação.",
+  "Preparar uma transição visual clara para o próximo acontecimento.",
+];
+
 const PHASE_TITLES = [
   "Abertura", "O chamado", "Primeiras pistas", "O desafio",
   "Complicações", "Nova descoberta", "A tensão aumenta",
@@ -254,8 +261,11 @@ function makeScene(
 ): PlannedScene {
   const beats = GENRE_BEATS[genre];
   const progress = total <= 1 ? 0 : index / (total - 1);
-  const beatIndex = Math.min(beats.length - 1, Math.floor(progress * beats.length));
-  const action = beats[beatIndex];
+  const beatPosition = progress * beats.length;
+  const beatIndex = Math.min(beats.length - 1, Math.floor(beatPosition));
+  const beatProgress = beatPosition - beatIndex;
+  const progressionIndex = Math.min(BEAT_PROGRESSIONS.length - 1, Math.floor(beatProgress * BEAT_PROGRESSIONS.length));
+  const action = `${beats[beatIndex]} ${BEAT_PROGRESSIONS[progressionIndex]}`;
   const shot = SHOTS[index % SHOTS.length];
   const camera = CAMERAS[index % CAMERAS.length];
   const lighting = LIGHTING[index % LIGHTING.length];
