@@ -26,9 +26,11 @@ A pessoa deve criar um projeto, descrever a história e produzir cenas, imagens,
 - Se não houver máquina compatível disponível, o app pode continuar oferecendo roteiro/storyboard local e montagem de arquivos enviados, mas geração automática de mídia ficará indisponível.
 
 ## Próximas etapas técnicas
-- [x] Empacotar o servidor de montagem em Docker e validar a construção no CI.
+- [x] Empacotar o servidor de montagem em Docker.
+- [ ] Confirmar uma execução bem-sucedida da etapa Docker no CI após sua inclusão no workflow.
 - [ ] Separar a API interna do provedor ComfyUI, para que a UI não dependa de detalhes de workflow.
-- [ ] Definir contratos de job assíncrono para imagem e vídeo, com progresso, cancelamento e mensagens de erro.
+- [x] Definir o contrato HTTP do lado cliente para envio e consulta de jobs de imagem/vídeo.
+- [ ] Implementar o contrato de jobs no servidor, com fila real, progresso, cancelamento e mensagens de erro.
 - [ ] Selecionar modelos abertos compatíveis com GPU/VRAM e licenças adequadas; testar qualidade, tempo e requisitos reais antes de fixar a escolha.
 - [ ] Criar adaptadores backend para os modelos escolhidos e remover configuração manual da experiência principal.
 - [ ] Hospedar backend em hardware compatível e conectar o app com autenticação.
