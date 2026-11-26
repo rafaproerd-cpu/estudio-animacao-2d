@@ -429,8 +429,6 @@ def request_image_generation(
     if not status["available"]:
         combined = active_image_engine_status()
         raise HTTPException(status_code=503, detail=str(combined["message"]) + " Consulte /v1/capabilities.")
-    if reference_image_bytes and status.get("provider") == "Hugging Face Gradio Space":
-        raise HTTPException(status_code=422, detail="O Space remoto atual aceita somente texto; imagem de referência ainda não é suportada.")
     prune_generation_state()
     job_id = uuid.uuid4().hex
     with generation_jobs_lock:
