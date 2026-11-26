@@ -648,19 +648,34 @@ export default function App() {
 
       const remoteFinalUri = `${renderBaseUrl}${payload.download_url.startsWith("/") ? payload.download_url : `/${payload.download_url}`}`;
       const finalPath = `${directory}${selected.id}-final-${Date.now()}.mp4`;
-      const finalDownload = await FileSystem.downloadAsync(remoteFinalUri, finalPath, {
-        headers: { Authorization: `Bearer ${renderToken}` },
-      });
-      if (finalDownload.status < 200 || finalDownload.status >= 300) {
-        throw new Error(`A montagem terminou, mas o download do MP4 falhou (HTTP ${finalDownload.status}).`);
+      let finalVideoUri = remoteFinalUri;
+      let savedOnDevice = false;
+      try {
+        const finalDownload = await FileSystem.downloadAsync(remoteFinalUri, finalPath, {
+          headers: { Authorization: `Bearer ${renderToken}` },
+        });
+        if (finalDownload.status < 200 || finalDownload.status >= 300) {
+          throw new Error(`HTTP ${finalDownload.status}`);
+        }
+        finalVideoUri = finalDownload.uri;
+        savedOnDevice = true;
+      } catch (downloadError) {
+        // A montagem já foi concluída no servidor. Não transforme uma falha
+        // de cópia local em falha de renderização: mantenha o link remoto.
+        console.warn("MP4 montado, mas não foi possível copiá-lo para o aparelho:", downloadError);
       }
       const completedProject = {
         ...workingProject,
-        finalVideoUri: finalDownload.uri,
+        finalVideoUri,
         finalVideoRemoteUri: remoteFinalUri,
       };
       saveUpdatedProject(completedProject);
-      Alert.alert("MP4 final pronto", "Todas as cenas foram montadas e salvas no iPhone." + (selected.narrationUri || selected.musicUri ? " Os áudios selecionados foram incluídos." : " Você pode adicionar narração e música antes da próxima montagem."));
+      Alert.alert(
+        "MP4 final pronto",
+        savedOnDevice
+          ? "O vídeo foi montado e salvo no iPhone." + (selected.narrationUri || selected.musicUri ? " Os áudios selecionados foram incluídos." : "")
+          : "O vídeo foi montado no servidor, mas não foi possível copiá-lo para o iPhone. O link remoto foi mantido para você assistir ou tentar baixar novamente."
+      );
     } catch (error) {
       Alert.alert("Falha na montagem", error instanceof Error ? error.message : "Não foi possível montar o MP4 final.");
     } finally {
