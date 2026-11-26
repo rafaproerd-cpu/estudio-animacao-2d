@@ -37,7 +37,7 @@ A pessoa deve criar um projeto, descrever a história e produzir cenas, imagens,
 - [x] Criar o primeiro adaptador backend de imagem SDXL via Diffusers, carregado sob demanda e ativado somente quando modelo, dependências e dispositivo estão disponíveis.
 - [ ] Implementar image-to-image para referências de personagem, incluindo upload seguro dos arquivos do aparelho.
 - [x] Criar adaptador experimental de vídeo Wan2.2 TI2V 5B usando o CLI oficial, upload Base64 de imagem, fila e link de saída protegido.
-- [ ] Instalar runtime oficial Wan2.2, pesos TI2V 5B e testar uma geração I2V real em GPU com pelo menos 24 GB livres.
+- [ ] Instalar runtime oficial Wan2.2, pesos TI2V 5B e testar uma geração I2V real em GPU com pelo menos 24 GB de VRAM total (guardião do backend: cerca de 23 GB livres).
 - [ ] Hospedar backend em hardware compatível e conectar o app com autenticação.
 - [ ] Testar ponta a ponta em iPhone: ideia → cenas → imagens → animação → voz → MP4.
 
