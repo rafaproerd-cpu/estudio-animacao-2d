@@ -52,6 +52,12 @@ class WanFrameCountTests(unittest.TestCase):
         self.assertEqual(video_engine.wan_frame_count(30), 121)
         self.assertEqual(video_engine.wan_frame_count(300), 121)
 
+    def test_frame_count_rejects_non_finite_durations(self):
+        for duration in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(duration=duration):
+                with self.assertRaisesRegex(ValueError, "número finito"):
+                    video_engine.wan_frame_count(duration)
+
 
 class WanOutputValidationTests(unittest.TestCase):
     def test_accepts_iso_bmff_mp4_header(self):
