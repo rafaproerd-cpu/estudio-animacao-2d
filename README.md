@@ -10,7 +10,7 @@ Aplicativo mobile-first em Expo/React Native para uso pessoal no iPhone e Androi
 - Salvar projetos no aparelho e copiar/compartilhar roteiros e prompts.
 
 ## Estado real da geração
-A interface mantém os controles de geração desativados até o motor ser hospedado, conectado e testado. Não é necessário configurar ComfyUI, workflows ou plugins na experiência normal.
+A interface já tem os controles de geração de imagem por cena/em lote e animação por cena/em lote conectados aos adaptadores HTTP próprios do Estúdio 2D. O usuário informa apenas o endereço HTTPS e o token do backend; não configura ComfyUI, workflows ou plugins. Os controles só funcionarão depois que o backend com os modelos e GPU for hospedado.
 
 O backend FastAPI tem agora os primeiros adaptadores reais preparados:
 - **Imagem:** SDXL texto-para-imagem via Diffusers, carregado sob demanda, com verificação de CUDA/VRAM, fila em memória, consulta de job e link privado temporário.
@@ -18,7 +18,7 @@ O backend FastAPI tem agora os primeiros adaptadores reais preparados:
 - **Renderização:** FFmpeg concatena clipes enviados e mixa narração/música.
 - **Voz:** Piper local é opcional e só funciona com executável e modelos `.onnx` instalados.
 
-**Nenhuma inferência de imagem ou vídeo foi executada ainda.** Os modelos não foram baixados e o backend não está hospedado nem conectado à prévia. As filas atuais são voláteis: reiniciar o processo apaga o estado dos jobs. O ambiente publicado não tem GPU, pesos SDXL/Wan ou Piper. A prévia GitHub Pages é somente a interface.
+**Nenhuma inferência de imagem ou vídeo foi executada ainda.** Os modelos não foram baixados e o backend não está hospedado nem conectado à prévia. As filas atuais são voláteis: reiniciar o processo apaga o estado dos jobs. O ambiente publicado não tem GPU, pesos SDXL/Wan ou Piper. A prévia GitHub Pages é somente a interface; não gera mídia sozinha.
 
 ## Modelos e requisitos
 - **Imagem:** SDXL 1.0 Base; precisa de PyTorch/CUDA e Diffusers, além de GPU compatível. A consistência de personagem ainda precisa ser avaliada; o primeiro pipeline não aceita imagens de referência.
@@ -28,6 +28,10 @@ Referências oficiais:
 - SDXL: https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0
 - Wan2.2 TI2V 5B: https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B
 - Código CLI oficial Wan2.2: https://github.com/Wan-Video/Wan2.2/blob/main/generate.py
+
+## Conectar o aplicativo ao backend
+
+Na prévia, abra **Conectar motor do Estúdio 2D**, informe a URL HTTPS e o token privado do backend e teste a conexão. O token é armazenado no SecureStore do aparelho. Configure `ESTUDIO_ALLOWED_ORIGINS` no backend com a origem web autorizada.
 
 ## Ativar o motor opcional de imagem
 1. Instale PyTorch compatível com o driver/CUDA da máquina, usando o seletor oficial: https://pytorch.org/get-started/locally/
