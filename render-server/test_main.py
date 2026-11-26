@@ -8,11 +8,29 @@ from unittest.mock import patch
 import base64
 from fastapi import BackgroundTasks, HTTPException
 from fastapi import UploadFile
+from pydantic import ValidationError
 
 import main
 
 
 class RenderServerTests(unittest.TestCase):
+    def test_video_request_rejects_non_finite_duration_values(self):
+        for duration in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(duration=duration):
+                with self.assertRaises(ValidationError):
+                    main.VideoGenerationRequest(
+                        prompt="Cena cinematográfica",
+                        imageBase64="a" * 120,
+                        durationSeconds=duration,
+                    )
+
+    def test_video_request_accepts_duration_inside_supported_range(self):
+        payload = main.VideoGenerationRequest(
+            prompt="Cena cinematográfica",
+            imageBase64="a" * 120,
+            durationSeconds=4.0,
+        )
+        self.assertEqual(payload.duration_seconds, 4.0)
     def test_public_healthz_does_not_expose_or_require_render_token(self):
         original = main.API_TOKEN
         try:
