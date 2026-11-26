@@ -220,7 +220,7 @@ export default function App() {
       const image = capabilities.engines?.image;
       const video = capabilities.engines?.video;
       const audio = capabilities.engines?.audio;
-      const status = `Conectado · roteiro: ${story?.status || "desconhecido"} · imagem: ${image?.status || "desconhecido"} · vídeo: ${video?.status || "desconhecido"}`;
+      const status = `Conectado · roteiro: ${story?.status || "desconhecido"} · imagem: ${image?.status || "desconhecido"} · vídeo: ${video?.status || "desconhecido"} · áudio: ${audio?.status || "desconhecido"}`;
       setConnectionStatus(status);
       Alert.alert(
         "Motor conectado",
