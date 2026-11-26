@@ -183,13 +183,20 @@ export default function App() {
       return;
     }
     try {
-      const response = await fetch(`${url}/health`, { headers: { Authorization: `Bearer ${(engineConfig.renderToken || "").trim()}` } });
-      const data = await response.json();
-      if (!response.ok || !data.ok || !data.ffmpeg_available || !data.token_configured) {
-        throw new Error("Servidor respondeu, mas FFmpeg ou token não está configurado corretamente.");
+      const headers = { Authorization: `Bearer ${(engineConfig.renderToken || "").trim()}` };
+      const response = await fetch(`${url}/health`, { headers });
+      const health = await response.json();
+      if (!response.ok || !health.ok || !health.token_configured) {
+        throw new Error("O servidor respondeu, mas o token não foi aceito ou a API não está pronta.");
       }
-      setConnectionStatus("Conectado");
-      Alert.alert("Motor conectado", "A API do Estúdio 2D respondeu e o FFmpeg está disponível.");
+      const capabilitiesResponse = await fetch(`${url}/v1/capabilities`, { headers });
+      const capabilities = await capabilitiesResponse.json();
+      if (!capabilitiesResponse.ok) throw new Error(capabilities.detail || "Não foi possível consultar os motores.");
+      const image = capabilities.engines?.image;
+      const video = capabilities.engines?.video;
+      const status = `Conectado · imagem: ${image?.status || "desconhecido"} · vídeo: ${video?.status || "desconhecido"}`;
+      setConnectionStatus(status);
+      Alert.alert("Motor conectado", `API conectada. Imagem: ${image?.message || image?.status || "não informado"} Vídeo: ${video?.message || video?.status || "não informado"}`);
     } catch (error) {
       setConnectionStatus("Falha na conexão");
       Alert.alert("Não conectou", error instanceof Error ? error.message : "Verifique endereço, rede e servidor.");
