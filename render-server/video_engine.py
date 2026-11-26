@@ -152,6 +152,12 @@ def _generate_camera_motion_video(image_bytes: bytes, duration_seconds: float) -
     return output
 
 
+def wan_frame_count(duration_seconds: float) -> int:
+    """Converte duração em frames válidos para o CLI Wan2.2 (4n + 1)."""
+    frame_target = round(max(0.0, duration_seconds) * 24)
+    return max(5, min(121, round((frame_target - 1) / 4) * 4 + 1))
+
+
 def generate_wan_video(prompt: str, image_bytes: bytes, duration_seconds: float, seed: int | None) -> Path:
     status = video_engine_status()
     if not status["available"]:
@@ -163,8 +169,7 @@ def generate_wan_video(prompt: str, image_bytes: bytes, duration_seconds: float,
     import io
 
     WAN_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    frame_target = round(duration_seconds * 24)
-    frame_num = max(5, min(121, round((frame_target - 1) / 4) * 4 + 1))
+    frame_num = wan_frame_count(duration_seconds)
     output = WAN_OUTPUT_DIR / ("video-" + uuid.uuid4().hex + ".mp4")
     with tempfile.TemporaryDirectory(prefix="wan-ti2v-") as temp_dir:
         temp = Path(temp_dir)
