@@ -56,5 +56,58 @@ class RemoteImageQueueTests(unittest.TestCase):
         self.assertIn("somente texto", raised.exception.detail)
 
 
+    def test_worker_persists_completed_image_and_download_grant(self):
+        job_id = "a" * 32
+        output = main.IMAGE_OUTPUT_DIR / ("image-" + job_id + ".png")
+        main.generation_jobs[job_id] = {
+            "status": "queued",
+            "progress": 0.0,
+            "message": "Aguardando o motor de imagem.",
+            "created_at": 1.0,
+        }
+        payload = main.ImageGenerationRequest(
+            prompt="cinematic anime scene",
+            width=512,
+            height=512,
+            seed=123,
+        )
+        with patch.object(main, "generate_image", return_value=output), patch.object(
+            main, "persist_generation_job"
+        ) as persist_job, patch.object(main, "persist_download_grant") as persist_grant:
+            main.run_image_generation_job(job_id, payload)
+
+        job = main.generation_jobs[job_id]
+        self.assertEqual(job["status"], "completed")
+        self.assertEqual(job["progress"], 1.0)
+        self.assertIn("/v1/files/", job["output_url"])
+        self.assertIn(output.name, main.generation_download_tokens)
+        persist_grant.assert_called_once_with(output.name)
+        self.assertEqual(persist_job.call_count, 2)
+
+    def test_worker_records_generation_failure_for_resume_ui(self):
+        job_id = "b" * 32
+        main.generation_jobs[job_id] = {
+            "status": "queued",
+            "progress": 0.0,
+            "message": "Aguardando o motor de imagem.",
+            "created_at": 1.0,
+        }
+        payload = main.ImageGenerationRequest(
+            prompt="cinematic anime scene",
+            width=512,
+            height=512,
+        )
+        with patch.object(main, "generate_image", side_effect=RuntimeError("Space is sleeping")), patch.object(
+            main, "persist_generation_job"
+        ) as persist_job:
+            main.run_image_generation_job(job_id, payload)
+
+        job = main.generation_jobs[job_id]
+        self.assertEqual(job["status"], "failed")
+        self.assertEqual(job["progress"], 0.0)
+        self.assertIn("Space is sleeping", job["error"])
+        persist_job.assert_called_once_with(job_id)
+
+
 if __name__ == "__main__":
     unittest.main()
