@@ -47,6 +47,25 @@ class RenderServerTests(unittest.TestCase):
             main.API_TOKEN = original
 
 
+    def test_generated_media_download_is_not_cached(self):
+        original_dir = main.IMAGE_OUTPUT_DIR
+        filename = "image-" + "a" * 32 + ".png"
+        token = "private-download-test-token"
+        original_grant = main.generation_download_tokens.get(filename)
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                main.IMAGE_OUTPUT_DIR = Path(temp_dir)
+                (Path(temp_dir) / filename).write_bytes(b"test-image")
+                main.generation_download_tokens[filename] = (token, main.time.time() + 60)
+                response = main.download_generated_media(filename, token=token)
+                self.assertEqual(response.headers.get("cache-control"), "private, no-store")
+        finally:
+            main.IMAGE_OUTPUT_DIR = original_dir
+            if original_grant is None:
+                main.generation_download_tokens.pop(filename, None)
+            else:
+                main.generation_download_tokens[filename] = original_grant
+
     def test_detects_nvidia_gpus_from_nvidia_smi(self):
         completed = type("Result", (), {"returncode": 0, "stdout": "NVIDIA RTX 4090, 24564, 22000, 550.54.14", "stderr": ""})()
         with patch.object(main.shutil, "which", return_value="/usr/bin/nvidia-smi"), patch.object(main.subprocess, "run", return_value=completed) as mocked:
