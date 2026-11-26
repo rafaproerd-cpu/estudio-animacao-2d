@@ -10,7 +10,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.rafaproerd.estudioanimacao2d",
       "infoPlist": {
-        "NSLocalNetworkUsageDescription": "O Estúdio 2D acessa seus servidores ComfyUI e FFmpeg na rede local para gerar e montar vídeos.",
+        "NSLocalNetworkUsageDescription": "O Estúdio 2D se conecta ao backend próprio para gerar imagens, animações e montar vídeos.",
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         }
