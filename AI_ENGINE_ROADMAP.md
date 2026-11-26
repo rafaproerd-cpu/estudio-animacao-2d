@@ -32,10 +32,10 @@ A pessoa deve criar um projeto, descrever a história e produzir cenas, imagens,
 - [x] Definir o contrato HTTP do lado cliente para envio e consulta de jobs de imagem/vídeo.
 - [x] Criar respostas autenticadas e explícitas de indisponibilidade para os endpoints de imagem/vídeo (HTTP 503, sem simular jobs).
 - [x] Implementar uma primeira fila de jobs de imagem SDXL no servidor, com status queued/running/completed/failed, erros explícitos e links privados de download com expiração (fila em memória; sem persistência ainda).
-- [ ] Tornar a fila persistente, limitar concorrência e adicionar cancelamento/progresso granular antes de produção.
+- [x] Registrar jobs e tokens temporários de download em SQLite e limitar concorrência de jobs de imagem. A execução continua em memória; tarefas interrompidas por reinício são marcadas como falhas. Cancelamento e progresso granular ainda faltam.
 - [ ] Selecionar modelos abertos compatíveis com GPU/VRAM e licenças adequadas; testar qualidade, tempo e requisitos reais antes de fixar a escolha.
 - [x] Criar o primeiro adaptador backend de imagem SDXL via Diffusers, carregado sob demanda e ativado somente quando modelo, dependências e dispositivo estão disponíveis.
-- [ ] Implementar image-to-image para referências de personagem, incluindo upload seguro dos arquivos do aparelho.
+- [x] Implementar image-to-image no motor SDXL local e suporte a referência no app. O Space Hugging Face atual aceita somente texto; o app tenta novamente sem referência quando necessário.
 - [x] Criar adaptador experimental de vídeo Wan2.2 TI2V 5B usando o CLI oficial, upload Base64 de imagem, fila e link de saída protegido.
 - [ ] Instalar runtime oficial Wan2.2, pesos TI2V 5B e testar uma geração I2V real em GPU com pelo menos 24 GB de VRAM total (guardião do backend: cerca de 23 GB livres).
 - [ ] Hospedar backend em hardware compatível e conectar o app com autenticação.
@@ -52,7 +52,7 @@ O app agora possui adaptadores genéricos em `src/engine/providers/httpGeneratio
 
 A API responde com `job_id`; a consulta de status devolve `queued`, `running`, `completed`, `failed` ou `cancelled`. Ao concluir, informa `output_url`. O app resolve URLs relativas contra o endereço-base e aceita token Bearer opcional.
 
-**Estado atualizado:** `POST /v1/generations/images` aceita prompts e cria jobs SDXL apenas quando `IMAGE_MODEL_ID`, Diffusers, PyTorch e o dispositivo configurado estão prontos. Os jobs podem ser consultados em `GET /v1/jobs/{job_id}`; o resultado é servido por link privado temporário. A fila é volátil e ainda não é usada pela UI. Referências de personagem são recusadas por enquanto porque o primeiro pipeline é text-to-image. `POST /v1/generations/videos` aceita prompt e imagem Base64 e cria jobs Wan2.2 TI2V somente quando o CLI oficial, checkpoint, PyTorch/CUDA e memória livre suficiente estão configurados. Nenhum modelo foi instalado no ambiente publicado e nenhuma inferência real foi executada ainda.
+**Estado atualizado:** `POST /v1/generations/images` aceita prompts e cria jobs SDXL apenas quando `IMAGE_MODEL_ID`, Diffusers, PyTorch e o dispositivo configurado estão prontos. Os jobs podem ser consultados em `GET /v1/jobs/{job_id}`; o resultado é servido por link privado temporário. O estado dos jobs e as permissões temporárias de download são persistidos em SQLite; a execução permanece em memória e tarefas em andamento são marcadas como interrompidas após reinício. A UI consulta os jobs pelos adaptadores HTTP. O SDXL local aceita referência image-to-image; o Space ZeroGPU atual aceita somente texto. `POST /v1/generations/videos` aceita prompt e imagem Base64 e cria jobs Wan2.2 TI2V somente quando o CLI oficial, checkpoint, PyTorch/CUDA e memória livre suficiente estão configurados. Nenhum modelo foi instalado no ambiente publicado e nenhuma inferência real foi executada ainda.
 
 
 ## Avaliação inicial de modelos abertos (não instalados)
