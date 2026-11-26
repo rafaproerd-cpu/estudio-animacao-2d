@@ -27,12 +27,16 @@ class HuggingFaceImageEngineTests(unittest.TestCase):
                 image_engine.IMAGE_OUTPUT_DIR = root / "outputs"
 
                 class FakeClient:
+                    last_seed = None
+
                     def __init__(self, space_id, **kwargs):
                         self.space_id = space_id
                         self.kwargs = kwargs
 
-                    def predict(self, prompt, api_name):
+                    def predict(self, prompt, seed, api_name):
                         self.prompt = prompt
+                        self.seed = seed
+                        FakeClient.last_seed = seed
                         self.api_name = api_name
                         return {"path": str(source)}
 
@@ -49,6 +53,7 @@ class HuggingFaceImageEngineTests(unittest.TestCase):
                         seed=123,
                     )
 
+                self.assertEqual(FakeClient.last_seed, 123)
                 self.assertTrue(output.is_file())
                 with Image.open(output) as generated:
                     self.assertEqual(generated.format, "PNG")
