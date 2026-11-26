@@ -52,7 +52,7 @@ export ESTUDIO_RENDER_TOKEN="coloque-seu-token-longo-aqui"
 uvicorn main:app --host 0.0.0.0 --port 8765
 ```
 
-O app deve usar `http://IP-DA-MAQUINA:8765` em rede local, ou um endereço HTTPS protegido por VPN/reverse proxy. O endpoint `/health` exige o mesmo token Bearer e permite verificar se o FFmpeg foi encontrado. O endpoint `POST /render` exige `Authorization: Bearer TOKEN` e recebe vários arquivos no campo multipart `clips`, na ordem desejada. O serviço normaliza resolução para 1024×576, 30 FPS e H.264, concatena os segmentos e retorna uma URL para baixar o MP4. Também aceita narração e música opcionais e faz a mixagem no MP4 final.
+O app deve usar `http://IP-DA-MAQUINA:8765` em rede local, ou um endereço HTTPS protegido por VPN/reverse proxy. O endpoint `/health` exige o mesmo token Bearer e permite verificar se o FFmpeg foi encontrado. O endpoint `GET /v1/capabilities` (também protegido pelo token) informa quais motores estão realmente instalados; no estado atual, imagem e vídeo aparecem como indisponíveis, enquanto voz depende do executável Piper e de modelos `.onnx`. O endpoint `POST /render` exige `Authorization: Bearer TOKEN` e recebe vários arquivos no campo multipart `clips`, na ordem desejada. O serviço normaliza resolução para 1024×576, 30 FPS e H.264, concatena os segmentos e retorna uma URL para baixar o MP4. Também aceita narração e música opcionais e faz a mixagem no MP4 final.
 
 ## Voz por IA local (Piper)
 
@@ -78,3 +78,8 @@ MAX_TTS_CHARACTERS=6000
 - Cada clipe tem limite padrão de 500 MB e cada montagem aceita até 80 clipes.
 - Os MP4 finais ficam em `outputs/`; proteja o disco e faça limpeza periódica dos arquivos.
 - O token protege os endpoints, mas não substitui HTTPS/VPN. Não use uma porta pública sem uma camada de segurança.
+
+
+## Estado dos motores integrados
+
+O endpoint `GET /v1/capabilities` é a fonte de verdade sobre os recursos instalados. Ele não marca imagem ou vídeo como disponíveis só porque o app possui adaptadores HTTP: os modelos precisam estar instalados e conectados no backend. Neste momento, a API informa imagem e vídeo como `not_configured`. Isso evita que a interface prometa uma geração que o servidor ainda não consegue executar.
