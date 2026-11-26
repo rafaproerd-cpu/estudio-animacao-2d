@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+from contextlib import contextmanager
 import os
 import re
 import secrets
@@ -55,11 +56,16 @@ GENERATION_DOWNLOAD_TTL_SECONDS = max(3600, int(os.getenv("GENERATION_DOWNLOAD_T
 GENERATION_STATE_DB = Path(os.getenv("GENERATION_STATE_DB", str(OUTPUT_DIR / "generation_state.sqlite3"))).resolve()
 
 
-def _state_connection() -> sqlite3.Connection:
+@contextmanager
+def _state_connection():
     GENERATION_STATE_DB.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(GENERATION_STATE_DB, timeout=10)
-    connection.execute("PRAGMA journal_mode=WAL")
-    return connection
+    try:
+        connection.execute("PRAGMA journal_mode=WAL")
+        with connection:
+            yield connection
+    finally:
+        connection.close()
 
 
 def persist_generation_job(job_id: str) -> None:
