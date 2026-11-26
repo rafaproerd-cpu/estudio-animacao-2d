@@ -107,6 +107,46 @@ class HuggingFaceImageEngineTests(unittest.TestCase):
             image_engine.IMAGE_OUTPUT_DIR = original_output
 
 
+    def test_remote_generation_cleans_reference_temp_file_when_gradio_fails(self):
+        original_space = image_engine.HF_SPACE_ID
+        original_token = image_engine.HF_TOKEN
+        original_output = image_engine.IMAGE_OUTPUT_DIR
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                image_engine.HF_SPACE_ID = "owner/test-space"
+                image_engine.HF_TOKEN = ""
+                image_engine.IMAGE_OUTPUT_DIR = root / "outputs"
+
+                class FakeClient:
+                    reference_path = None
+
+                    def __init__(self, space_id, **kwargs):
+                        pass
+
+                    def predict(self, prompt, seed, reference_image, api_name):
+                        self.__class__.reference_path = Path(reference_image)
+                        raise RuntimeError("simulated Gradio failure")
+
+                fake_module = types.SimpleNamespace(Client=FakeClient)
+                with patch.dict(sys.modules, {"gradio_client": fake_module}), patch.object(
+                    image_engine, "huggingface_image_engine_status",
+                    return_value={"available": True, "status": "configured_unverified"},
+                ):
+                    with self.assertRaisesRegex(RuntimeError, "simulated Gradio failure"):
+                        image_engine.generate_huggingface_image(
+                            prompt="cinematic anime scene", width=512, height=512,
+                            seed=123, reference_image_bytes=b"reference-image",
+                        )
+
+                self.assertIsNotNone(FakeClient.reference_path)
+                self.assertFalse(FakeClient.reference_path.exists())
+        finally:
+            image_engine.HF_SPACE_ID = original_space
+            image_engine.HF_TOKEN = original_token
+            image_engine.IMAGE_OUTPUT_DIR = original_output
+
+
 class ImageEngineDispatchTests(unittest.TestCase):
     def test_generate_image_prefers_local_engine_when_available(self):
         expected = Path("/tmp/local-image.png")
