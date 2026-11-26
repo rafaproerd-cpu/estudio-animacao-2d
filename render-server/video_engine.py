@@ -20,7 +20,7 @@ WAN_OUTPUT_DIR = Path(os.getenv("IMAGE_OUTPUT_DIR", os.getenv("RENDER_OUTPUT_DIR
 def video_engine_status() -> dict[str, object]:
     if not WAN_GENERATE_SCRIPT.is_file():
         return {"available": False, "status": "wan_runtime_missing", "message": "Configure WAN_GENERATE_SCRIPT apontando para o generate.py oficial do Wan2.2."}
-    if not WAN_CHECKPOINT_DIR.is_dir():
+    if not os.getenv("WAN_CHECKPOINT_DIR", "").strip() or not WAN_CHECKPOINT_DIR.is_dir():
         return {"available": False, "status": "wan_model_missing", "message": "Configure WAN_CHECKPOINT_DIR apontando para os pesos Wan2.2 TI2V 5B já baixados."}
     if not (shutil.which(WAN_PYTHON) or Path(WAN_PYTHON).is_file()):
         return {"available": False, "status": "python_missing", "message": "O executável Python configurado em WAN_PYTHON não foi encontrado."}
