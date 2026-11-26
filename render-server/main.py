@@ -113,6 +113,41 @@ def run_ffmpeg(arguments: list[str]) -> None:
         raise HTTPException(status_code=422, detail=f"FFmpeg não conseguiu montar os clipes: {detail}")
 
 
+@app.get("/v1/capabilities")
+def generation_capabilities(authorization: Annotated[str | None, Header()] = None) -> dict[str, object]:
+    """Informa recursos realmente instalados; não anuncia motores fictícios."""
+    require_token(authorization)
+    piper_available = shutil.which(PIPER) is not None
+    voices = available_piper_voices()
+    return {
+        "product": "Estúdio 2D",
+        "api_version": "v1",
+        "engines": {
+            "image": {
+                "available": False,
+                "status": "not_configured",
+                "message": "Nenhum modelo de imagem foi instalado neste servidor.",
+            },
+            "video": {
+                "available": False,
+                "status": "not_configured",
+                "message": "Nenhum modelo de animação de vídeo foi instalado neste servidor.",
+            },
+            "audio": {
+                "available": piper_available and bool(voices),
+                "status": "ready" if piper_available and voices else "not_configured",
+                "engine": "Piper local",
+                "voices": voices,
+                "message": "Voz local disponível." if piper_available and voices else "Instale o Piper e ao menos um modelo .onnx para ativar a voz.",
+            },
+            "render": {
+                "available": shutil.which(FFMPEG) is not None,
+                "status": "ready" if shutil.which(FFMPEG) is not None else "not_configured",
+            },
+        },
+    }
+
+
 @app.get("/health")
 def health(authorization: Annotated[str | None, Header()] = None) -> dict[str, str | bool]:
     require_token(authorization)
