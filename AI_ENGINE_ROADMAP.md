@@ -36,3 +36,13 @@ A pessoa deve criar um projeto, descrever a história e produzir cenas, imagens,
 
 ## Critério de pronto
 Só considerar a geração integrada pronta quando um usuário conseguir, no iPhone, criar um projeto e obter um MP4 real sem preencher endereço de servidor, JSON de workflow ou IDs de nós.
+
+## Contrato HTTP interno (primeira implementação no app)
+O app agora possui adaptadores genéricos em `src/engine/providers/httpGenerationProvider.ts`:
+- `POST /v1/generations/images`
+- `POST /v1/generations/videos`
+- `GET /v1/jobs/{job_id}`
+
+A API responde com `job_id`; a consulta de status devolve `queued`, `running`, `completed`, `failed` ou `cancelled`. Ao concluir, informa `output_url`. O app resolve URLs relativas contra o endereço-base e aceita token Bearer opcional.
+
+**Importante:** estes adaptadores definem e implementam o lado cliente do contrato. Os endpoints correspondentes ainda não existem no servidor, então eles não ativam geração por si só. A próxima etapa é implementar fila de tarefas e adaptadores reais de modelos no backend, com detecção de hardware e mensagens de indisponibilidade.
