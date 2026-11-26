@@ -294,6 +294,23 @@ class RenderServerTests(unittest.TestCase):
         finally:
             main.API_TOKEN = original_token
 
+    def test_generated_image_download_uses_expiring_capability_token(self):
+        original_output = main.IMAGE_OUTPUT_DIR
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                main.IMAGE_OUTPUT_DIR = Path(temp_dir)
+                filename = "image-" + "a" * 32 + ".png"
+                (Path(temp_dir) / filename).write_bytes(b"fake-png")
+                token = "one-time-private-download-token"
+                main.generation_download_tokens[filename] = (token, __import__("time").time() + 60)
+                response = main.download_generated_image(filename, token, None)
+                self.assertEqual(response.path, str(Path(temp_dir) / filename))
+                with self.assertRaises(HTTPException) as invalid:
+                    main.download_generated_image(filename, "wrong-token", None)
+                self.assertEqual(invalid.exception.status_code, 401)
+        finally:
+            main.IMAGE_OUTPUT_DIR = original_output
+
 
 if __name__ == "__main__":
     unittest.main()
