@@ -10,9 +10,11 @@ import uuid
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
+
+from image_engine import IMAGE_OUTPUT_DIR, generate_sdxl_image, image_engine_status
 
 APP_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = Path(os.getenv("RENDER_OUTPUT_DIR", str(APP_DIR / "outputs"))).resolve()
@@ -26,7 +28,48 @@ MAX_CLIP_BYTES = int(os.getenv("MAX_CLIP_BYTES", str(500 * 1024 * 1024)))
 ALLOWED_EXTENSIONS = {".mp4", ".mov", ".mkv", ".webm"}
 ALLOWED_AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac"}
 
-app = FastAPI(title="Estúdio 2D Render Server", version="1.0.0")
+app = FastAPI(title="Estúdio 2D Render Server", version="1.1.0")
+
+generation_jobs: dict[str, dict[str, object]] = {}
+generation_jobs_lock = __import__("threading").Lock()
+
+
+class ImageGenerationRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    prompt: str = Field(min_length=1, max_length=12000)
+    negative_prompt: str | None = Field(default=None, alias="negativePrompt", max_length=4000)
+    width: int = Field(default=1024, ge=512, le=1024)
+    height: int = Field(default=576, ge=512, le=1024)
+    seed: int | None = None
+    reference_image_uris: list[str] = Field(default_factory=list, alias="referenceImageUris")
+
+
+def run_image_generation_job(job_id: str, payload: ImageGenerationRequest) -> None:
+    with generation_jobs_lock:
+        generation_jobs[job_id].update({"status": "running", "message": "Carregando o motor de imagem e gerando a cena."})
+    try:
+        output = generate_sdxl_image(
+            prompt=payload.prompt.strip(),
+            negative_prompt=payload.negative_prompt,
+            width=payload.width,
+            height=payload.height,
+            seed=payload.seed,
+        )
+        with generation_jobs_lock:
+            generation_jobs[job_id].update({
+                "status": "completed",
+                "progress": 1.0,
+                "message": "Imagem gerada.",
+                "output_url": "/v1/files/" + output.name,
+            })
+    except Exception as error:
+        with generation_jobs_lock:
+            generation_jobs[job_id].update({
+                "status": "failed",
+                "progress": 0.0,
+                "message": "A geração de imagem falhou.",
+                "error": str(error)[:1200],
+            })
 
 
 class RenderResponse(BaseModel):
@@ -129,11 +172,7 @@ def generation_capabilities(authorization: Annotated[str | None, Header()] = Non
             "note": "A detecção NVIDIA não confirma compatibilidade com um modelo; requisitos de VRAM e CUDA ainda precisam ser validados.",
         },
         "engines": {
-            "image": {
-                "available": False,
-                "status": "not_configured",
-                "message": "Nenhum modelo de imagem foi instalado neste servidor.",
-            },
+            "image": image_engine_status(),
             "video": {
                 "available": False,
                 "status": "not_configured",
@@ -155,13 +194,50 @@ def generation_capabilities(authorization: Annotated[str | None, Header()] = Non
 
 
 @app.post("/v1/generations/images")
-def request_image_generation(authorization: Annotated[str | None, Header()] = None) -> None:
-    """Falha explicitamente até um modelo de imagem real ser instalado."""
+def request_image_generation(
+    payload: ImageGenerationRequest,
+    background_tasks: BackgroundTasks,
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, object]:
+    """Enfileira SDXL somente quando modelo, dependências e dispositivo estão prontos."""
     require_token(authorization)
-    raise HTTPException(
-        status_code=503,
-        detail="A geração de imagens ainda não está configurada neste servidor. Consulte /v1/capabilities.",
-    )
+    status = image_engine_status()
+    if not status["available"]:
+        raise HTTPException(status_code=503, detail=str(status["message"]) + " Consulte /v1/capabilities.")
+    if not payload.prompt.strip():
+        raise HTTPException(status_code=400, detail="Informe um prompt de imagem.")
+    if payload.width % 8 or payload.height % 8:
+        raise HTTPException(status_code=400, detail="Largura e altura precisam ser múltiplos de 8.")
+    if payload.reference_image_uris:
+        raise HTTPException(status_code=422, detail="Este primeiro motor SDXL aceita texto para imagem. Referências de personagem serão ativadas na etapa image-to-image.")
+    job_id = uuid.uuid4().hex
+    with generation_jobs_lock:
+        generation_jobs[job_id] = {"status": "queued", "progress": 0.0, "message": "Aguardando o motor de imagem."}
+    background_tasks.add_task(run_image_generation_job, job_id, payload)
+    return {"job_id": job_id, "status": "queued", "progress": 0.0, "message": "Geração adicionada à fila."}
+
+
+@app.get("/v1/jobs/{job_id}")
+def get_generation_job(job_id: str, authorization: Annotated[str | None, Header()] = None) -> dict[str, object]:
+    require_token(authorization)
+    if not re.fullmatch(r"[a-f0-9]{32}", job_id):
+        raise HTTPException(status_code=404, detail="Tarefa não encontrada.")
+    with generation_jobs_lock:
+        job = generation_jobs.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="Tarefa não encontrada ou servidor reiniciado.")
+        return {"job_id": job_id, **job}
+
+
+@app.get("/v1/files/{filename}")
+def download_generated_image(filename: str, authorization: Annotated[str | None, Header()] = None) -> FileResponse:
+    require_token(authorization)
+    if not re.fullmatch(r"image-[a-f0-9]{32}\\.png", filename):
+        raise HTTPException(status_code=404, detail="Imagem não encontrada.")
+    image_path = IMAGE_OUTPUT_DIR / filename
+    if not image_path.is_file():
+        raise HTTPException(status_code=404, detail="Imagem não encontrada ou já removida.")
+    return FileResponse(image_path, media_type="image/png", filename=filename)
 
 
 @app.post("/v1/generations/videos")
