@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: estudio-2d-render
+    runtime: docker
+    plan: free
+    dockerfilePath: ./render-server/Dockerfile
+    dockerContext: ./render-server
+    healthCheckPath: /healthz
+    envVars:
+      - key: ESTUDIO_RENDER_TOKEN
+        generateValue: true
+      - key: ESTUDIO_ALLOWED_ORIGINS
+        value: https://rafaproerd-cpu.github.io
+      - key: HF_SPACE_ID
+        sync: false
+      - key: HF_TOKEN
+        sync: false
