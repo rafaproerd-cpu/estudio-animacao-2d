@@ -80,7 +80,7 @@ class WanOutputValidationTests(unittest.TestCase):
             ), patch.object(video_engine.subprocess, "run", side_effect=fake_run):
                 video_engine._generate_camera_motion_video(jpeg.getvalue(), 3)
 
-            self.assertEqual(observed["input_signature"], b"\\x89PNG\\r\\n\\x1a\\n")
+            self.assertEqual(observed["input_signature"], b"\x89PNG\r\n\x1a\n")
 
 
 if __name__ == "__main__":
