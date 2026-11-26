@@ -73,6 +73,27 @@ def video_engine_status() -> dict[str, object]:
     }
 
 
+
+def validate_reference_image(image_bytes: bytes) -> None:
+    """Valida o conteúdo real da imagem antes de enfileirar uma geração de vídeo."""
+    if not image_bytes or len(image_bytes) > 18 * 1024 * 1024:
+        raise ValueError("A imagem de referência deve ter até 18 MB.")
+    try:
+        from PIL import Image
+        import io
+
+        with Image.open(io.BytesIO(image_bytes)) as source:
+            if source.format not in {"PNG", "JPEG"}:
+                raise ValueError("Envie uma imagem PNG ou JPEG válida.")
+            width, height = source.size
+            if width < 1 or height < 1 or width > 8192 or height > 8192 or width * height > 40_000_000:
+                raise ValueError("A imagem deve ter no máximo 8192 px por lado e 40 megapixels.")
+            source.verify()
+    except ValueError:
+        raise
+    except Exception as error:
+        raise ValueError("A imagem de referência está corrompida ou não pôde ser lida.") from error
+
 def validate_mp4_output(path: Path) -> None:
     if not path.is_file() or path.stat().st_size < 16:
         raise RuntimeError("O motor não produziu um arquivo de vídeo válido.")
