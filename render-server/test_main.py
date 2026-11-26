@@ -5,7 +5,7 @@ from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch
 
-from fastapi import HTTPException
+from fastapi import BackgroundTasks, HTTPException
 from fastapi import UploadFile
 
 import main
@@ -218,12 +218,15 @@ class RenderServerTests(unittest.TestCase):
         original_token = main.API_TOKEN
         try:
             main.API_TOKEN = "generation-test-token"
-            for endpoint in (main.request_image_generation, main.request_video_generation):
-                with self.subTest(endpoint=endpoint.__name__):
-                    with self.assertRaises(HTTPException) as raised:
-                        endpoint("Bearer generation-test-token")
-                    self.assertEqual(raised.exception.status_code, 503)
-                    self.assertIn("/v1/capabilities", raised.exception.detail)
+            with patch.object(main, "image_engine_status", return_value={"available": False, "message": "Modelo SDXL ausente"}):
+                with self.assertRaises(HTTPException) as image_error:
+                    main.request_image_generation(main.ImageGenerationRequest(prompt="anime cinematic scene"), BackgroundTasks(), "Bearer generation-test-token")
+                self.assertEqual(image_error.exception.status_code, 503)
+                self.assertIn("/v1/capabilities", image_error.exception.detail)
+            with self.assertRaises(HTTPException) as video_error:
+                main.request_video_generation("Bearer generation-test-token")
+            self.assertEqual(video_error.exception.status_code, 503)
+            self.assertIn("/v1/capabilities", video_error.exception.detail)
         finally:
             main.API_TOKEN = original_token
 
@@ -231,11 +234,12 @@ class RenderServerTests(unittest.TestCase):
         original_token = main.API_TOKEN
         try:
             main.API_TOKEN = "generation-test-token"
-            for endpoint in (main.request_image_generation, main.request_video_generation):
-                with self.subTest(endpoint=endpoint.__name__):
-                    with self.assertRaises(HTTPException) as raised:
-                        endpoint("Bearer wrong-token")
-                    self.assertEqual(raised.exception.status_code, 401)
+            with self.assertRaises(HTTPException) as image_error:
+                main.request_image_generation(main.ImageGenerationRequest(prompt="anime cinematic scene"), BackgroundTasks(), "Bearer wrong-token")
+            self.assertEqual(image_error.exception.status_code, 401)
+            with self.assertRaises(HTTPException) as video_error:
+                main.request_video_generation("Bearer wrong-token")
+            self.assertEqual(video_error.exception.status_code, 401)
         finally:
             main.API_TOKEN = original_token
 
@@ -248,6 +252,47 @@ class RenderServerTests(unittest.TestCase):
             self.assertEqual(raised.exception.status_code, 503)
         finally:
             main.API_TOKEN = original
+
+    def test_image_job_is_queued_only_when_engine_is_ready(self):
+        original_token = main.API_TOKEN
+        try:
+            main.API_TOKEN = "generation-test-token"
+            payload = main.ImageGenerationRequest(prompt="cinematic 2D anime scene", negativePrompt="blurry", width=1024, height=576, seed=123)
+            tasks = BackgroundTasks()
+            with patch.object(main, "image_engine_status", return_value={"available": True, "message": "ready"}):
+                result = main.request_image_generation(payload, tasks, "Bearer generation-test-token")
+            self.assertEqual(result["status"], "queued")
+            self.assertEqual(len(tasks.tasks), 1)
+            job = main.get_generation_job(result["job_id"], "Bearer generation-test-token")
+            self.assertEqual(job["status"], "queued")
+        finally:
+            main.API_TOKEN = original_token
+
+    def test_image_generation_rejects_reference_images_until_img2img_is_supported(self):
+        original_token = main.API_TOKEN
+        try:
+            main.API_TOKEN = "generation-test-token"
+            payload = main.ImageGenerationRequest(prompt="anime character", referenceImageUris=["file:///private/character.png"])
+            with patch.object(main, "image_engine_status", return_value={"available": True, "message": "ready"}):
+                with self.assertRaises(HTTPException) as raised:
+                    main.request_image_generation(payload, BackgroundTasks(), "Bearer generation-test-token")
+            self.assertEqual(raised.exception.status_code, 422)
+            self.assertIn("image-to-image", raised.exception.detail)
+        finally:
+            main.API_TOKEN = original_token
+
+    def test_image_job_requires_authentication_and_valid_identifier(self):
+        original_token = main.API_TOKEN
+        try:
+            main.API_TOKEN = "generation-test-token"
+            with self.assertRaises(HTTPException) as unauthorized:
+                main.get_generation_job("a" * 32, "Bearer wrong-token")
+            self.assertEqual(unauthorized.exception.status_code, 401)
+            with self.assertRaises(HTTPException) as invalid:
+                main.get_generation_job("../job", "Bearer generation-test-token")
+            self.assertEqual(invalid.exception.status_code, 404)
+        finally:
+            main.API_TOKEN = original_token
 
 
 if __name__ == "__main__":
