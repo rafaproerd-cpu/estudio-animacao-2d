@@ -147,6 +147,84 @@ class HuggingFaceImageEngineTests(unittest.TestCase):
             image_engine.IMAGE_OUTPUT_DIR = original_output
 
 
+class LocalReferenceImageTests(unittest.TestCase):
+    def test_local_img2img_loads_reference_and_uses_configured_strength(self):
+        original_values = {
+            "IMAGE_MODEL_ID": image_engine.IMAGE_MODEL_ID,
+            "IMAGE_DEVICE": image_engine.IMAGE_DEVICE,
+            "IMAGE_STEPS": image_engine.IMAGE_STEPS,
+            "IMAGE_OUTPUT_DIR": image_engine.IMAGE_OUTPUT_DIR,
+            "_pipeline": image_engine._pipeline,
+            "_pipeline_kind": image_engine._pipeline_kind,
+        }
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                reference_path = root / "reference.png"
+                Image.new("RGB", (20, 10), (30, 60, 90)).save(reference_path)
+                image_engine.IMAGE_MODEL_ID = "test/sdxl"
+                image_engine.IMAGE_DEVICE = "cpu"
+                image_engine.IMAGE_STEPS = 12
+                image_engine.IMAGE_OUTPUT_DIR = root / "outputs"
+                image_engine._pipeline = None
+                image_engine._pipeline_kind = None
+
+                class FakeGenerator:
+                    def manual_seed(self, seed):
+                        self.seed = seed
+                        return self
+
+                fake_torch = types.SimpleNamespace(
+                    float16="float16", float32="float32",
+                    Generator=lambda device: FakeGenerator(),
+                )
+
+                class FakePipeline:
+                    received = None
+                    @classmethod
+                    def from_pretrained(cls, model_id, **kwargs):
+                        cls.model_id = model_id
+                        cls.load_kwargs = kwargs
+                        return cls()
+                    def to(self, device):
+                        self.device = device
+                        return self
+                    def __call__(self, **kwargs):
+                        self.__class__.received = kwargs
+                        return types.SimpleNamespace(images=[Image.new("RGB", (64, 36), (1, 2, 3))])
+
+                fake_diffusers = types.SimpleNamespace(
+                    StableDiffusionXLImg2ImgPipeline=FakePipeline,
+                    StableDiffusionXLPipeline=type("UnusedTextPipeline", (), {}),
+                )
+                with patch.object(
+                    image_engine, "image_engine_status",
+                    return_value={"available": True, "status": "ready"},
+                ), patch.dict(sys.modules, {
+                    "torch": fake_torch,
+                    "diffusers": fake_diffusers,
+                }), patch.dict(os.environ, {"IMAGE_REFERENCE_STRENGTH": "0.42"}):
+                    output = image_engine.generate_sdxl_image(
+                        prompt="same anime character in another scene",
+                        negative_prompt="blurry",
+                        width=768,
+                        height=432,
+                        seed=321,
+                        reference_image_bytes=reference_path.read_bytes(),
+                    )
+
+                self.assertTrue(output.is_file())
+                self.assertEqual(image_engine._pipeline_kind, "img2img")
+                self.assertEqual(FakePipeline.model_id, "test/sdxl")
+                self.assertEqual(FakePipeline.received["strength"], 0.42)
+                self.assertEqual(FakePipeline.received["num_inference_steps"], 12)
+                self.assertEqual(FakePipeline.received["image"].size, (768, 432))
+                self.assertEqual(FakePipeline.received["prompt"], "same anime character in another scene")
+        finally:
+            for key, value in original_values.items():
+                setattr(image_engine, key, value)
+
+
 class ImageEngineDispatchTests(unittest.TestCase):
     def test_generate_image_prefers_local_engine_when_available(self):
         expected = Path("/tmp/local-image.png")
