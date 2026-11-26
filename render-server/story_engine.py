@@ -28,18 +28,20 @@ def story_engine_status() -> dict[str, Any]:
 
 
 def _duration_in_seconds(duration: str) -> int:
-    """Converte as durações exibidas no app para segundos, com fallback seguro."""
+    """Converte durações com minutos e segundos para segundos totais."""
     import re
 
     normalized = " ".join(duration.lower().strip().split())
-    minute_match = re.search(r"(\d+(?:[.,]\d+)?)\s*min", normalized)
-    second_match = re.search(r"(\d+(?:[.,]\d+)?)\s*seg", normalized)
+    minute_match = re.search(r"(\\d+(?:[.,]\\d+)?)\\s*min", normalized)
+    second_match = re.search(r"(\\d+(?:[.,]\\d+)?)\\s*seg", normalized)
+    total = 0.0
     if minute_match:
-        return max(15, round(float(minute_match.group(1).replace(",", ".")) * 60))
+        total += float(minute_match.group(1).replace(",", ".")) * 60
     if second_match:
-        return max(10, round(float(second_match.group(1).replace(",", "."))))
-    return 60
-
+        total += float(second_match.group(1).replace(",", "."))
+    if total <= 0:
+        return 60
+    return max(10, round(total))
 
 def _extract_json(content: str) -> dict[str, Any]:
     value = content.strip()
