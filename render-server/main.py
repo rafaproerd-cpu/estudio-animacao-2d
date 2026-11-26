@@ -75,9 +75,10 @@ class ImageGenerationRequest(BaseModel):
     height: int = Field(default=576, ge=512, le=1024)
     seed: int | None = None
     reference_image_uris: list[str] = Field(default_factory=list, alias="referenceImageUris")
+    reference_image_base64: str | None = Field(default=None, alias="referenceImageBase64", max_length=24_000_000)
 
 
-def run_image_generation_job(job_id: str, payload: ImageGenerationRequest) -> None:
+def run_image_generation_job(job_id: str, payload: ImageGenerationRequest, reference_image_bytes: bytes | None = None) -> None:
     with generation_jobs_lock:
         generation_jobs[job_id].update({"status": "running", "message": "Carregando o motor de imagem e gerando a cena."})
     try:
@@ -87,6 +88,7 @@ def run_image_generation_job(job_id: str, payload: ImageGenerationRequest) -> No
             width=payload.width,
             height=payload.height,
             seed=payload.seed,
+            reference_image_bytes=reference_image_bytes,
         )
         download_token = secrets.token_urlsafe(32)
         with generation_jobs_lock:
@@ -277,7 +279,17 @@ def request_image_generation(
     if payload.width % 8 or payload.height % 8:
         raise HTTPException(status_code=400, detail="Largura e altura precisam ser múltiplos de 8.")
     if payload.reference_image_uris:
-        raise HTTPException(status_code=422, detail="Este primeiro motor SDXL aceita texto para imagem. Referências de personagem serão ativadas na etapa image-to-image.")
+        raise HTTPException(status_code=422, detail="Envie a imagem de referência no campo referenceImageBase64, não uma URI local do aparelho.")
+    reference_image_bytes = None
+    if payload.reference_image_base64:
+        try:
+            reference_image_bytes = base64.b64decode(payload.reference_image_base64, validate=True)
+        except (binascii.Error, ValueError) as error:
+            raise HTTPException(status_code=400, detail="A imagem de referência não está em Base64 válido.") from error
+        if not reference_image_bytes or len(reference_image_bytes) > 18 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="A imagem de referência deve ter até 18 MB.")
+        if not (reference_image_bytes.startswith(b"\\x89PNG\\r\\n\\x1a\\n") or reference_image_bytes.startswith(b"\\xff\\xd8\\xff")):
+            raise HTTPException(status_code=415, detail="A referência deve ser uma imagem PNG ou JPEG.")
     prune_generation_state()
     job_id = uuid.uuid4().hex
     with generation_jobs_lock:
@@ -290,7 +302,7 @@ def request_image_generation(
             "message": "Aguardando o motor de imagem.",
             "created_at": time.time(),
         }
-    background_tasks.add_task(run_image_generation_job, job_id, payload)
+    background_tasks.add_task(run_image_generation_job, job_id, payload, reference_image_bytes)
     return {"job_id": job_id, "status": "queued", "progress": 0.0, "message": "Geração adicionada à fila."}
 
 
