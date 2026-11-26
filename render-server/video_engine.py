@@ -52,6 +52,14 @@ def video_engine_status() -> dict[str, object]:
     }
 
 
+def validate_mp4_output(path: Path) -> None:
+    if not path.is_file() or path.stat().st_size < 16:
+        raise RuntimeError("Wan2.2 não produziu um arquivo de vídeo válido.")
+    with path.open("rb") as generated_file:
+        mp4_header = generated_file.read(12)
+    if len(mp4_header) < 12 or mp4_header[4:8] != b"ftyp":
+        raise RuntimeError("O Wan2.2 terminou sem produzir um arquivo MP4 válido.")
+
 def generate_wan_video(prompt: str, image_bytes: bytes, duration_seconds: float, seed: int | None) -> Path:
     status = video_engine_status()
     if not status["available"]:
@@ -95,12 +103,9 @@ def generate_wan_video(prompt: str, image_bytes: bytes, duration_seconds: float,
             )
         except subprocess.TimeoutExpired as error:
             raise RuntimeError("A geração Wan2.2 excedeu o tempo máximo configurado.") from error
-        if result.returncode != 0 or not temporary_output.is_file() or temporary_output.stat().st_size < 16:
+        if result.returncode != 0:
             detail = (result.stderr or result.stdout or "Falha desconhecida no Wan2.2")[-1600:]
             raise RuntimeError("Wan2.2 não conseguiu gerar o clipe: " + detail)
-        with temporary_output.open("rb") as generated_file:
-            mp4_header = generated_file.read(12)
-        if len(mp4_header) < 12 or mp4_header[4:8] != b"ftyp":
-            raise RuntimeError("O Wan2.2 terminou sem produzir um arquivo MP4 válido.")
+        validate_mp4_output(temporary_output)
         shutil.copy2(temporary_output, output)
     return output
