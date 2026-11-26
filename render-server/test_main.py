@@ -311,7 +311,7 @@ class RenderServerTests(unittest.TestCase):
         finally:
             main.API_TOKEN = original_token
 
-    def test_image_generation_rejects_reference_images_until_img2img_is_supported(self):
+    def test_image_generation_rejects_local_reference_uri_instead_of_uploaded_bytes(self):
         original_token = main.API_TOKEN
         try:
             main.API_TOKEN = "generation-test-token"
@@ -320,7 +320,7 @@ class RenderServerTests(unittest.TestCase):
                 with self.assertRaises(HTTPException) as raised:
                     main.request_image_generation(payload, BackgroundTasks(), "Bearer generation-test-token")
             self.assertEqual(raised.exception.status_code, 422)
-            self.assertIn("image-to-image", raised.exception.detail)
+            self.assertIn("referenceImageBase64", raised.exception.detail)
         finally:
             main.API_TOKEN = original_token
 
