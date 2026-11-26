@@ -33,3 +33,5 @@ jobs:
       - name: Test render server and local TTS
         working-directory: render-server
         run: python -m unittest -v
+      - name: Build render server container
+        run: docker build -t estudio2d-render ./render-server
