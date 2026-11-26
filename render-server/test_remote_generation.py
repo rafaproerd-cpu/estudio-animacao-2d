@@ -155,7 +155,7 @@ class VideoGenerationQueueTests(unittest.TestCase):
         }
         payload = main.VideoGenerationRequest(
             prompt="slow cinematic camera movement",
-            imageBase64=base64.b64encode(b"\\x89PNG\\r\\n\\x1a\\n" + b"x" * 100).decode("ascii"),
+            imageBase64=base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"x" * 100).decode("ascii"),
             durationSeconds=3,
         )
         with patch.object(main, "generate_wan_video", return_value=output), patch.object(
@@ -181,7 +181,7 @@ class VideoGenerationQueueTests(unittest.TestCase):
         }
         payload = main.VideoGenerationRequest(
             prompt="slow cinematic camera movement",
-            imageBase64=base64.b64encode(b"\\x89PNG\\r\\n\\x1a\\n" + b"x" * 100).decode("ascii"),
+            imageBase64=base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"x" * 100).decode("ascii"),
             durationSeconds=3,
         )
         with patch.object(main, "generate_wan_video", side_effect=RuntimeError("FFmpeg failed")), patch.object(
