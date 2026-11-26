@@ -106,6 +106,23 @@ function buildProject(idea: string, genre: string, duration: string, generatedPl
   };
 }
 
+function requestedDurationSeconds(duration: string): number {
+  const value = duration.trim().toLowerCase();
+  if (value.includes("segundo")) return Math.max(1, Number.parseInt(value, 10) || 30);
+  if (value.includes("minuto")) return (Number.parseInt(value, 10) || 1) * 60;
+  return 60;
+}
+
+function sceneClipDurationSeconds(project: Project): number {
+  const targetSeconds = requestedDurationSeconds(project.duration);
+  const sceneCount = Math.max(1, project.scenes.length);
+  return Math.min(5, Math.max(1, Math.round(targetSeconds / sceneCount)));
+}
+
+function estimatedGeneratedDurationSeconds(project: Project): number {
+  return sceneClipDurationSeconds(project) * project.scenes.length;
+}
+
 function updateCharacterInPrompt(prompt: string, previous: string, next: string): string {
   const marker = "\nFICHA FIXA DO PERSONAGEM: ";
   const markerAt = prompt.indexOf(marker);
@@ -394,7 +411,7 @@ export default function App() {
     try {
       const imageBase64 = await imageUriToBase64(scene.imageUri);
       const provider = new HttpVideoGenerationProvider({ baseUrl: connection.baseUrl, token: connection.token });
-      const result = await provider.generate({ prompt: scene.videoPrompt || scene.description, imageBase64, durationSeconds: 4, width: 1280, height: 704, fps: 24 });
+      const result = await provider.generate({ prompt: scene.videoPrompt || scene.description, imageBase64, durationSeconds: sceneClipDurationSeconds(selected), width: 1280, height: 704, fps: 24 });
       if (result.status !== "completed" || !result.outputUri) throw new Error(result.error || "O motor não retornou um clipe.");
       const localVideoUri = await persistGeneratedVideo(result.outputUri, selected.id, scene.title);
       const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, videoUri: localVideoUri, videoRemoteUri: result.outputUri } : item) };
@@ -475,7 +492,7 @@ export default function App() {
       for (const scene of pendingScenes) {
         setBusyScene("video:" + scene.title);
         const imageBase64 = await imageUriToBase64(scene.imageUri!);
-        const result = await provider.generate({ prompt: scene.videoPrompt || scene.description, imageBase64, durationSeconds: 4, width: 1280, height: 704, fps: 24 });
+        const result = await provider.generate({ prompt: scene.videoPrompt || scene.description, imageBase64, durationSeconds: sceneClipDurationSeconds(workingProject), width: 1280, height: 704, fps: 24 });
         if (result.status !== "completed" || !result.outputUri) throw new Error(`${scene.title}: ${result.error || "o motor não retornou um clipe"}`);
         const localVideoUri = await persistGeneratedVideo(result.outputUri, workingProject.id, scene.title);
         workingProject = { ...workingProject, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: workingProject.scenes.map(item => item.title === scene.title ? { ...item, videoUri: localVideoUri, videoRemoteUri: result.outputUri } : item) };
@@ -1033,7 +1050,7 @@ export default function App() {
               <TouchableOpacity style={styles.primary} onPress={generateAllSceneVideos} disabled={!!busyScene || !!batchProgress || selected.scenes.some(scene => !scene.imageUri)}>
                 <Text style={styles.primaryText}>ANIMAR TODAS AS CENAS</Text><Text style={styles.arrow}>▶</Text>
               </TouchableOpacity>
-              <Text style={styles.note}>O app não exige workflows ou ComfyUI. As imagens podem usar o Space remoto Hugging Face ZeroGPU (com cota diária limitada). A animação pode criar clipes com movimento de câmera pelo FFmpeg mesmo sem GPU; movimentos reais dos personagens ainda dependem de um modelo de vídeo como Wan2.2 e de uma GPU compatível.</Text>
+              <Text style={styles.note}>Duração estimada dos clipes: {estimatedGeneratedDurationSeconds(selected)} segundos ({sceneClipDurationSeconds(selected)} s por cena). O motor aceita no máximo 5 segundos por cena; o MP4 pode ficar menor que a duração escolhida. O app não exige workflows ou ComfyUI. As imagens podem usar o Space remoto Hugging Face ZeroGPU (com cota diária limitada). A animação pode criar clipes com movimento de câmera pelo FFmpeg mesmo sem GPU; movimentos reais dos personagens ainda dependem de um modelo de vídeo como Wan2.2 e de uma GPU compatível.</Text>
               <Text style={styles.step}>ÁUDIO DO PROJETO</Text>
               <Text style={styles.note}>Adicione uma narração e/ou música de fundo. A voz será mixada em volume normal e a música em volume reduzido.</Text>
               <Text style={styles.note}>Carregue as vozes instaladas no servidor para gerar uma narração por cena. Você também pode usar um arquivo de áudio próprio.</Text>
