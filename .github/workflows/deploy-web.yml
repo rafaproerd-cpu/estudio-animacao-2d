@@ -26,6 +26,11 @@ jobs:
           python-version: "3.11"
       - name: Validate ZeroGPU Space and render backend Python syntax
         run: python -m py_compile huggingface-space/app.py render-server/main.py render-server/image_engine.py render-server/video_engine.py
+      - name: Install render backend test dependencies
+        run: pip install -r render-server/requirements.txt
+      - name: Run render backend unit tests
+        working-directory: render-server
+        run: python -m unittest discover -s . -p "test_*.py" -v
 
   build:
     runs-on: ubuntu-latest
