@@ -504,7 +504,10 @@ class RenderServerTests(unittest.TestCase):
         original_token = main.API_TOKEN
         try:
             main.API_TOKEN = "generation-test-token"
-            image_bytes = b"\x89PNG\r\n\x1a\n" + (b"placeholder-image-data" * 5)
+            from PIL import Image
+            image_buffer = BytesIO()
+            Image.new("RGB", (32, 18), "white").save(image_buffer, format="PNG")
+            image_bytes = image_buffer.getvalue()
             payload = main.VideoGenerationRequest(
                 prompt="cinematic anime character moves gently",
                 imageBase64=base64.b64encode(image_bytes).decode("ascii"),
@@ -518,6 +521,20 @@ class RenderServerTests(unittest.TestCase):
             self.assertEqual(len(tasks.tasks), 1)
             job = main.get_generation_job(result["job_id"], "Bearer generation-test-token")
             self.assertEqual(job["status"], "queued")
+        finally:
+            main.API_TOKEN = original_token
+
+    def test_video_generation_rejects_spoofed_png_header_with_invalid_content(self):
+        original_token = main.API_TOKEN
+        try:
+            main.API_TOKEN = "generation-test-token"
+            fake_png = b"\\x89PNG\\r\\n\\x1a\\n" + (b"not-a-real-png" * 20)
+            payload = main.VideoGenerationRequest(prompt="anime", imageBase64=base64.b64encode(fake_png).decode("ascii"))
+            with patch.object(main, "video_engine_status", return_value={"available": True, "message": "ready"}):
+                with self.assertRaises(HTTPException) as raised:
+                    main.request_video_generation(payload, BackgroundTasks(), "Bearer generation-test-token")
+            self.assertEqual(raised.exception.status_code, 415)
+            self.assertIn("corrompida", raised.exception.detail)
         finally:
             main.API_TOKEN = original_token
 
