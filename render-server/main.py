@@ -35,6 +35,23 @@ app = FastAPI(title="Estúdio 2D Render Server", version="1.1.0")
 generation_jobs: dict[str, dict[str, object]] = {}
 generation_jobs_lock = threading.Lock()
 generation_download_tokens: dict[str, tuple[str, float]] = {}
+MAX_ACTIVE_IMAGE_JOBS = max(1, int(os.getenv("MAX_ACTIVE_IMAGE_JOBS", "1")))
+JOB_RETENTION_SECONDS = max(3600, int(os.getenv("JOB_RETENTION_SECONDS", "86400")))
+
+
+def prune_generation_state() -> None:
+    now = time.time()
+    with generation_jobs_lock:
+        expired_jobs = [
+            job_id for job_id, job in generation_jobs.items()
+            if job.get("status") in {"completed", "failed", "cancelled"}
+            and now - float(job.get("created_at", now)) > JOB_RETENTION_SECONDS
+        ]
+        for job_id in expired_jobs:
+            generation_jobs.pop(job_id, None)
+        expired_tokens = [name for name, grant in generation_download_tokens.items() if grant[1] < now]
+        for name in expired_tokens:
+            generation_download_tokens.pop(name, None)
 
 
 class ImageGenerationRequest(BaseModel):
@@ -215,9 +232,18 @@ def request_image_generation(
         raise HTTPException(status_code=400, detail="Largura e altura precisam ser múltiplos de 8.")
     if payload.reference_image_uris:
         raise HTTPException(status_code=422, detail="Este primeiro motor SDXL aceita texto para imagem. Referências de personagem serão ativadas na etapa image-to-image.")
+    prune_generation_state()
     job_id = uuid.uuid4().hex
     with generation_jobs_lock:
-        generation_jobs[job_id] = {"status": "queued", "progress": 0.0, "message": "Aguardando o motor de imagem."}
+        active_jobs = sum(1 for job in generation_jobs.values() if job.get("status") in {"queued", "running"})
+        if active_jobs >= MAX_ACTIVE_IMAGE_JOBS:
+            raise HTTPException(status_code=429, detail="O motor de imagem já está ocupado. Aguarde a tarefa atual terminar.")
+        generation_jobs[job_id] = {
+            "status": "queued",
+            "progress": 0.0,
+            "message": "Aguardando o motor de imagem.",
+            "created_at": time.time(),
+        }
     background_tasks.add_task(run_image_generation_job, job_id, payload)
     return {"job_id": job_id, "status": "queued", "progress": 0.0, "message": "Geração adicionada à fila."}
 
@@ -227,6 +253,7 @@ def get_generation_job(job_id: str, authorization: Annotated[str | None, Header(
     require_token(authorization)
     if not re.fullmatch(r"[a-f0-9]{32}", job_id):
         raise HTTPException(status_code=404, detail="Tarefa não encontrada.")
+    prune_generation_state()
     with generation_jobs_lock:
         job = generation_jobs.get(job_id)
         if job is None:
