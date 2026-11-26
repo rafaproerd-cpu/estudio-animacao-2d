@@ -59,5 +59,29 @@ class WanOutputValidationTests(unittest.TestCase):
             self.assertIn("libx264", command)
 
 
+    def test_fallback_normalizes_jpeg_input_to_png_for_ffmpeg(self):
+        import io
+        from PIL import Image
+
+        with tempfile.TemporaryDirectory() as output_dir:
+            jpeg = io.BytesIO()
+            Image.new("RGB", (32, 18), "white").save(jpeg, format="JPEG")
+            observed = {}
+
+            def fake_run(command, **kwargs):
+                input_path = Path(command[command.index("-i") + 1])
+                observed["input_signature"] = input_path.read_bytes()[:8]
+                target = Path(command[-1])
+                target.write_bytes(b"0000ftypisom0000")
+                return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+            with patch.object(video_engine, "WAN_OUTPUT_DIR", Path(output_dir)), patch.object(
+                video_engine.shutil, "which", return_value="/usr/bin/ffmpeg"
+            ), patch.object(video_engine.subprocess, "run", side_effect=fake_run):
+                video_engine._generate_camera_motion_video(jpeg.getvalue(), 3)
+
+            self.assertEqual(observed["input_signature"], b"\\x89PNG\\r\\n\\x1a\\n")
+
+
 if __name__ == "__main__":
     unittest.main()
