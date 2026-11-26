@@ -288,7 +288,7 @@ def request_image_generation(
             raise HTTPException(status_code=400, detail="A imagem de referência não está em Base64 válido.") from error
         if not reference_image_bytes or len(reference_image_bytes) > 18 * 1024 * 1024:
             raise HTTPException(status_code=413, detail="A imagem de referência deve ter até 18 MB.")
-        if not (reference_image_bytes.startswith(b"\\x89PNG\\r\\n\\x1a\\n") or reference_image_bytes.startswith(b"\\xff\\xd8\\xff")):
+        if not (reference_image_bytes.startswith(b"\x89PNG\r\n\x1a\n") or reference_image_bytes.startswith(b"\xff\xd8\xff")):
             raise HTTPException(status_code=415, detail="A referência deve ser uma imagem PNG ou JPEG.")
     prune_generation_state()
     job_id = uuid.uuid4().hex
