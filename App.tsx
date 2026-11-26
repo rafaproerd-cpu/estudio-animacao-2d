@@ -117,11 +117,11 @@ function buildProject(idea: string, genre: string, duration: string, generatedPl
 
 function requestedDurationSeconds(duration: string): number {
   const value = duration.trim().toLowerCase();
-  const minutes = value.match(/(\\d+(?:[.,]\\d+)?)\\s*min/);
-  const seconds = value.match(/(\\d+(?:[.,]\\d+)?)\\s*seg/);
-  if (minutes) return Math.max(15, Math.round(Number(minutes[1].replace(",", ".")) * 60));
-  if (seconds) return Math.max(10, Math.round(Number(seconds[1].replace(",", "."))));
-  return 60;
+  const minutes = value.match(/(\d+(?:[.,]\d+)?)\s*min/);
+  const seconds = value.match(/(\d+(?:[.,]\d+)?)\s*seg/);
+  const total = (minutes ? Number(minutes[1].replace(",", ".")) * 60 : 0)
+    + (seconds ? Number(seconds[1].replace(",", ".")) : 0);
+  return total > 0 ? Math.max(10, Math.round(total)) : 60;
 }
 
 function sceneClipDurationSeconds(project: Project): number {
