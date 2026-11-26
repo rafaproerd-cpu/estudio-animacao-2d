@@ -32,8 +32,8 @@ def _duration_in_seconds(duration: str) -> int:
     import re
 
     normalized = " ".join(duration.lower().strip().split())
-    minute_match = re.search(r"(\\d+(?:[.,]\\d+)?)\\s*min", normalized)
-    second_match = re.search(r"(\\d+(?:[.,]\\d+)?)\\s*seg", normalized)
+    minute_match = re.search(r"(\d+(?:[.,]\d+)?)\s*min", normalized)
+    second_match = re.search(r"(\d+(?:[.,]\d+)?)\s*seg", normalized)
     if minute_match:
         return max(15, round(float(minute_match.group(1).replace(",", ".")) * 60))
     if second_match:
