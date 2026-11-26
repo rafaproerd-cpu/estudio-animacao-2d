@@ -122,7 +122,7 @@ class VideoGenerationQueueTests(unittest.TestCase):
         main.generation_jobs.update(self.original_jobs)
 
     def test_video_request_queues_when_motion_fallback_is_available(self):
-        image = base64.b64encode(b"\\x89PNG\\r\\n\\x1a\\n" + b"x" * 100).decode("ascii")
+        image = base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"x" * 100).decode("ascii")
         payload = main.VideoGenerationRequest(
             prompt="slow cinematic camera movement",
             imageBase64=image,
@@ -141,7 +141,7 @@ class VideoGenerationQueueTests(unittest.TestCase):
         self.assertIs(background.tasks[0].func, main.run_video_generation_job)
 
     def test_video_request_rejects_when_no_video_engine_is_available(self):
-        image = base64.b64encode(b"\\x89PNG\\r\\n\\x1a\\n" + b"x" * 100).decode("ascii")
+        image = base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"x" * 100).decode("ascii")
         payload = main.VideoGenerationRequest(
             prompt="slow cinematic camera movement",
             imageBase64=image,
