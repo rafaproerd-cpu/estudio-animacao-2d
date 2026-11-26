@@ -400,7 +400,7 @@ class RenderServerTests(unittest.TestCase):
                 output = Path(temp_dir) / ("image-" + "d" * 32 + ".png")
                 output.write_bytes(b"fake-png")
                 main.generation_jobs[job_id] = {"status": "queued", "created_at": __import__("time").time()}
-                with patch.object(main, "generate_sdxl_image", return_value=output):
+                with patch.object(main, "generate_image", return_value=output):
                     main.run_image_generation_job(job_id, main.ImageGenerationRequest(prompt="anime scene"))
                 job = main.generation_jobs[job_id]
                 self.assertEqual(job["status"], "completed")
