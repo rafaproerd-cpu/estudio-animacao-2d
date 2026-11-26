@@ -174,6 +174,24 @@ class RenderServerTests(unittest.TestCase):
             main.API_TOKEN = original_token
             main.OUTPUT_DIR = original_output
 
+    def test_capabilities_report_unconfigured_image_and_video_engines(self):
+        original_token = main.API_TOKEN
+        original_voices = main.PIPER_VOICES_DIR
+        try:
+            main.API_TOKEN = "capabilities-test-token"
+            with tempfile.TemporaryDirectory() as temp_dir:
+                main.PIPER_VOICES_DIR = Path(temp_dir)
+                with patch.object(main.shutil, "which", side_effect=lambda command: "/usr/bin/ffmpeg" if command == "ffmpeg" else None):
+                    result = main.generation_capabilities("Bearer capabilities-test-token")
+            self.assertFalse(result["engines"]["image"]["available"])
+            self.assertEqual(result["engines"]["image"]["status"], "not_configured")
+            self.assertFalse(result["engines"]["video"]["available"])
+            self.assertFalse(result["engines"]["audio"]["available"])
+            self.assertTrue(result["engines"]["render"]["available"])
+        finally:
+            main.API_TOKEN = original_token
+            main.PIPER_VOICES_DIR = original_voices
+
     def test_rejects_requests_when_server_token_is_not_configured(self):
         original = main.API_TOKEN
         try:
