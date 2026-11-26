@@ -30,6 +30,7 @@ A pessoa deve criar um projeto, descrever a história e produzir cenas, imagens,
 - [ ] Confirmar uma execução bem-sucedida da etapa Docker no CI após sua inclusão no workflow.
 - [ ] Separar a API interna do provedor ComfyUI, para que a UI não dependa de detalhes de workflow.
 - [x] Definir o contrato HTTP do lado cliente para envio e consulta de jobs de imagem/vídeo.
+- [x] Criar respostas autenticadas e explícitas de indisponibilidade para os endpoints de imagem/vídeo (HTTP 503, sem simular jobs).
 - [ ] Implementar o contrato de jobs no servidor, com fila real, progresso, cancelamento e mensagens de erro.
 - [ ] Selecionar modelos abertos compatíveis com GPU/VRAM e licenças adequadas; testar qualidade, tempo e requisitos reais antes de fixar a escolha.
 - [ ] Criar adaptadores backend para os modelos escolhidos e remover configuração manual da experiência principal.
