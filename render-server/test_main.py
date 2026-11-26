@@ -354,7 +354,7 @@ class RenderServerTests(unittest.TestCase):
         original_token = main.API_TOKEN
         try:
             main.API_TOKEN = "generation-test-token"
-            image_bytes = b"\\x89PNG\\r\\n\\x1a\\n" + b"placeholder-image-data"
+            image_bytes = b"\x89PNG\r\n\x1a\n" + b"placeholder-image-data"
             payload = main.VideoGenerationRequest(
                 prompt="cinematic anime character moves gently",
                 imageBase64=base64.b64encode(image_bytes).decode("ascii"),
