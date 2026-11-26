@@ -747,7 +747,7 @@ export default function App() {
             <TouchableOpacity style={styles.primary} onPress={createProject}>
               <Text style={styles.primaryText}>✦  CRIAR MEU PROJETO</Text><Text style={styles.arrow}>→</Text>
             </TouchableOpacity>
-            <Text style={styles.note}>O app organiza a história em cenas. Com um ComfyUI próprio, você pode gerar imagens e animar cada cena com um workflow de vídeo compatível. Voz e montagem final ainda serão etapas futuras.</Text>
+            <Text style={styles.note}>O app já organiza a história, os personagens e as cenas. O motor próprio de imagens, animação, voz e montagem integrada está em desenvolvimento; você não precisará configurar ComfyUI, workflows ou instalar plugins.</Text>
           </View>
 
           <View style={styles.sectionHeader}>
@@ -781,8 +781,8 @@ export default function App() {
             {selected.scenes.map(scene => <View key={scene.title} style={styles.scene}>
               <Text style={styles.sceneTitle}>{scene.title}</Text>
               {scene.imageUri ? <Image source={{ uri: scene.imageUri }} style={styles.generatedImage} resizeMode="cover" /> : <View style={styles.imagePlaceholder}><Text style={styles.note}>Imagem ainda não gerada</Text></View>}
-              <TouchableOpacity style={styles.secondary} disabled={!!batchProgress || busyScene === scene.title || busyScene === `video:${scene.title}`} onPress={() => generateSceneImage(scene)}><Text style={styles.secondaryText}>{busyScene === scene.title ? "GERANDO IMAGEM…" : "GERAR IMAGEM DESTA CENA"}</Text></TouchableOpacity>
-              <TouchableOpacity style={styles.primary} disabled={!!batchProgress || busyScene === scene.title || busyScene === `video:${scene.title}`} onPress={() => generateSceneVideo(scene)}><Text style={styles.primaryText}>{busyScene === `video:${scene.title}` ? "GERANDO CLIPE…" : "ANIMAR ESTA CENA · 4 SEGUNDOS"}</Text><Text style={styles.arrow}>▶</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.secondary} disabled><Text style={styles.secondaryText}>GERAÇÃO DE IMAGEM · EM DESENVOLVIMENTO</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.primary} disabled><Text style={styles.primaryText}>ANIMAÇÃO DA CENA · EM DESENVOLVIMENTO</Text><Text style={styles.arrow}>▶</Text></TouchableOpacity>
               {scene.videoUri ? <><SceneVideoPlayer uri={scene.videoUri} /><TouchableOpacity style={styles.secondary} disabled={busyScene === `download:${scene.title}`} onPress={() => downloadSceneVideo(scene)}><Text style={styles.secondaryText}>{busyScene === `download:${scene.title}` ? "SALVANDO NO IPHONE…" : scene.videoUri.startsWith("file://") ? "VÍDEO SALVO OFFLINE" : "BAIXAR VÍDEO PARA O IPHONE"}</Text></TouchableOpacity><TouchableOpacity style={styles.secondary} onPress={() => openSceneVideo(scene.videoRemoteUri || scene.videoUri!)}><Text style={styles.secondaryText}>ABRIR VÍDEO NO NAVEGADOR</Text></TouchableOpacity>{scene.videoUri.startsWith("file://") ? <TouchableOpacity style={styles.secondary} onPress={() => exportSceneVideo(scene)}><Text style={styles.secondaryText}>EXPORTAR PARA ARQUIVOS / COMPARTILHAR</Text></TouchableOpacity> : null}</> : null}
               <Text style={styles.label}>AÇÃO DA CENA</Text>
               <TextInput value={scene.description} onChangeText={value => updateScene(scene.title, "description", value)} multiline textAlignVertical="top" placeholder="Descreva o que acontece nesta cena..." placeholderTextColor="#777789" style={styles.sceneInput} />
@@ -800,28 +800,28 @@ export default function App() {
               <Text style={styles.step}>LINHA DO TEMPO</Text>
               <Text style={styles.panelTitle}>Animação das cenas</Text>
               <Text style={styles.body}>{selected.scenes.filter(scene => !!scene.videoUri).length} de {selected.scenes.length} clipes gerados · {selected.scenes.filter(scene => !!scene.imageUri).length} imagens prontas</Text>
-              <TouchableOpacity style={styles.secondary} disabled={!!busyScene || !!batchProgress} onPress={generateAllSceneImages}>
-                <Text style={styles.secondaryText}>{batchProgress ? "PROCESSANDO IMAGENS…" : "GERAR IMAGENS PENDENTES"}</Text>
+              <TouchableOpacity style={styles.secondary} disabled>
+                <Text style={styles.secondaryText}>GERAÇÃO DE TODAS AS IMAGENS · EM DESENVOLVIMENTO</Text>
               </TouchableOpacity>
               {batchProgress ? <Text style={styles.note}>Preparadas {batchProgress.current} de {batchProgress.total} cenas…</Text> : null}
-              <TouchableOpacity style={styles.primary} disabled={!!busyScene || !!batchProgress} onPress={generateAllSceneVideos}>
-                <Text style={styles.primaryText}>{batchProgress ? "PROCESSANDO VÍDEOS…" : "ANIMAR CENAS PENDENTES"}</Text><Text style={styles.arrow}>▶</Text>
+              <TouchableOpacity style={styles.primary} disabled>
+                <Text style={styles.primaryText}>ANIMAR TODAS AS CENAS · EM DESENVOLVIMENTO</Text><Text style={styles.arrow}>▶</Text>
               </TouchableOpacity>
-              <Text style={styles.note}>Gera os clipes em sequência usando as imagens já criadas.</Text>
+              <Text style={styles.note}>A geração será integrada ao próprio aplicativo, sem exigir servidores pessoais, workflows ou pacotes de créditos.</Text>
               <Text style={styles.step}>ÁUDIO DO PROJETO</Text>
               <Text style={styles.note}>Adicione uma narração e/ou música de fundo. A voz será mixada em volume normal e a música em volume reduzido.</Text>
-              <Text style={styles.note}>Gere a narração com uma voz por cena. O áudio respeita a duração de cada clipe, mantém pausas nas cenas sem fala e avisa quando um diálogo está longo demais. Requer Piper instalado no seu servidor; não usa créditos nem API paga.</Text>
-              <TouchableOpacity style={styles.secondary} onPress={loadTtsVoices} disabled={!!busyScene || !!batchProgress}><Text style={styles.secondaryText}>ATUALIZAR VOZES DISPONÍVEIS</Text></TouchableOpacity>
+              <Text style={styles.note}>A narração automática por cena será integrada ao motor próprio do aplicativo. Por enquanto, você pode selecionar um arquivo de narração e uma música de fundo para usar quando a montagem estiver disponível.</Text>
+              <TouchableOpacity style={styles.secondary} disabled><Text style={styles.secondaryText}>VOZES DE IA · EM DESENVOLVIMENTO</Text></TouchableOpacity>
               {ttsVoices.length ? <View style={styles.chips}>{ttsVoices.map(voice => <TouchableOpacity key={voice} style={[styles.chip, selectedTtsVoice === voice && styles.chipActive]} onPress={() => setSelectedTtsVoice(voice)}><Text style={[styles.chipText, selectedTtsVoice === voice && styles.chipTextActive]}>{voice}</Text></TouchableOpacity>)}</View> : null}
-              <TouchableOpacity style={styles.primary} onPress={generateAiNarration} disabled={!!busyScene || !!batchProgress || !selectedTtsVoice}>
-                <Text style={styles.primaryText}>{busyScene === "tts:project" ? "GERANDO VOZ…" : "GERAR NARRAÇÃO COM IA"}</Text><Text style={styles.arrow}>♫</Text>
+              <TouchableOpacity style={styles.primary} disabled>
+                <Text style={styles.primaryText}>GERAR NARRAÇÃO COM IA · EM DESENVOLVIMENTO</Text><Text style={styles.arrow}>♫</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.secondary} onPress={() => pickProjectAudio("narrationUri")} disabled={!!busyScene || !!batchProgress}><Text style={styles.secondaryText}>{selected.narrationUri ? "NARRAÇÃO SELECIONADA · " + selected.narrationUri.split("/").pop() : "ESCOLHER NARRAÇÃO"}</Text></TouchableOpacity>
               {selected.narrationUri ? <TouchableOpacity style={styles.secondary} onPress={() => saveUpdatedProject({ ...selected, narrationUri: undefined, finalVideoUri: undefined, finalVideoRemoteUri: undefined })}><Text style={styles.secondaryText}>REMOVER NARRAÇÃO</Text></TouchableOpacity> : null}
               <TouchableOpacity style={styles.secondary} onPress={() => pickProjectAudio("musicUri")} disabled={!!busyScene || !!batchProgress}><Text style={styles.secondaryText}>{selected.musicUri ? "MÚSICA SELECIONADA · " + selected.musicUri.split("/").pop() : "ESCOLHER MÚSICA DE FUNDO"}</Text></TouchableOpacity>
               {selected.musicUri ? <TouchableOpacity style={styles.secondary} onPress={() => saveUpdatedProject({ ...selected, musicUri: undefined, finalVideoUri: undefined, finalVideoRemoteUri: undefined })}><Text style={styles.secondaryText}>REMOVER MÚSICA</Text></TouchableOpacity> : null}
-              <TouchableOpacity style={styles.primary} disabled={!!busyScene || !!batchProgress} onPress={renderFinalVideo}>
-                <Text style={styles.primaryText}>{busyScene === "render:final" ? "MONTANDO MP4 FINAL…" : "MONTAR TODAS AS CENAS EM UM MP4"}</Text><Text style={styles.arrow}>▣</Text>
+              <TouchableOpacity style={styles.primary} disabled>
+                <Text style={styles.primaryText}>MONTAGEM AUTOMÁTICA EM MP4 · EM DESENVOLVIMENTO</Text><Text style={styles.arrow}>▣</Text>
               </TouchableOpacity>
               {selected.finalVideoUri ? <>
                 <Text style={styles.label}>VÍDEO COMPLETO DO PROJETO</Text>
