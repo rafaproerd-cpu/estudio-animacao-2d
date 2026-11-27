@@ -124,7 +124,10 @@ def generate_sdxl_image(
 
 # Optional hosted inference through a Hugging Face Gradio Space.
 # The token is read only by this server and must never be sent to the mobile app.
-HF_SPACE_ID = os.getenv("HF_SPACE_ID", "").strip()
+# Default to a public community ZeroGPU Space so a new free account does not
+# need to host its own Space. The caller's HF token is used only on this server.
+HF_SPACE_ID = os.getenv("HF_SPACE_ID", "mrfakename/Z-Image-Turbo").strip()
+HF_SPACE_MODE = os.getenv("HF_SPACE_MODE", "public_zimage").strip().lower()
 HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
 
 
@@ -133,7 +136,7 @@ def huggingface_image_engine_status() -> dict[str, object]:
         return {
             "available": False,
             "status": "not_configured",
-            "message": "Configure HF_SPACE_ID com o identificador do seu Space Gradio para habilitar a geração remota.",
+            "message": "Configure HF_SPACE_ID com um Space Gradio público compatível para habilitar a geração remota.",
         }
     try:
         import importlib.util
@@ -149,9 +152,10 @@ def huggingface_image_engine_status() -> dict[str, object]:
     return {
         "available": True,
         "status": "configured_unverified",
-        "provider": "Hugging Face Gradio Space",
+        "provider": "Hugging Face ZeroGPU",
         "space_id": HF_SPACE_ID,
-        "message": "Space configurado. A disponibilidade real será confirmada ao enviar a primeira geração.",
+        "mode": HF_SPACE_MODE,
+        "message": "Space público configurado. A disponibilidade real depende da fila e da cota ZeroGPU da conta autenticada.",
     }
 
 
@@ -175,24 +179,39 @@ def generate_huggingface_image(
         hf_token=HF_TOKEN or None,
         verbose=False,
     )
-    # Gradio Image inputs accept a temporary local file path.
-    reference_path = None
-    try:
-        if reference_image_bytes:
-            suffix = ".png" if reference_image_bytes.startswith(b"\x89PNG") else ".jpg"
-            with tempfile.NamedTemporaryFile(prefix="estudio-reference-", suffix=suffix, delete=False) as temporary:
-                temporary.write(reference_image_bytes)
-                reference_path = Path(temporary.name)
+    if HF_SPACE_MODE == "public_zimage":
+        # Public Z-Image-Turbo community Space API:
+        # prompt, height, width, inference steps, seed, randomize seed.
+        # It is text-to-image only; reference images are not supported by this Space.
         result = client.predict(
-            prompt, int(seed or 12345),
-            str(reference_path) if reference_path else None,
-            api_name="/generate",
+            prompt,
+            int(height),
+            int(width),
+            9,
+            int(seed or 12345),
+            True,
+            api_name="/generate_image",
         )
-    finally:
-        if reference_path:
-            reference_path.unlink(missing_ok=True)
+    else:
+        # Compatibility mode for the project's own Gradio Space template.
+        reference_path = None
+        try:
+            if reference_image_bytes:
+                suffix = ".png" if reference_image_bytes.startswith(b"\x89PNG") else ".jpg"
+                with tempfile.NamedTemporaryFile(prefix="estudio-reference-", suffix=suffix, delete=False) as temporary:
+                    temporary.write(reference_image_bytes)
+                    reference_path = Path(temporary.name)
+            result = client.predict(
+                prompt,
+                int(seed or 12345),
+                str(reference_path) if reference_path else None,
+                api_name="/generate",
+            )
+        finally:
+            if reference_path:
+                reference_path.unlink(missing_ok=True)
 
-    # Gradio image outputs are commonly returned as a FileData mapping or a path.
+    # Gradio image outputs may be a tuple (image, seed), FileData mapping or path.
     candidate = result
     if isinstance(candidate, (list, tuple)):
         if not candidate:
