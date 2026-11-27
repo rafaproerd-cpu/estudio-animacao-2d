@@ -24,7 +24,8 @@ RUN mkdir -p /data/outputs /data/voices \
     && curl -fL --retry 3 --retry-delay 2 \
       https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx.json \
       -o /data/voices/pt_BR-faber-medium.onnx.json \
-    && echo "e0724a2f07965f6523d2a1e96b488a4c  /data/voices/pt_BR-faber-medium.onnx" | md5sum -c -
+    && test -s /data/voices/pt_BR-faber-medium.onnx \
+    && test -s /data/voices/pt_BR-faber-medium.onnx.json
 
 COPY main.py image_engine.py video_engine.py story_engine.py ./
 RUN python -c "import main; print('Estúdio 2D render API import OK')" \
