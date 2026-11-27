@@ -241,6 +241,9 @@ export default function App() {
   const [selectedTtsVoice, setSelectedTtsVoice] = useState("");
   const [ttsLoading, setTtsLoading] = useState(false);
   const [ttsFeedback, setTtsFeedback] = useState("");
+  const [voicePreviewUri, setVoicePreviewUri] = useState("");
+  const [voicePreviewId, setVoicePreviewId] = useState("");
+  const [previewLoadingId, setPreviewLoadingId] = useState("");
   const scrollViewRef = useRef<any>(null);
   const scrollOffsetRef = useRef(0);
 
@@ -750,6 +753,44 @@ export default function App() {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => scrollViewRef.current?.scrollTo({ y: previousScrollOffset, animated: false }));
       });
+    }
+  };
+
+  const previewTtsVoice = async (voice: string) => {
+    let baseUrl = (engineConfig.renderBaseUrl || "").trim();
+    while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
+    const token = (engineConfig.renderToken || "").trim();
+    if (!baseUrl || !token) {
+      setTtsFeedback("Configure o endereço e o token do servidor em Conectar motor para ouvir uma amostra.");
+      setShowSettings(true);
+      return;
+    }
+    setPreviewLoadingId(voice);
+    setTtsFeedback("Gerando uma amostra curta de " + ttsVoiceLabel(voice) + "…");
+    try {
+      const response = await fetch(baseUrl + "/tts", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: "Olá! Esta é uma amostra da minha voz. Assim você pode me ouvir antes de me escolher para o seu personagem.",
+          voice,
+          duration_seconds: 5,
+          length_scale: 1.18,
+        }),
+      });
+      const payload = await response.json().catch(() => ({} as { detail?: string; download_url?: string }));
+      if (!response.ok || !payload.download_url) throw new Error(payload.detail || "Não foi possível gerar a amostra desta voz.");
+      const audioUrl = baseUrl + (payload.download_url.startsWith("/") ? payload.download_url : "/" + payload.download_url);
+      const destination = (FileSystem.documentDirectory || "") + "project-audio/voice-preview-" + voice.replace(/[^a-zA-Z0-9_-]/g, "-") + "-" + Date.now() + ".wav";
+      const audioUri = await downloadGeneratedAudio(audioUrl, token, destination);
+      setVoicePreviewUri(audioUri);
+      setVoicePreviewId(voice);
+      setTtsFeedback("Amostra pronta! Toque no player para ouvir " + ttsVoiceLabel(voice) + ".");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Falha ao gerar amostra.";
+      setTtsFeedback("Não foi possível ouvir esta voz: " + message);
+    } finally {
+      setPreviewLoadingId("");
     }
   };
 
@@ -1288,7 +1329,18 @@ export default function App() {
               <Text style={styles.note}>Carregue as vozes instaladas no servidor para gerar uma narração por cena. Você também pode usar um arquivo de áudio próprio.</Text>
               <TouchableOpacity style={styles.secondary} onPress={loadTtsVoices} disabled={!!busyScene || !!batchProgress || ttsLoading}><Text style={styles.secondaryText}>{ttsLoading ? "CARREGANDO VOZES…" : "CARREGAR VOZES DISPONÍVEIS"}</Text></TouchableOpacity>
               {ttsFeedback ? <Text accessibilityLiveRegion="polite" style={styles.note}>{ttsFeedback}</Text> : null}
-              {ttsVoices.length ? <View style={styles.chips}>{ttsVoices.map(voice => <TouchableOpacity key={voice} style={[styles.chip, selectedTtsVoice === voice && styles.chipActive]} onPress={() => selectProjectVoice(voice)}><Text style={[styles.chipText, selectedTtsVoice === voice && styles.chipTextActive]}>{ttsVoiceLabel(voice)}</Text></TouchableOpacity>)}</View> : null}
+              {ttsVoices.length ? <View style={{ gap: 10 }}>
+                {ttsVoices.map(voice => <View key={voice} style={{ padding: 12, borderRadius: 12, borderWidth: 1, borderColor: selectedTtsVoice === voice ? "#8b5cf6" : "#343447", backgroundColor: selectedTtsVoice === voice ? "#211a35" : "#171722", gap: 8 }}>
+                  <TouchableOpacity onPress={() => selectProjectVoice(voice)}>
+                    <Text style={[styles.chipText, selectedTtsVoice === voice && styles.chipTextActive]}>{selectedTtsVoice === voice ? "✓ " : ""}{ttsVoiceLabel(voice)}</Text>
+                    <Text style={styles.note}>{selectedTtsVoice === voice ? "Voz selecionada para a narração do projeto" : "Toque para selecionar esta voz"}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.secondary} onPress={() => previewTtsVoice(voice)} disabled={!!previewLoadingId || !!busyScene || !!batchProgress}>
+                    <Text style={styles.secondaryText}>{previewLoadingId === voice ? "GERANDO AMOSTRA…" : "▶ OUVIR AMOSTRA DESTA VOZ"}</Text>
+                  </TouchableOpacity>
+                  {voicePreviewId === voice && voicePreviewUri ? <NarrationAudioPlayer uri={voicePreviewUri} /> : null}
+                </View>)}
+              </View> : null}
               <TouchableOpacity style={styles.primary} onPress={generateAiNarration} disabled={!!busyScene || !!batchProgress || !ttsVoices.length}>
                 <Text style={styles.primaryText}>{busyScene === "tts:project" ? "GERANDO NARRAÇÃO…" : "GERAR NARRAÇÃO COMPLETA (TODAS AS CENAS)"}</Text><Text style={styles.arrow}>♫</Text>
               </TouchableOpacity>
