@@ -72,7 +72,8 @@ abstract class HttpGenerationProviderBase {
     this.token = options.token?.trim() ?? "";
     this.timeoutMs = options.timeoutMs ?? 30 * 60 * 1000;
     this.pollIntervalMs = options.pollIntervalMs ?? 2000;
-    this.fetcher = options.fetcher ?? fetch;
+    // Keep the browser receiver bound: calling a detached Window.fetch throws on iOS Safari.
+    this.fetcher = options.fetcher ?? (typeof window !== "undefined" ? window.fetch.bind(window) : fetch);
   }
 
   protected async request<T>(path: string, init: RequestInit = {}): Promise<T> {
