@@ -183,13 +183,14 @@ class HuggingFaceVideoSpaceTests(unittest.TestCase):
 
             self.assertTrue(output.is_file())
             self.assertEqual(observed["space_id"], "zerogpu-aoti/wan2-2-fp8da-aoti-faster")
-            self.assertEqual(observed["args"][0], 3.5)
-            self.assertEqual(observed["args"][1:3], (1.0, 1.0))
-            self.assertTrue(str(observed["args"][3]).startswith("uploaded:"))
-            self.assertEqual(observed["args"][5], "A personagem caminha e pisca")
-            self.assertFalse(observed["args"][6])
-            self.assertEqual(observed["args"][7:], (123, 6))
-            self.assertEqual(observed["kwargs"]["api_name"], "/wan2_2_fp8da_aoti_faster_generate_video")
+            self.assertTrue(str(observed["args"][0]).startswith("uploaded:"))
+            self.assertEqual(observed["args"][1], "A personagem caminha e pisca")
+            self.assertEqual(observed["args"][2], 6)
+            self.assertEqual(observed["args"][4], 3.5)
+            self.assertEqual(observed["args"][5:7], (1.0, 1.0))
+            self.assertEqual(observed["args"][7], 123)
+            self.assertFalse(observed["args"][8])
+            self.assertEqual(observed["kwargs"]["api_name"], "/generate_video")
 
 
 class VideoEngineDispatchTests(unittest.TestCase):
