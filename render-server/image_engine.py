@@ -183,7 +183,7 @@ def generate_huggingface_image(
     IMAGE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     client = Client(
         HF_SPACE_ID,
-        hf_token=HF_TOKEN or None,
+        token=HF_TOKEN or None,
         verbose=False,
     )
     if HF_SPACE_MODE == "public_zimage":
@@ -250,7 +250,7 @@ def diagnose_huggingface_image_space() -> dict[str, object]:
     try:
         from gradio_client import Client
 
-        client = Client(HF_SPACE_ID, hf_token=HF_TOKEN or None, verbose=False)
+        client = Client(HF_SPACE_ID, token=HF_TOKEN or None, verbose=False)
         api = client.view_api(return_format="dict")
         named = api.get("named_endpoints", {}) if isinstance(api, dict) else {}
         expected = "/generate_image" if HF_SPACE_MODE == "public_zimage" else "/generate"
