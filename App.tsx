@@ -196,6 +196,7 @@ export default function App() {
   const [connectionStatus, setConnectionStatus] = useState("Não testada");
   const [busyScene, setBusyScene] = useState<string | null>(null);
   const [creatingStory, setCreatingStory] = useState(false);
+  const [storyFeedback, setStoryFeedback] = useState("");
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
   const [ttsVoices, setTtsVoices] = useState<string[]>([]);
   const [selectedTtsVoice, setSelectedTtsVoice] = useState("");
@@ -816,16 +817,17 @@ export default function App() {
   const createProject = async () => {
     const cleanIdea = idea.trim();
     if (!cleanIdea) {
-      Alert.alert("Falta sua ideia", "Escreva uma ideia para começar.");
+      setStoryFeedback("Escreva sua ideia no campo acima antes de criar a história.");
       return;
     }
     if (creatingStory) return;
     setCreatingStory(true);
+    setStoryFeedback("Conectando ao servidor e solicitando o roteiro à IA. Em uma primeira tentativa, o servidor pode levar até 1 minuto para despertar.");
     try {
       const baseUrl = (engineConfig.renderBaseUrl || "").trim().replace(new RegExp("/+$"), "");
       const token = (engineConfig.renderToken || "").trim();
       if (!isAllowedEngineUrl(baseUrl) || !token) {
-        throw new Error("Conecte o motor do Estúdio 2D antes de criar uma história com IA.");
+        throw new Error("Conexão incompleta. Abra as configurações e conecte o motor do Estúdio 2D.");
       }
       const response = await fetch(`${baseUrl}/v1/stories/generate`, {
         method: "POST",
@@ -837,7 +839,7 @@ export default function App() {
           character: "Personagem principal a definir. Manter rosto, cabelo, roupa, proporções e paleta consistentes em todas as cenas."
         })
       });
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(result.detail || `Falha ao gerar história (HTTP ${response.status}).`);
       }
@@ -849,12 +851,9 @@ export default function App() {
       setProjects(previous => [project, ...previous]);
       setSelected(project);
       setIdea("");
-      Alert.alert(
-        "Roteiro original criado por IA",
-        `A IA criou ${project.scenes.length} cenas com acontecimentos e falas próprios. Você pode revisar e editar tudo no Estúdio.`
-      );
+      setStoryFeedback(`Roteiro criado pela IA com ${project.scenes.length} cenas. O projeto já está aberto para edição.`);
     } catch (error) {
-      Alert.alert("Não foi possível criar a história", error instanceof Error ? error.message : "Tente novamente.");
+      setStoryFeedback(error instanceof Error ? error.message : "Não foi possível criar a história. Tente novamente.");
     } finally {
       setCreatingStory(false);
     }
@@ -1003,10 +1002,11 @@ export default function App() {
               </TouchableOpacity>
             ))}</View>
 
-            <TouchableOpacity style={styles.primary} onPress={createProject}>
-              <Text style={styles.primaryText}>✦  CRIAR HISTÓRIA E PREENCHER CENAS</Text><Text style={styles.arrow}>→</Text>
+            <TouchableOpacity style={styles.primary} onPress={createProject} disabled={creatingStory} activeOpacity={0.75}>
+              <Text style={styles.primaryText}>{creatingStory ? "GERANDO ROTEIRO... AGUARDE" : "✦  CRIAR HISTÓRIA E PREENCHER CENAS"}</Text><Text style={styles.arrow}>{creatingStory ? "…" : "→"}</Text>
             </TouchableOpacity>
-            <Text style={styles.note}>Com o servidor e um provedor de texto configurados, a IA cria um roteiro original e preenche as cenas. Sem essa conexão, o Estúdio usa o planejador local. A geração de imagens, animações e vozes também depende dos respectivos motores hospedados.</Text>
+            {!!storyFeedback && <Text accessibilityLiveRegion="polite" style={styles.note}>{storyFeedback}</Text>}
+            <Text style={styles.note}>A IA cria o roteiro original pelo servidor conectado. A geração de imagens, animações e vozes depende dos respectivos motores hospedados.</Text>
           </View>
 
           <View style={styles.sectionHeader}>
