@@ -9,6 +9,7 @@ import secrets
 import shutil
 import sqlite3
 import json
+import logging
 import subprocess
 import tempfile
 import threading
@@ -26,6 +27,8 @@ from image_engine import IMAGE_OUTPUT_DIR, active_image_engine_status, diagnose_
 from video_engine import WAN_OUTPUT_DIR, generate_wan_video, validate_mp4_output, validate_reference_image, video_engine_status
 from agnes_video import generate_agnes_video
 from story_engine import generate_story_plan, story_engine_status
+
+logger = logging.getLogger(__name__)
 
 APP_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = Path(os.getenv("RENDER_OUTPUT_DIR", str(APP_DIR / "outputs"))).resolve()
@@ -295,6 +298,7 @@ def run_video_generation_job(job_id: str, payload: VideoGenerationRequest, image
         persist_download_grant(output.name)
         persist_generation_job(job_id)
     except Exception as error:
+        logger.exception("Video generation job %s failed", job_id)
         with generation_jobs_lock:
             generation_jobs[job_id].update({
                 "status": "failed",
