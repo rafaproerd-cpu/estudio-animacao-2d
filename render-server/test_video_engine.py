@@ -84,6 +84,10 @@ class WanOutputValidationTests(unittest.TestCase):
             "available": False,
             "status": "wan_runtime_missing",
             "message": "Wan2.2 não configurado.",
+        }), patch.object(video_engine, "_hf_video_status", return_value={
+            "available": False,
+            "status": "hf_video_space_missing",
+            "message": "Space remoto indisponível.",
         }), patch.object(video_engine.shutil, "which", return_value="/usr/bin/ffmpeg"):
             status = video_engine.video_engine_status()
 
