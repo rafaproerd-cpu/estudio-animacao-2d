@@ -599,10 +599,47 @@ def available_piper_voices() -> list[str]:
     return sorted(path.stem for path in PIPER_VOICES_DIR.glob("*.onnx") if path.is_file())
 
 
+TINY_PTBR_VOICES = {"ptbr-tiny-f": "F", "ptbr-tiny-m": "M"}
+_tiny_ptbr_voice = None
+_tiny_ptbr_voice_lock = threading.Lock()
+
+
+def synthesize_tts_file(text: str, voice: str, output_file: Path, length_scale: float = 1.18) -> None:
+    if voice in TINY_PTBR_VOICES:
+        global _tiny_ptbr_voice
+        if _tiny_ptbr_voice is None:
+            with _tiny_ptbr_voice_lock:
+                if _tiny_ptbr_voice is None:
+                    from tiny_voca_ptbr import Voice as TinyPtbrVoice
+                    model_path = Path("/opt/tiny-voca-ptbr-kokoro/model/tiny-voca-ptbr.onnx")
+                    _tiny_ptbr_voice = TinyPtbrVoice(model_path, threads=1)
+        import soundfile as sf
+        audio, _ = _tiny_ptbr_voice.speak(
+            text, TINY_PTBR_VOICES[voice],
+            speed=1.0 / max(0.8, min(2.0, length_scale)),
+        )
+        sf.write(str(output_file), audio, _tiny_ptbr_voice.sample_rate, subtype="PCM_16")
+        return
+
+    model = (PIPER_VOICES_DIR / (voice + ".onnx")).resolve()
+    if model.parent != PIPER_VOICES_DIR or not model.is_file():
+        raise FileNotFoundError("Modelo de voz não encontrado: " + voice)
+    executable = shutil.which(PIPER)
+    if not executable:
+        raise RuntimeError("O motor Piper não está instalado neste servidor.")
+    result = subprocess.run(
+        [executable, "--model", str(model), "--length_scale", str(length_scale), "--output_file", str(output_file)],
+        input=text, capture_output=True, text=True, timeout=180, check=False,
+    )
+    if result.returncode != 0 or not output_file.is_file() or output_file.stat().st_size == 0:
+        raise RuntimeError((result.stderr or "Falha desconhecida no Piper")[-1200:])
+
+
 @app.get("/tts/voices")
 def list_tts_voices(authorization: Annotated[str | None, Header()] = None) -> dict[str, object]:
     require_token(authorization)
-    return {"voices": available_piper_voices(), "engine": "Piper local"}
+    voices = available_piper_voices() + list(TINY_PTBR_VOICES.keys())
+    return {"voices": voices, "engine": "Piper + Tiny Voca PT-BR"}
 
 
 @app.post("/tts")
@@ -616,27 +653,21 @@ def generate_tts(payload: TTSRequest, authorization: Annotated[str | None, Heade
         raise HTTPException(status_code=413, detail=f"O texto excede o limite de {MAX_TTS_CHARACTERS} caracteres.")
     if not re.fullmatch(r"[a-zA-Z0-9_-]{1,100}", voice):
         raise HTTPException(status_code=400, detail="Identificador de voz inválido.")
-    model = (PIPER_VOICES_DIR / (voice + ".onnx")).resolve()
-    if model.parent != PIPER_VOICES_DIR or not model.is_file():
-        raise HTTPException(status_code=404, detail="Voz não encontrada. Adicione o modelo Piper correspondente à pasta de vozes.")
-    executable = shutil.which(PIPER)
-    if not executable:
-        raise HTTPException(status_code=503, detail="O motor Piper não está instalado neste servidor.")
+    if voice not in TINY_PTBR_VOICES:
+        model = (PIPER_VOICES_DIR / (voice + ".onnx")).resolve()
+        if model.parent != PIPER_VOICES_DIR or not model.is_file():
+            raise HTTPException(status_code=404, detail="Voz não encontrada. Atualize o catálogo de vozes.")
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     tts_id = uuid.uuid4().hex
     output_file = OUTPUT_DIR / ("tts-" + tts_id + ".wav")
     try:
-        result = subprocess.run(
-            [executable, "--model", str(model), "--length_scale", str(payload.length_scale), "--output_file", str(output_file)],
-            input=text, capture_output=True, text=True, timeout=180, check=False,
-        )
+        synthesize_tts_file(text, voice, output_file, payload.length_scale)
     except subprocess.TimeoutExpired as error:
         output_file.unlink(missing_ok=True)
         raise HTTPException(status_code=504, detail="A geração de voz excedeu três minutos.") from error
-    if result.returncode != 0 or not output_file.is_file() or output_file.stat().st_size == 0:
+    except Exception as error:
         output_file.unlink(missing_ok=True)
-        detail = (result.stderr or "Falha desconhecida no Piper")[-1200:]
-        raise HTTPException(status_code=422, detail="Não foi possível gerar a voz: " + detail)
+        raise HTTPException(status_code=422, detail="Não foi possível gerar a voz: " + str(error)[-1200:])
     return TTSResponse(id=tts_id, download_url="/tts/" + tts_id, voice=voice)
 
 
@@ -653,9 +684,10 @@ def generate_tts_batch(payload: TTSBatchRequest, authorization: Annotated[str | 
         if segment.text.strip():
             if not re.fullmatch(r"[a-zA-Z0-9_-]{1,100}", segment.voice.strip()):
                 raise HTTPException(status_code=400, detail="Identificador de voz inválido.")
-            model = (PIPER_VOICES_DIR / (segment.voice.strip() + ".onnx")).resolve()
-            if model.parent != PIPER_VOICES_DIR or not model.is_file():
-                raise HTTPException(status_code=404, detail="Modelo de voz não encontrado: " + segment.voice)
+            if segment.voice.strip() not in TINY_PTBR_VOICES:
+                model = (PIPER_VOICES_DIR / (segment.voice.strip() + ".onnx")).resolve()
+                if model.parent != PIPER_VOICES_DIR or not model.is_file():
+                    raise HTTPException(status_code=404, detail="Modelo de voz não encontrado: " + segment.voice)
     executable = shutil.which(PIPER)
     if not executable:
         raise HTTPException(status_code=503, detail="O motor Piper não está instalado neste servidor.")
@@ -667,11 +699,11 @@ def generate_tts_batch(payload: TTSBatchRequest, authorization: Annotated[str | 
         for index, segment in enumerate(payload.segments):
             audio_file = temporary_dir / ("segment-" + str(index).zfill(3) + ".wav")
             if segment.text.strip():
-                model = PIPER_VOICES_DIR / (segment.voice.strip() + ".onnx")
-                result = subprocess.run([executable, "--model", str(model), "--length_scale", str(segment.length_scale), "--output_file", str(audio_file)], input=segment.text.strip(), capture_output=True, text=True, timeout=180, check=False)
-                if result.returncode != 0 or not audio_file.is_file() or audio_file.stat().st_size == 0:
-                    detail = (result.stderr or "Falha desconhecida no Piper")[-1200:]
-                    raise HTTPException(status_code=422, detail="Falha ao gerar fala " + str(index + 1) + ": " + detail)
+                try:
+                    synthesize_tts_file(segment.text.strip(), segment.voice.strip(), audio_file, segment.length_scale)
+                except Exception as error:
+                    audio_file.unlink(missing_ok=True)
+                    raise HTTPException(status_code=422, detail="Falha ao gerar fala " + str(index + 1) + ": " + str(error)[-1200:])
                 try:
                     import wave
                     with wave.open(str(audio_file), "rb") as wav_file:
