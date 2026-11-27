@@ -920,13 +920,22 @@ export default function App() {
       if (!Array.isArray(generatedPlan.scenes) || generatedPlan.scenes.length < 4) {
         throw new Error("A IA respondeu, mas não entregou as cenas necessárias. Tente novamente.");
       }
-      const project = buildProject(cleanIdea, genre, duration, generatedPlan);
+      const project = { ...buildProject(cleanIdea, genre, duration, generatedPlan), storyEngine: "ai-provider" as const };
       setProjects(previous => [project, ...previous]);
       setSelected(project);
       setIdea("");
       setStoryFeedback(`Roteiro criado pela IA com ${project.scenes.length} cenas. O projeto já está aberto para edição.`);
     } catch (error) {
-      setStoryFeedback(error instanceof Error ? error.message : "Não foi possível criar a história. Tente novamente.");
+      // Não deixe a ação principal parecer que não fez nada quando o servidor
+      // remoto estiver ausente, dormindo ou sem provedor de IA configurado.
+      // Crie um projeto local claramente identificado como modelo, sem alegar
+      // que houve geração por IA.
+      const project = { ...buildProject(cleanIdea, genre, duration), storyEngine: "local-template" as const };
+      setProjects(previous => [project, ...previous]);
+      setSelected(project);
+      setIdea("");
+      const reason = error instanceof Error ? error.message : "Servidor de IA indisponível.";
+      setStoryFeedback(`Projeto criado com roteiro-base local (${project.scenes.length} cenas). A IA remota não respondeu: ${reason} Você já pode editar o projeto; a geração por IA será ativada quando o servidor estiver conectado.`);
     } finally {
       setCreatingStory(false);
     }
