@@ -187,7 +187,7 @@ def generate_huggingface_image(
         verbose=False,
     )
     if HF_SPACE_MODE == "public_zimage":
-        # Public Z-Image-Turbo community Space API (akhaliq backend):
+        # Public Z-Image-Turbo community Space API:
         # prompt, height, width, inference steps, seed, randomize seed.
         # It is text-to-image only; reference images are not supported by this Space.
         result = client.predict(
@@ -196,7 +196,7 @@ def generate_huggingface_image(
             int(width),
             9,
             int(seed or 12345),
-            True,
+            False,
             api_name="/generate_image",
         )
     else:
