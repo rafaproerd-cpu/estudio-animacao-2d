@@ -745,13 +745,63 @@ export default function App() {
       const form = new FormData();
       form.append("project_name", selected.title);
       let workingProject = selected;
+      let narrationUri = selected.narrationUri;
+
+      // Se o usuário ainda não escolheu uma narração, gere automaticamente
+      // uma fala por cena com o Piper instalado no servidor.
+      const hasDialogue = selected.scenes.some(scene => (scene.dialogue || "").trim().length > 0);
+      if (!narrationUri && hasDialogue) {
+        setBusyScene("tts:project");
+        const voicesResponse = await fetch(`${renderBaseUrl}/tts/voices`, {
+          headers: { Authorization: `Bearer ${renderToken}` },
+        });
+        const voicesPayload = await voicesResponse.json().catch(() => ({} as { detail?: string; voices?: string[] }));
+        if (!voicesResponse.ok) {
+          throw new Error(voicesPayload.detail || "Não foi possível consultar as vozes do servidor.");
+        }
+        const voices = Array.isArray(voicesPayload.voices) ? voicesPayload.voices : [];
+        if (!voices.length) {
+          throw new Error("O servidor ainda não disponibilizou uma voz em português. Aguarde a implantação do motor Piper.");
+        }
+        const defaultVoice = selectedTtsVoice || voices[0];
+        const sceneDuration = sceneClipDurationSeconds(selected);
+        const segments = selected.scenes.map(scene => ({
+          text: (scene.dialogue || "").trim(),
+          voice: scene.voiceId || defaultVoice,
+          duration_seconds: sceneDuration,
+        }));
+        const ttsResponse = await fetch(`${renderBaseUrl}/tts/batch`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${renderToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ segments }),
+        });
+        const ttsPayload = await ttsResponse.json().catch(() => ({} as { detail?: string; download_url?: string }));
+        if (!ttsResponse.ok || !ttsPayload.download_url) {
+          throw new Error(ttsPayload.detail || "O servidor não conseguiu gerar a narração automática.");
+        }
+        const audioUrl = `${renderBaseUrl}${ttsPayload.download_url.startsWith("/") ? ttsPayload.download_url : `/${ttsPayload.download_url}`}`;
+        const audioDirectory = `${FileSystem.documentDirectory}project-audio/`;
+        const audioDirectoryInfo = await FileSystem.getInfoAsync(audioDirectory);
+        if (!audioDirectoryInfo.exists) await FileSystem.makeDirectoryAsync(audioDirectory, { intermediates: true });
+        const audioPath = `${audioDirectory}${selected.id}-auto-narration-${Date.now()}.wav`;
+        const audioDownload = await FileSystem.downloadAsync(audioUrl, audioPath, {
+          headers: { Authorization: `Bearer ${renderToken}` },
+        });
+        if (audioDownload.status < 200 || audioDownload.status >= 300) {
+          throw new Error(`A narração foi gerada, mas o download falhou (HTTP ${audioDownload.status}).`);
+        }
+        narrationUri = audioDownload.uri;
+        workingProject = { ...workingProject, narrationUri };
+        saveUpdatedProject(workingProject);
+      }
+      setBusyScene("render:final");
       const appendAudio = async (uri: string | undefined, field: "narration" | "music") => {
         if (!uri) return;
         const extension = uri.split("?")[0].split(".").pop()?.toLowerCase() || "mp3";
         const mimeTypes: Record<string, string> = { mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4", aac: "audio/aac", ogg: "audio/ogg", flac: "audio/flac" };
         form.append(field, { uri, name: field + "." + extension, type: mimeTypes[extension] || "application/octet-stream" } as any);
       };
-      await appendAudio(selected.narrationUri, "narration");
+      await appendAudio(narrationUri, "narration");
       await appendAudio(selected.musicUri, "music");
 
       for (let index = 0; index < selected.scenes.length; index += 1) {
@@ -819,7 +869,7 @@ export default function App() {
       Alert.alert(
         "MP4 final pronto",
         savedOnDevice
-          ? "O vídeo foi montado e salvo no iPhone." + (selected.narrationUri || selected.musicUri ? " Os áudios selecionados foram incluídos." : "")
+          ? "O vídeo foi montado e salvo no iPhone." + (narrationUri || selected.musicUri ? " Narração e/ou música foram incluídas." : "")
           : "O vídeo foi montado no servidor, mas não foi possível copiá-lo para o iPhone. O link remoto foi mantido para você assistir ou tentar baixar novamente."
       );
     } catch (error) {
