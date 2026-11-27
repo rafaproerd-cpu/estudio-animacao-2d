@@ -109,18 +109,17 @@ O primeiro carregamento pode baixar vários GB de pesos. O Dockerfile padrão n�
 
 ## Geração remota de imagens via Hugging Face ZeroGPU
 
-Como alternativa ao SDXL instalado em uma GPU própria, o servidor pode chamar um Space Gradio configurado com ZeroGPU. Isso não hospeda o backend automaticamente e depende de um Space criado na conta Hugging Face do usuário, da fila e da cota de GPU dessa conta.
+Como alternativa ao SDXL em GPU própria, o backend usa por padrão o Space público `mrfakename/Z-Image-Turbo`, no modo `public_zimage`. **Não é necessário criar ou publicar um Space próprio para a primeira tentativa.** A geração depende da disponibilidade do Space público, da fila e das cotas anônimas do Hugging Face; esses limites podem causar espera ou falhas temporárias.
 
-1. Crie um Space Gradio com ZeroGPU e publique os arquivos de `huggingface-space/` deste repositório.
-2. No ambiente do servidor de renderização, configure `HF_SPACE_ID=seu-usuario/seu-space`.
-3. Para Space privado, configure também `HF_TOKEN` como segredo do servidor. Nunca coloque esse token no aplicativo ou no código público.
-4. Instale `render-server/requirements.txt` e consulte `GET /v1/capabilities`.
+- O backend chama o endpoint Gradio `/generate_image` com prompt, dimensões, passos e semente. Esse modo é somente texto-para-imagem: imagens de referência não são aplicadas pelo Space público.
+- Para trocar de provedor, configure `HF_SPACE_ID` e selecione o modo de API compatível em `HF_SPACE_MODE`.
+- Se o Space exigir autenticação ou a cota anônima for insuficiente, configure `HF_TOKEN` como segredo no servidor. Nunca coloque esse token no aplicativo ou no repositório.
+- O status `configured_unverified` significa apenas que o provedor está configurado. O diagnóstico consulta a API, mas somente uma geração real confirma que a imagem pode ser produzida e baixada.
 
-Quando o SDXL local não estiver pronto, o backend tentará usar o Space remoto. O Space de teste gera imagens horizontais 16:9 (768×432) e recebe imagem de referência opcional por image-to-image. Isso pode ajudar na continuidade visual, mas não garante identidade perfeita e não gera vídeo. O status `configured_unverified` significa que as configurações existem; somente uma chamada real confirma que o Space está acordado, autorizado e com cota disponível.
-
-Exemplo de variáveis:
+Configuração padrão (opcional, já aplicada pelo código):
 ```bash
-HF_SPACE_ID=seu-usuario/seu-space
+HF_SPACE_ID=mrfakename/Z-Image-Turbo
+HF_SPACE_MODE=public_zimage
 HF_TOKEN=
 ```
 
@@ -163,12 +162,12 @@ O arquivo `render.yaml` na raiz do repositório permite iniciar a implantação 
 
 1. Entre no Render e escolha **New + Blueprint**.
 2. Conecte o repositório `rafaproerd-cpu/estudio-animacao-2d` e confirme a implantação.
-3. O Render cria o serviço Docker, gera `ESTUDIO_RENDER_TOKEN` e solicita os valores opcionais `HF_SPACE_ID` e `HF_TOKEN`.
+3. O Render cria o serviço Docker e gera `ESTUDIO_RENDER_TOKEN`. O backend já usa o Space público padrão; `HF_SPACE_ID`, `HF_SPACE_MODE` e `HF_TOKEN` são opcionais para personalização ou autenticação.
 4. Depois que o serviço ficar disponível, copie o endereço HTTPS e o valor de `ESTUDIO_RENDER_TOKEN` para a opção **Conectar motor** no app.
 
 O endpoint público `/healthz` é somente um sinal mínimo para o health check da hospedagem. Os endpoints de geração, capacidades, montagem e o endpoint detalhado `/health` continuam protegidos por Bearer token.
 
-**Limites do plano gratuito:** o serviço pode dormir após inatividade, não oferece GPU para executar SDXL/Wan2.2 e não inclui disco persistente. Para gerar imagens, ainda é necessário configurar um Space ZeroGPU próprio e informar seu ID em `HF_SPACE_ID`; o token Hugging Face, se necessário, deve ficar somente nos segredos do Render. A implantação do backend, por si só, não ativa geração de imagem nem vídeo. O plano gratuito também não é adequado para guardar permanentemente arquivos de projetos e resultados.
+**Limites do plano gratuito:** o serviço pode dormir após inatividade, não oferece GPU para executar SDXL/Wan2.2 e não inclui disco persistente. A geração de imagens tenta usar o Space público padrão, sujeita à fila e às cotas do provedor; não há garantia de disponibilidade contínua. A implantação do backend não ativa geração de vídeo por IA: sem GPU e pesos Wan2.2, o app usa apenas movimento de câmera sobre imagens estáticas. O plano gratuito também não é adequado para guardar permanentemente arquivos de projetos e resultados.
 
 
 ## Hospedagem gratuita: limites importantes
