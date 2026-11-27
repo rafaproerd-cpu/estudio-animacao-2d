@@ -57,7 +57,7 @@ RUN mkdir -p /data/outputs /data/voices \
     && test -s /data/voices/pt_BR-razo-medium.onnx \
     && test -s /data/voices/pt_BR-razo-medium.onnx.json
 
-COPY main.py image_engine.py video_engine.py story_engine.py ./
+COPY main.py image_engine.py video_engine.py story_engine.py agnes_video.py ./
 RUN python -c "import main; print('Estúdio 2D render API import OK')" \
     && piper --help >/dev/null \
     && python -c "from tiny_voca_ptbr import Voice; import soundfile as sf; v=Voice(); [(lambda w: sf.write('/tmp/tiny-'+s+'.wav', w, v.sample_rate))(v.speak('Olá! Esta é uma amostra de voz em português brasileiro.', s)[0]) for s in ('F','M')]" \
