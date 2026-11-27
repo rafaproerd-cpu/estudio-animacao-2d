@@ -19,7 +19,9 @@ HF_VIDEO_SPACE_ID = os.getenv("HF_VIDEO_SPACE_ID", "zerogpu-aoti/wan2-2-fp8da-ao
 HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
 HF_VIDEO_TIMEOUT_SECONDS = max(300, int(os.getenv("HF_VIDEO_TIMEOUT_SECONDS", "1200")))
 FFMPEG = os.getenv("FFMPEG_PATH", "ffmpeg")
-WAN_OUTPUT_DIR = Path(os.getenv("IMAGE_OUTPUT_DIR", os.getenv("RENDER_OUTPUT_DIR", "outputs"))).resolve()\n\nfrom agnes_video import agnes_status, generate_agnes_video
+WAN_OUTPUT_DIR = Path(os.getenv("IMAGE_OUTPUT_DIR", os.getenv("RENDER_OUTPUT_DIR", "outputs"))).resolve()
+
+from agnes_video import agnes_status, generate_agnes_video
 
 
 def _wan_status() -> dict[str, object]:
