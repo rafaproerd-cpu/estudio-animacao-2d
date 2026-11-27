@@ -323,7 +323,15 @@ def generate_cloudflare_image(
         + "/ai/run/"
         + CLOUDFLARE_IMAGE_MODEL
     )
-    payload = {"prompt": prompt[:2048], "steps": 4}
+    # Mantém a direção de arte do Estúdio também no provedor alternativo.
+    # O Cloudflare só é usado quando o Space HF falha; esta orientação reduz a diferença de estilo.
+    style_guidance = (
+        " Consistent art direction: cinematic 2D anime animation illustration, "
+        "expressive hand-drawn characters, clean refined line art, detailed painterly backgrounds, "
+        "soft cel shading, dramatic but coherent lighting, unified color palette, subtle 2.5D depth. "
+        "Clearly illustrated animation frame, not photorealistic, not 3D CGI, no text, no watermark."
+    )
+    payload = {"prompt": (prompt[:1500] + style_guidance)[:2048], "steps": 4}
     # Workers AI FLUX.1-schnell não aceita o campo seed neste endpoint.
     request = urllib.request.Request(
         endpoint,
