@@ -98,8 +98,10 @@ Faça cenas diferentes entre si, com causa e consequência, progressão emociona
 
     request_body = {
         "model": STORY_MODEL,
-        "temperature": 0.8,
+        "temperature": 0.7,
+        "max_tokens": 12000,
         "response_format": {"type": "json_object"},
+        "plugins": [{"id": "response-healing"}],
         "messages": [
             {"role": "system", "content": "Você é roteirista e diretor de animação. Siga exatamente o formato JSON solicitado."},
             {"role": "user", "content": prompt},
@@ -112,6 +114,8 @@ Faça cenas diferentes entre si, com causa e consequência, progressão emociona
             "Authorization": f"Bearer {STORY_API_KEY}",
             "Content-Type": "application/json",
             "Accept": "application/json",
+            "HTTP-Referer": "https://rafaproerd-cpu.github.io/estudio-animacao-2d/",
+            "X-Title": "Estudio 2D",
         },
         method="POST",
     )
