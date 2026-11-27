@@ -6,9 +6,9 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-STORY_API_URL = os.getenv("STORY_API_URL", "").strip()
+STORY_API_URL = os.getenv("STORY_API_URL", "https://openrouter.ai/api/v1/chat/completions").strip()
 STORY_API_KEY = os.getenv("STORY_API_KEY", "").strip()
-STORY_MODEL = os.getenv("STORY_MODEL", "").strip()
+STORY_MODEL = os.getenv("STORY_MODEL", "openrouter/free").strip()
 VISUAL_STYLE = (
     "animação 2D cinematográfica com acabamento de anime, cenários detalhados, "
     "iluminação dramática, profundidade 2.5D e movimentos de câmera"
@@ -22,7 +22,7 @@ def story_engine_status() -> dict[str, Any]:
         "status": "configured" if configured else "not_configured",
         "message": (
             "Modelo de roteiro conectado." if configured
-            else "Configure STORY_API_URL, STORY_API_KEY e STORY_MODEL para ativar roteiros originais por IA."
+            else "Configure apenas STORY_API_KEY no Render. O endpoint e o modelo gratuito OpenRouter já vêm configurados por padrão."
         ),
     }
 
