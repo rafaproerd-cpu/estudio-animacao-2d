@@ -822,46 +822,36 @@ export default function App() {
     if (creatingStory) return;
     setCreatingStory(true);
     try {
-      let generatedPlan: StoryPlan | undefined;
-      let usedLocalTemplate = true;
-    const baseUrl = (engineConfig.renderBaseUrl || "").trim().replace(new RegExp("/+$"), "");
+      const baseUrl = (engineConfig.renderBaseUrl || "").trim().replace(new RegExp("/+$"), "");
       const token = (engineConfig.renderToken || "").trim();
-      if (isAllowedEngineUrl(baseUrl) && token) {
-        try {
-          const response = await fetch(`${baseUrl}/v1/stories/generate`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify({
-              idea: cleanIdea,
-              genre,
-              duration,
-              character: "Personagem principal a definir. Manter rosto, cabelo, roupa, proporções e paleta consistentes em todas as cenas."
-            })
-          });
-          const result = await response.json();
-          if (response.ok) {
-            generatedPlan = result as StoryPlan;
-            usedLocalTemplate = false;
-          } else if (response.status !== 503) {
-            throw new Error(result.detail || "Não foi possível gerar o roteiro com IA.");
-          }
-        } catch (error) {
-          if (error instanceof TypeError) {
-            Alert.alert("Servidor indisponível", "Não consegui acessar o servidor. Vou montar um planejamento local para você não perder sua ideia.");
-          } else {
-            throw error;
-          }
-        }
+      if (!isAllowedEngineUrl(baseUrl) || !token) {
+        throw new Error("Conecte o motor do Estúdio 2D antes de criar uma história com IA.");
+      }
+      const response = await fetch(`${baseUrl}/v1/stories/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          idea: cleanIdea,
+          genre,
+          duration,
+          character: "Personagem principal a definir. Manter rosto, cabelo, roupa, proporções e paleta consistentes em todas as cenas."
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.detail || `Falha ao gerar história (HTTP ${response.status}).`);
+      }
+      const generatedPlan = result as StoryPlan;
+      if (!Array.isArray(generatedPlan.scenes) || generatedPlan.scenes.length < 4) {
+        throw new Error("A IA respondeu, mas não entregou as cenas necessárias. Tente novamente.");
       }
       const project = buildProject(cleanIdea, genre, duration, generatedPlan);
       setProjects(previous => [project, ...previous]);
       setSelected(project);
       setIdea("");
       Alert.alert(
-        usedLocalTemplate ? "Planejamento criado" : "Roteiro original criado por IA",
-        usedLocalTemplate
-          ? `O Estúdio organizou ${project.scenes.length} cenas com o planejador local. Para roteiros originais por IA, o servidor precisa ter um provedor de texto configurado.`
-          : `A IA criou ${project.scenes.length} cenas com acontecimentos e falas próprios. Você pode revisar e editar tudo no Estúdio.`
+        "Roteiro original criado por IA",
+        `A IA criou ${project.scenes.length} cenas com acontecimentos e falas próprios. Você pode revisar e editar tudo no Estúdio.`
       );
     } catch (error) {
       Alert.alert("Não foi possível criar a história", error instanceof Error ? error.message : "Tente novamente.");
