@@ -24,6 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from image_engine import IMAGE_OUTPUT_DIR, active_image_engine_status, diagnose_huggingface_image_space, generate_image, image_engine_status, huggingface_image_engine_status
 from video_engine import WAN_OUTPUT_DIR, generate_wan_video, validate_mp4_output, validate_reference_image, video_engine_status
+from agnes_video import generate_agnes_video
 from story_engine import generate_story_plan, story_engine_status
 
 APP_DIR = Path(__file__).resolve().parent
@@ -235,6 +236,8 @@ def video_generation_completion_message(engine_status: dict[str, object]) -> str
         )
     if engine_status.get("model") == "Wan2.2 TI2V 5B":
         return "Clipe animado com Wan2.2: movimento gerado por IA."
+    if engine_status.get("model") == "agnes-video-2.5-flash":
+        return "Clipe animado com Agnes Video 2.5 Flash (720p). A disponibilidade e a cobrança dependem da conta Agnes."
     return "Clipe de vídeo concluído. Consulte as capacidades do motor para identificar o modo usado."
 
 
@@ -244,12 +247,41 @@ def run_video_generation_job(job_id: str, payload: VideoGenerationRequest, image
     persist_generation_job(job_id)
     try:
         engine_status = video_engine_status()
-        output = generate_wan_video(
-            prompt=payload.prompt.strip(),
-            image_bytes=image_bytes,
-            duration_seconds=payload.duration_seconds,
-            seed=payload.seed,
-        )
+        if engine_status.get("status") == "agnes_configured_unverified":
+            WAN_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+            reference_name = "agnes-ref-" + uuid.uuid4().hex + ".png"
+            reference_path = WAN_OUTPUT_DIR / reference_name
+            from PIL import Image
+            import io
+            with Image.open(io.BytesIO(image_bytes)) as source:
+                source.convert("RGB").save(reference_path, format="PNG")
+            reference_token = secrets.token_urlsafe(32)
+            expires_at = time.time() + 1800
+            with generation_jobs_lock:
+                generation_download_tokens[reference_name] = (reference_token, expires_at)
+            persist_download_grant(reference_name)
+            public_base = os.getenv("APP_PUBLIC_BASE_URL", "https://estudio-2d-render-n83m.onrender.com").rstrip("/")
+            reference_url = public_base + "/v1/files/" + reference_name + "?token=" + reference_token
+            try:
+                output = generate_agnes_video(
+                    prompt=payload.prompt.strip(),
+                    image_url=reference_url,
+                    duration_seconds=payload.duration_seconds,
+                    seed=payload.seed,
+                )
+            finally:
+                reference_path.unlink(missing_ok=True)
+                with generation_jobs_lock:
+                    generation_download_tokens.pop(reference_name, None)
+                with _state_connection() as connection:
+                    connection.execute("DELETE FROM generation_download_tokens WHERE filename=?", (reference_name,))
+        else:
+            output = generate_wan_video(
+                prompt=payload.prompt.strip(),
+                image_bytes=image_bytes,
+                duration_seconds=payload.duration_seconds,
+                seed=payload.seed,
+            )
         download_token = secrets.token_urlsafe(32)
         with generation_jobs_lock:
             generation_download_tokens[output.name] = (download_token, time.time() + GENERATION_DOWNLOAD_TTL_SECONDS)
@@ -487,7 +519,7 @@ def download_generated_media(
     token: Annotated[str | None, Query()] = None,
     authorization: Annotated[str | None, Header()] = None,
 ) -> FileResponse:
-    if not re.fullmatch(r"(?:image(?:-hf|-cloudflare)?-[a-f0-9]{32}\.png|video-[a-f0-9]{32}\.mp4)", filename):
+    if not re.fullmatch(r"(?:image(?:-hf|-cloudflare)?-[a-f0-9]{32}\.png|agnes-ref-[a-f0-9]{32}\.png|video-[a-f0-9]{32}\.mp4)", filename):
         raise HTTPException(status_code=404, detail="Arquivo gerado não encontrado.")
     if authorization:
         require_token(authorization)
@@ -496,7 +528,7 @@ def download_generated_media(
             grant = generation_download_tokens.get(filename)
         if not token or not grant or grant[1] < time.time() or not secrets.compare_digest(token, grant[0]):
             raise HTTPException(status_code=401, detail="Link de arquivo inválido ou expirado.")
-    media_dir = WAN_OUTPUT_DIR if filename.startswith("video-") else IMAGE_OUTPUT_DIR
+    media_dir = WAN_OUTPUT_DIR if filename.startswith(("video-", "agnes-ref-")) else IMAGE_OUTPUT_DIR
     media_path = media_dir / filename
     if not media_path.is_file():
         raise HTTPException(status_code=404, detail="Arquivo gerado não encontrado ou já removido.")
