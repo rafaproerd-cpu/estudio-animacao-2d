@@ -149,13 +149,20 @@ def huggingface_image_engine_status() -> dict[str, object]:
             "status": "dependencies_missing",
             "message": "Instale gradio_client no servidor para conectar ao Space.",
         }
+    token_configured = bool(HF_TOKEN)
     return {
         "available": True,
         "status": "configured_unverified",
         "provider": "Hugging Face ZeroGPU",
         "space_id": HF_SPACE_ID,
         "mode": HF_SPACE_MODE,
-        "message": "Space público configurado. A disponibilidade real depende da fila e da cota ZeroGPU da conta autenticada.",
+        "authentication": "token_configured" if token_configured else "anonymous",
+        "token_configured": token_configured,
+        "message": (
+            "Space configurado; token do Hugging Face detectado no servidor, mas a conexão e a geração ainda não foram testadas."
+            if token_configured
+            else "Space configurado sem token do Hugging Face. O servidor tentará acesso público, sujeito às cotas anônimas; configure HF_TOKEN no Render para usar sua conta. A geração ainda não foi testada."
+        ),
     }
 
 
