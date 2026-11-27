@@ -86,6 +86,29 @@ Referências oficiais consultadas:
 **Decisão atual (revisada em 25/11/2026):** SDXL 1.0 Base segue como candidato para imagens; Wan2.2 TI2V 5B passa a ser o principal candidato para animação image-to-video. São candidatos para teste apenas: nenhum peso foi baixado, nenhum motor foi instalado e nenhuma geração foi ativada no servidor.
 
 
+## Provedor alternativo de vídeo: Agnes Video 2.5 Flash (avaliado em 27/11/2026)
+
+A documentação oficial confirma uma API assíncrona de vídeo:
+- Criar tarefa: `POST https://apihub.agnes-ai.com/v1/videos`.
+- Consultar tarefa: `GET https://apihub.agnes-ai.com/agnesapi?video_id=<VIDEO_ID>&model_name=agnes-video-2.5-flash`.
+- Modelo Flash: `agnes-video-2.5-flash`; somente 720P; duração de 4 a 12 segundos; até 5 imagens de referência e 3 áudios; não aceita vídeo de referência.
+- Para imagem de referência, a API exige URLs publicamente acessíveis em `images[]` (modo reference) ou `first_frame`/`last_frame` (modo keyframe). O backend atual recebe imagem Base64 privada do app; será necessário criar um link temporário, aleatório, somente leitura e com expiração para disponibilizar a imagem ao provedor sem expor arquivos do usuário.
+- A resposta é assíncrona; salvar `video_id`, consultar até `completed`/`failed` e baixar o MP4 de `url`.
+- A documentação lista US$ 0,025/segundo como preço normal e US$ 0/segundo como preço promocional para Angel User Trial. A promoção é temporária e pode mudar. Não presumir que toda conta está elegível nem ativar chamadas automaticamente.
+
+**Travas obrigatórias antes de produção:**
+1. O provedor deve permanecer desativado por padrão e sem chamadas de rede até haver chave configurada no servidor e ativação explícita.
+2. Antes de ativar, confirmar no painel da conta se o preço aplicável é realmente US$ 0; caso contrário, exigir autorização expressa do usuário para qualquer cobrança. Nunca trocar silenciosamente para o modelo pago `agnes-video-2.5`.
+3. Nunca enviar chave ao app, ao GitHub, aos logs ou ao chat.
+4. Implementar URL temporária para a imagem de referência, com token aleatório, expiração curta e validação de PNG/JPEG; não publicar os arquivos por nome previsível.
+5. Testar criação, polling, download, falhas, timeout, expiração do link e limite de duração antes de anunciar o motor como pronto.
+
+**Estado:** documentação oficial consultada; integração ainda não implementada nem ativada. O Wan 2.2/Hugging Face continua como motor atual, sujeito à cota ZeroGPU. A API Agnes é uma alternativa comercial/promocional, não uma solução comprovadamente gratuita e ilimitada.
+
+Referência oficial: https://wiki.agnes-ai.com/en/docs/agnes-video-25-flash
+
+---
+
 ## Diagnóstico de hardware no backend
 
 - [x] O endpoint autenticado `GET /v1/capabilities` detecta GPUs NVIDIA via `nvidia-smi` e informa nome, memória total, memória livre e versão do driver reportadas.
