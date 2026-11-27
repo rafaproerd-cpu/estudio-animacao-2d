@@ -17,6 +17,8 @@ const ttsVoiceLabel = (voice: string) => {
   if (voice === "pt_BR-cadu-medium") return "Cadu · masculino";
   if (voice === "pt_BR-faber-medium") return "Faber · masculino";
   if (voice === "pt_BR-razo-medium") return "Razo · masculino";
+  if (voice === "ptbr-tiny-f") return "Tiny Voca · feminino (PT-BR)";
+  if (voice === "ptbr-tiny-m") return "Tiny Voca · masculino (PT-BR)";
   return voice;
 };
 
