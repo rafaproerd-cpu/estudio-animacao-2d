@@ -22,7 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from image_engine import IMAGE_OUTPUT_DIR, active_image_engine_status, generate_image, image_engine_status, huggingface_image_engine_status
+from image_engine import IMAGE_OUTPUT_DIR, active_image_engine_status, diagnose_huggingface_image_space, generate_image, image_engine_status, huggingface_image_engine_status
 from video_engine import WAN_OUTPUT_DIR, generate_wan_video, validate_mp4_output, validate_reference_image, video_engine_status
 from story_engine import generate_story_plan, story_engine_status
 
@@ -390,6 +390,13 @@ def generation_capabilities(authorization: Annotated[str | None, Header()] = Non
             },
         },
     }
+
+
+@app.get("/v1/diagnostics/image-provider")
+def diagnose_image_provider(authorization: Annotated[str | None, Header()] = None) -> dict[str, object]:
+    """Checks remote image provider connectivity and API metadata without generating an image."""
+    require_token(authorization)
+    return diagnose_huggingface_image_space()
 
 
 @app.post("/v1/stories/generate")
