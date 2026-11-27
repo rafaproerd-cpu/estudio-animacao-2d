@@ -13,6 +13,12 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import { createStoryPlan, type Genre, type StoryPlan } from "./src/engine/storyEngine";
 import { HttpImageGenerationProvider, HttpVideoGenerationProvider } from "./src/engine/providers/httpGenerationProvider";
 
+const ttsVoiceLabel = (voice: string) => {
+  if (voice === "pt_BR-cadu-medium") return "Cadu · português BR";
+  if (voice === "pt_BR-faber-medium") return "Faber · português BR";
+  return voice;
+};
+
 type Scene = { title: string; description: string; dialogue: string; imagePrompt: string; videoPrompt: string; shot: string; camera: string; lighting: string; voiceId?: string; imageUri?: string; videoUri?: string; videoRemoteUri?: string; audioUri?: string };
 type Project = {
   id: string;
@@ -1247,7 +1253,7 @@ export default function App() {
               <TextInput value={scene.description} onChangeText={value => updateScene(scene.title, "description", value)} multiline textAlignVertical="top" placeholder="Descreva o que acontece nesta cena..." placeholderTextColor="#777789" style={styles.sceneInput} />
               <Text style={styles.label}>FALA / DIÁLOGO</Text>
               <TextInput value={scene.dialogue} onChangeText={value => updateScene(scene.title, "dialogue", value)} multiline textAlignVertical="top" placeholder="Escreva a fala do personagem..." placeholderTextColor="#777789" style={styles.sceneInput} />
-              {ttsVoices.length ? <><Text style={styles.label}>VOZ DESTA CENA</Text><View style={styles.chips}>{ttsVoices.map(voice => <TouchableOpacity key={voice} style={[styles.chip, (scene.voiceId || selectedTtsVoice) === voice && styles.chipActive]} onPress={() => updateSceneVoice(scene.title, voice)}><Text style={[styles.chipText, (scene.voiceId || selectedTtsVoice) === voice && styles.chipTextActive]}>{voice}</Text></TouchableOpacity>)}</View></> : null}
+              {ttsVoices.length ? <><Text style={styles.label}>VOZ DESTA CENA</Text><View style={styles.chips}>{ttsVoices.map(voice => <TouchableOpacity key={voice} style={[styles.chip, (scene.voiceId || selectedTtsVoice) === voice && styles.chipActive]} onPress={() => updateSceneVoice(scene.title, voice)}><Text style={[styles.chipText, (scene.voiceId || selectedTtsVoice) === voice && styles.chipTextActive]}>{ttsVoiceLabel(voice)}</Text></TouchableOpacity>)}</View></> : null}
               <TouchableOpacity style={styles.primary} onPress={() => generateSceneNarration(scene)} disabled={!!busyScene || !!batchProgress || !ttsVoices.length}>
                 <Text style={styles.primaryText}>{busyScene === "tts:" + scene.title ? "GERANDO ÁUDIO DESTA CENA…" : scene.audioUri ? "GERAR ÁUDIO DESTA CENA NOVAMENTE" : "GERAR ÁUDIO DESTA CENA"}</Text><Text style={styles.arrow}>♫</Text>
               </TouchableOpacity>
@@ -1282,7 +1288,7 @@ export default function App() {
               <Text style={styles.note}>Carregue as vozes instaladas no servidor para gerar uma narração por cena. Você também pode usar um arquivo de áudio próprio.</Text>
               <TouchableOpacity style={styles.secondary} onPress={loadTtsVoices} disabled={!!busyScene || !!batchProgress || ttsLoading}><Text style={styles.secondaryText}>{ttsLoading ? "CARREGANDO VOZES…" : "CARREGAR VOZES DISPONÍVEIS"}</Text></TouchableOpacity>
               {ttsFeedback ? <Text accessibilityLiveRegion="polite" style={styles.note}>{ttsFeedback}</Text> : null}
-              {ttsVoices.length ? <View style={styles.chips}>{ttsVoices.map(voice => <TouchableOpacity key={voice} style={[styles.chip, selectedTtsVoice === voice && styles.chipActive]} onPress={() => selectProjectVoice(voice)}><Text style={[styles.chipText, selectedTtsVoice === voice && styles.chipTextActive]}>{voice}</Text></TouchableOpacity>)}</View> : null}
+              {ttsVoices.length ? <View style={styles.chips}>{ttsVoices.map(voice => <TouchableOpacity key={voice} style={[styles.chip, selectedTtsVoice === voice && styles.chipActive]} onPress={() => selectProjectVoice(voice)}><Text style={[styles.chipText, selectedTtsVoice === voice && styles.chipTextActive]}>{ttsVoiceLabel(voice)}</Text></TouchableOpacity>)}</View> : null}
               <TouchableOpacity style={styles.primary} onPress={generateAiNarration} disabled={!!busyScene || !!batchProgress || !ttsVoices.length}>
                 <Text style={styles.primaryText}>{busyScene === "tts:project" ? "GERANDO NARRAÇÃO…" : "GERAR NARRAÇÃO COMPLETA (TODAS AS CENAS)"}</Text><Text style={styles.arrow}>♫</Text>
               </TouchableOpacity>
