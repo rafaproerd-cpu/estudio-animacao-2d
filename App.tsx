@@ -198,6 +198,7 @@ export default function App() {
   const [creatingStory, setCreatingStory] = useState(false);
   const [storyFeedback, setStoryFeedback] = useState("");
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
+  const [imageFeedback, setImageFeedback] = useState("");
   const [ttsVoices, setTtsVoices] = useState<string[]>([]);
   const [selectedTtsVoice, setSelectedTtsVoice] = useState("");
 
@@ -461,16 +462,18 @@ export default function App() {
     if (!connection) return;
     const pendingScenes = selected.scenes.filter(scene => !scene.imageUri);
     if (!pendingScenes.length) {
-      Alert.alert("Imagens prontas", "Todas as cenas já possuem imagem. Você pode seguir para a animação.");
+      setImageFeedback("Todas as cenas já possuem imagem. Você pode seguir para a animação.");
       return;
     }
     let workingProject = selected;
     let completed = 0;
+    setImageFeedback(`Solicitação recebida. Preparando ${pendingScenes.length} imagens no servidor...`);
     setBatchProgress({ current: 0, total: pendingScenes.length });
     try {
       const provider = new HttpImageGenerationProvider({ baseUrl: connection.baseUrl, token: connection.token });
       for (const scene of pendingScenes) {
         setBusyScene(scene.title);
+        setImageFeedback(`Gerando imagem ${completed + 1} de ${pendingScenes.length}: ${scene.title}. O motor remoto pode levar alguns minutos.`);
         const referenceScene = findCharacterReference(workingProject.scenes, scene.title);
         const referenceImageBase64 = referenceScene?.imageUri ? await imageUriToBase64(referenceScene.imageUri) : undefined;
         let result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, seed: stableProjectSeed(`${workingProject.id}:${scene.title}`), referenceImageBase64 });
@@ -491,9 +494,9 @@ export default function App() {
         setProjects(previous => previous.map(item => item.id === workingProject.id ? workingProject : item));
         setBatchProgress({ current: completed, total: pendingScenes.length });
       }
-      Alert.alert("Imagens concluídas", `${completed} imagens foram geradas. O app salvou localmente quando possível e manteve os links das demais.`);
+      setImageFeedback(`Concluído: ${completed} de ${pendingScenes.length} imagens foram geradas.`);
     } catch (error) {
-      Alert.alert("Geração interrompida", `${completed} de ${pendingScenes.length} imagens concluídas. ${error instanceof Error ? error.message : "Falha desconhecida."}`);
+      setImageFeedback(`Falha: ${completed} de ${pendingScenes.length} imagens concluídas. ${error instanceof Error ? error.message : "Falha desconhecida."}`);
     } finally {
       setBusyScene(null);
       setBatchProgress(null);
@@ -1060,9 +1063,10 @@ export default function App() {
               <Text style={styles.step}>LINHA DO TEMPO</Text>
               <Text style={styles.panelTitle}>Animação das cenas</Text>
               <Text style={styles.body}>{selected.scenes.filter(scene => !!scene.videoUri).length} de {selected.scenes.length} clipes gerados · {selected.scenes.filter(scene => !!scene.imageUri).length} imagens prontas · {selected.scenes.filter(scene => !scene.imageUri).length} imagens pendentes</Text>
-              <TouchableOpacity style={styles.secondary} onPress={generateAllSceneImages} disabled={!!busyScene || !!batchProgress}>
+              <TouchableOpacity style={styles.secondary} onPress={generateAllSceneImages} onPressIn={() => setImageFeedback("Toque recebido. Preparando a geração das imagens...")} disabled={!!busyScene || !!batchProgress}>
                 <Text style={styles.secondaryText}>GERAR TODAS AS IMAGENS</Text>
               </TouchableOpacity>
+              {imageFeedback ? <Text accessibilityLiveRegion="polite" style={styles.note}>{imageFeedback}</Text> : null}
               {batchProgress ? <View style={styles.progressPanel}>
                 <Text style={styles.progressTitle}>{busyScene?.startsWith("video:") ? "ANIMAÇÃO EM ANDAMENTO" : "GERAÇÃO DE IMAGENS EM ANDAMENTO"}</Text>
                 <Text style={styles.note}>{batchProgress.current} de {batchProgress.total} concluídas · {Math.round((batchProgress.current / Math.max(batchProgress.total, 1)) * 100)}%</Text>
