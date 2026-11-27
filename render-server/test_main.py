@@ -438,8 +438,9 @@ class RenderServerTests(unittest.TestCase):
                     main.request_image_generation(main.ImageGenerationRequest(prompt="anime cinematic scene"), BackgroundTasks(), "Bearer generation-test-token")
                 self.assertEqual(image_error.exception.status_code, 503)
                 self.assertIn("/v1/capabilities", image_error.exception.detail)
-            with self.assertRaises(HTTPException) as video_error:
-                main.request_video_generation(main.VideoGenerationRequest(prompt="anime action", imageBase64="a" * 120), BackgroundTasks(), "Bearer generation-test-token")
+            with patch.object(main, "video_engine_status", return_value={"available": False, "message": "Nenhum motor de vídeo configurado"}):
+                with self.assertRaises(HTTPException) as video_error:
+                    main.request_video_generation(main.VideoGenerationRequest(prompt="anime action", imageBase64="a" * 120), BackgroundTasks(), "Bearer generation-test-token")
             self.assertEqual(video_error.exception.status_code, 503)
             self.assertIn("/v1/capabilities", video_error.exception.detail)
         finally:
