@@ -210,8 +210,8 @@ function SceneVideoPlayer({ uri }: { uri: string }) {
 
 function NarrationAudioPlayer({ uri }: { uri: string }) {
   const player = useVideoPlayer(uri, instance => {
-    // Mantém a narração em repetição para que o usuário possa ouvi-la novamente sem regenerar.
-    instance.loop = true;
+    // A narração toca uma vez e para; os controles nativos permitem reproduzir novamente.
+    instance.loop = false;
   });
   return <VideoView player={player} style={{ width: "100%", height: 64, backgroundColor: "#171722", borderRadius: 10 }} nativeControls contentFit="contain" />;
 }
