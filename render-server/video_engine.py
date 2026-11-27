@@ -82,6 +82,9 @@ def _hf_video_status() -> dict[str, object]:
 
 
 def video_engine_status() -> dict[str, object]:
+    agnes = agnes_status()
+    if agnes["available"]:
+        return agnes
     wan = _wan_status()
     if wan["available"]:
         return wan
