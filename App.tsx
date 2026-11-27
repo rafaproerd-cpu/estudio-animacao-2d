@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert, Linking, SafeAreaView, ScrollView, Share, StatusBar, StyleSheet,
   Text, TextInput, TouchableOpacity, View, Image, Platform
@@ -210,7 +210,8 @@ function SceneVideoPlayer({ uri }: { uri: string }) {
 
 function NarrationAudioPlayer({ uri }: { uri: string }) {
   const player = useVideoPlayer(uri, instance => {
-    instance.loop = false;
+    // Mantém a narração em repetição para que o usuário possa ouvi-la novamente sem regenerar.
+    instance.loop = true;
   });
   return <VideoView player={player} style={{ width: "100%", height: 64, backgroundColor: "#171722", borderRadius: 10 }} nativeControls contentFit="contain" />;
 }
@@ -234,6 +235,8 @@ export default function App() {
   const [selectedTtsVoice, setSelectedTtsVoice] = useState("");
   const [ttsLoading, setTtsLoading] = useState(false);
   const [ttsFeedback, setTtsFeedback] = useState("");
+  const scrollViewRef = useRef<any>(null);
+  const scrollOffsetRef = useRef(0);
 
   useEffect(() => {
     Promise.all([
@@ -707,6 +710,7 @@ export default function App() {
       setShowSettings(true);
       return;
     }
+    const previousScrollOffset = scrollOffsetRef.current;
     setTtsLoading(true);
     setTtsFeedback("Conectando ao servidor de voz…");
     try {
@@ -735,6 +739,11 @@ export default function App() {
       setTtsFeedback("Não foi possível carregar as vozes: " + message);
     } finally {
       setTtsLoading(false);
+      // A lista de vozes altera a altura do conteúdo no navegador; restaura a posição
+      // para o botão continuar visível em vez de mandar a página para o topo.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => scrollViewRef.current?.scrollTo({ y: previousScrollOffset, animated: false }));
+      });
     }
   };
 
@@ -1111,7 +1120,7 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor="#101018" />
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" scrollEventThrottle={16} onScroll={event => { scrollOffsetRef.current = event.nativeEvent.contentOffset.y; }}>
         <View style={styles.header}>
           <View style={styles.logo}><Text style={styles.logoText}>✦</Text></View>
           <View style={styles.brandWrap}>
