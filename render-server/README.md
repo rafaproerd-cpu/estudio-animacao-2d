@@ -1,12 +1,12 @@
 # Servidor de montagem do Estúdio 2D
 
-Este serviço é o backend próprio do Estúdio 2D: recebe pedidos do app, executa os motores locais de imagem/vídeo quando configurados e também monta clipes em MP4. Ele deve rodar em uma máquina com recursos compatíveis e acesso HTTPS seguro.
+Este serviço é o backend próprio do Estúdio 2D: recebe pedidos do app, executa a geração remota de imagens quando configurada e também monta clipes em MP4. A imagem Docker deste repositório inclui FFmpeg, Piper e a voz pt-BR Faber medium para síntese local de narração. Recursos de vídeo com movimento real gerado por IA ainda exigem GPU e pesos Wan2.2.
 
 ## Requisitos
 
 - Python 3.10 ou superior
 - FFmpeg instalado e disponível no PATH
-- Piper instalado no servidor (opcional, para voz local) e modelos de voz `.onnx` licenciados para uso
+- Para execução fora do Docker: Piper e um modelo de voz `.onnx`. A imagem Docker deste repositório já instala Piper e baixa a voz pt-BR Faber medium.
 - Rede privada/VPN; não exponha este serviço diretamente à internet pública
 
 ## Imagem de contêiner (Docker)
@@ -56,7 +56,7 @@ O app usa o endereço HTTPS público protegido do backend. Configure `ESTUDIO_AL
 
 ## Voz por IA local (Piper)
 
-A geração de voz não usa API paga nem créditos externos: quando o Piper está instalado no mesmo servidor, o serviço pode sintetizar texto localmente. Configure `PIPER_PATH` se o executável não estiver no PATH e `PIPER_VOICES_DIR` se os modelos estiverem em outra pasta. Por padrão, os modelos `.onnx` ficam em `render-server/voices/`. Coloque nessa pasta apenas modelos Piper e arquivos de configuração correspondentes obtidos de uma fonte confiável, respeitando a licença de cada voz.
+A geração de voz não usa API paga nem créditos externos. A imagem Docker fornecida instala Piper e baixa automaticamente a voz pt-BR Faber medium para `/data/voices`. Assim, a implantação pelo Blueprint já inclui uma voz padrão em português. Em instalações manuais, instale o Piper e coloque os modelos `.onnx` e seus arquivos `.json` correspondentes na pasta indicada por `PIPER_VOICES_DIR` (por padrão, `render-server/voices/`). Configure `PIPER_PATH` se o executável não estiver no PATH e respeite a licença de cada voz.
 
 - `GET /tts/voices` lista os modelos `.onnx` disponíveis (requer Bearer token).
 - `POST /tts` recebe JSON com `text` e `voice` (nome do modelo sem `.onnx`) e devolve WAV.
