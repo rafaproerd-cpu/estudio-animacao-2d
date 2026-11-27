@@ -271,11 +271,29 @@ export default function App() {
       const video = capabilities.engines?.video;
       const audio = capabilities.engines?.audio;
       const imageAuthentication = imageRemote?.authentication === "token_configured" ? "HF autenticado" : "HF sem token";
-      const status = `Conectado · roteiro: ${story?.status || "desconhecido"} · imagem: ${image?.status || "desconhecido"} (${imageAuthentication}) · vídeo: ${video?.status || "desconhecido"} · áudio: ${audio?.status || "desconhecido"}`;
+      let imageDiagnostic = "diagnóstico remoto ainda não consultado";
+      try {
+        const diagnosticResponse = await fetch(`${url}/v1/diagnostics/image-provider`, { headers });
+        if (diagnosticResponse.ok) {
+          const diagnostic = await diagnosticResponse.json();
+          imageDiagnostic = diagnostic.connectivity === "reachable"
+            ? "Space HF acessível · endpoint confirmado"
+            : diagnostic.connectivity === "reachable_api_mismatch"
+              ? "Space HF acessível, mas endpoint incompatível"
+              : diagnostic.connectivity === "connection_failed"
+                ? `falha ao acessar Space HF: ${diagnostic.diagnostic_error || "erro não detalhado"}`
+                : diagnostic.message || diagnostic.connectivity || imageDiagnostic;
+        } else {
+          imageDiagnostic = `diagnóstico indisponível (HTTP ${diagnosticResponse.status})`;
+        }
+      } catch (diagnosticError) {
+        imageDiagnostic = "não foi possível consultar o diagnóstico do Space HF";
+      }
+      const status = `Conectado · roteiro: ${story?.status || "desconhecido"} · imagem: ${image?.status || "desconhecido"} (${imageAuthentication}) · ${imageDiagnostic} · vídeo: ${video?.status || "desconhecido"} · áudio: ${audio?.status || "desconhecido"}`;
       setConnectionStatus(status);
       Alert.alert(
         "Motor conectado",
-        `API conectada. Roteiro: ${story?.message || story?.status || "não informado"} Imagem: ${image?.message || image?.status || "não informado"} Vídeo: ${video?.message || video?.status || "não informado"} Áudio: ${audio?.message || audio?.status || "não informado"}`
+        `API conectada. Roteiro: ${story?.message || story?.status || "não informado"} Imagem: ${image?.message || image?.status || "não informado"}. Diagnóstico HF: ${imageDiagnostic}. Vídeo: ${video?.message || video?.status || "não informado"} Áudio: ${audio?.message || audio?.status || "não informado"}`
       );
     } catch (error) {
       setConnectionStatus("Falha na conexão");
