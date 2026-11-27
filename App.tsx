@@ -14,8 +14,9 @@ import { createStoryPlan, type Genre, type StoryPlan } from "./src/engine/storyE
 import { HttpImageGenerationProvider, HttpVideoGenerationProvider } from "./src/engine/providers/httpGenerationProvider";
 
 const ttsVoiceLabel = (voice: string) => {
-  if (voice === "pt_BR-cadu-medium") return "Cadu · português BR";
-  if (voice === "pt_BR-faber-medium") return "Faber · português BR";
+  if (voice === "pt_BR-cadu-medium") return "Cadu · masculino";
+  if (voice === "pt_BR-faber-medium") return "Faber · masculino";
+  if (voice === "pt_BR-razo-medium") return "Razo · masculino";
   return voice;
 };
 
