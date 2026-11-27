@@ -29,7 +29,11 @@ RUN mkdir -p /data/outputs /data/voices \
 
 COPY main.py image_engine.py video_engine.py story_engine.py ./
 RUN python -c "import main; print('Estúdio 2D render API import OK')" \
-    && piper --help >/dev/null
+    && piper --help >/dev/null \
+    && printf "Teste de voz do Estudio 2D." | piper --model /data/voices/pt_BR-faber-medium.onnx --output_file /tmp/piper-smoke.wav \
+    && test -s /tmp/piper-smoke.wav \
+    && ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 /tmp/piper-smoke.wav | grep -Eq "^[0-9]+([.][0-9]+)?$" \
+    && rm -f /tmp/piper-smoke.wav
 RUN useradd --create-home --uid 10001 app \
     && chown -R app:app /app /data
 
