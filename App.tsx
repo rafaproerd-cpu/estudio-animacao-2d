@@ -1093,14 +1093,15 @@ export default function App() {
   };
 
   const restoreVoiceSelectionScroll = (offset: number) => {
-    // A atualização do projeto recria os cartões de cena no navegador. Restaura
-    // a posição depois que o React Native Web terminar de recalcular o layout.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        scrollViewRef.current?.scrollTo({ y: offset, animated: false });
-        scrollOffsetRef.current = offset;
-      });
-    });
+    // Reaplica a posição após o React Native Web concluir a atualização
+    // dos cartões e também após o navegador recalcular o layout.
+    const restore = () => {
+      scrollViewRef.current?.scrollTo({ y: offset, animated: false });
+      scrollOffsetRef.current = offset;
+    };
+    requestAnimationFrame(() => requestAnimationFrame(restore));
+    setTimeout(restore, 120);
+    setTimeout(restore, 280);
   };
 
   const selectProjectVoice = (voiceId: string) => {
