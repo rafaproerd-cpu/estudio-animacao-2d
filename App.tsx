@@ -51,7 +51,7 @@ const RENDER_TOKEN_KEY = "@estudio2d/render-token";
 
 function showUserAlert(title: string, message: string): void {
   if (Platform.OS === "web" && typeof window !== "undefined") {
-    window.alert(title + "\\n\\n" + message);
+    window.alert(title + "\n\n" + message);
     return;
   }
   Alert.alert(title, message);
@@ -247,6 +247,7 @@ export default function App() {
   const [storyFeedback, setStoryFeedback] = useState("");
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
   const [imageFeedback, setImageFeedback] = useState("");
+  const [videoFeedback, setVideoFeedback] = useState("");
   const [ttsVoices, setTtsVoices] = useState<string[]>([]);
   const [selectedTtsVoice, setSelectedTtsVoice] = useState("");
   const [ttsLoading, setTtsLoading] = useState(false);
@@ -514,6 +515,7 @@ export default function App() {
     }
     const connection = getEngineConnection();
     if (!connection) return;
+    setVideoFeedback("Preparando a animação da cena. Aguarde...");
     setBusyScene("video:" + scene.title);
     try {
       const imageBase64 = await imageUriToBase64(scene.imageUri);
@@ -523,9 +525,13 @@ export default function App() {
       const localVideoUri = await persistGeneratedVideo(result.outputUri, selected.id, scene.title);
       const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, videoUri: localVideoUri, videoRemoteUri: result.outputUri } : item) };
       saveUpdatedProject(updated);
+      setVideoFeedback("Concluído: o clipe desta cena foi gerado e salvo no projeto.");
       showUserAlert("Clipe concluído", (result.message || "O clipe foi criado pelo motor do Estúdio 2D.") + " Você pode baixá-lo para o iPhone.");
     } catch (error) {
-      showUserAlert("Erro na geração do vídeo", error instanceof Error ? error.message : "Não foi possível gerar o clipe.");
+      const details = error instanceof Error ? error.message : "Falha desconhecida ao gerar o clipe.";
+      const message = "Não foi possível animar esta cena. " + details + " Verifique a conexão do motor e tente novamente.";
+      setVideoFeedback("Falha na animação: " + details);
+      showUserAlert("Não foi possível animar", message);
     } finally {
       setBusyScene(null);
     }
@@ -1299,6 +1305,7 @@ export default function App() {
               {scene.imageUri ? <><View style={styles.statusPill}><Text style={styles.statusReady}>✓ IMAGEM PRONTA</Text></View><Image source={{ uri: scene.imageUri }} style={styles.generatedImage} resizeMode="cover" /></> : <View style={styles.imagePlaceholder}><Text style={styles.note}>{busyScene === scene.title ? "GERANDO IMAGEM… aguarde a conclusão" : "IMAGEM PENDENTE · esta cena ainda não foi gerada"}</Text></View>}
               <TouchableOpacity style={styles.secondary} onPress={() => generateSceneImage(scene)} disabled={!!busyScene || !!batchProgress}><Text style={styles.secondaryText}>{busyScene === scene.title ? "GERANDO IMAGEM…" : "GERAR IMAGEM DESTA CENA"}</Text></TouchableOpacity>
               <TouchableOpacity style={styles.primary} onPress={() => generateSceneVideo(scene)} disabled={!!busyScene || !!batchProgress || !scene.imageUri}><Text style={styles.primaryText}>{busyScene === "video:" + scene.title ? "ANIMANDO CENA…" : "ANIMAR ESTA CENA"}</Text><Text style={styles.arrow}>▶</Text></TouchableOpacity>
+              {videoFeedback ? <Text accessibilityLiveRegion="polite" style={styles.note}>{videoFeedback}</Text> : null}
               {scene.videoUri ? <><SceneVideoPlayer uri={scene.videoUri} /><TouchableOpacity style={styles.secondary} disabled={busyScene === `download:${scene.title}`} onPress={() => downloadSceneVideo(scene)}><Text style={styles.secondaryText}>{busyScene === `download:${scene.title}` ? "SALVANDO NO IPHONE…" : scene.videoUri.startsWith("file://") ? "VÍDEO SALVO OFFLINE" : "BAIXAR VÍDEO PARA O IPHONE"}</Text></TouchableOpacity><TouchableOpacity style={styles.secondary} onPress={() => openSceneVideo(scene.videoRemoteUri || scene.videoUri!)}><Text style={styles.secondaryText}>ABRIR VÍDEO NO NAVEGADOR</Text></TouchableOpacity>{scene.videoUri.startsWith("file://") ? <TouchableOpacity style={styles.secondary} onPress={() => exportSceneVideo(scene)}><Text style={styles.secondaryText}>EXPORTAR PARA ARQUIVOS / COMPARTILHAR</Text></TouchableOpacity> : null}</> : null}
               <Text style={styles.label}>AÇÃO DA CENA</Text>
               <TextInput value={scene.description} onChangeText={value => updateScene(scene.title, "description", value)} multiline textAlignVertical="top" placeholder="Descreva o que acontece nesta cena..." placeholderTextColor="#777789" style={styles.sceneInput} />
