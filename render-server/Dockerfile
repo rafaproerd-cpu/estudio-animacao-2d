@@ -33,7 +33,15 @@ RUN mkdir -p /data/outputs /data/voices \
       https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/cadu/medium/pt_BR-cadu-medium.onnx.json \
       -o /data/voices/pt_BR-cadu-medium.onnx.json \
     && test -s /data/voices/pt_BR-cadu-medium.onnx \
-    && test -s /data/voices/pt_BR-cadu-medium.onnx.json
+    && test -s /data/voices/pt_BR-cadu-medium.onnx.json \
+    && curl -fL --retry 3 --retry-delay 2 \
+      https://huggingface.co/Lucasllfs/Razo-piper-voice/resolve/main/pt-BR-razo-medium.onnx \
+      -o /data/voices/pt_BR-razo-medium.onnx \
+    && curl -fL --retry 3 --retry-delay 2 \
+      https://huggingface.co/Lucasllfs/Razo-piper-voice/resolve/main/config.json \
+      -o /data/voices/pt_BR-razo-medium.onnx.json \
+    && test -s /data/voices/pt_BR-razo-medium.onnx \
+    && test -s /data/voices/pt_BR-razo-medium.onnx.json
 
 COPY main.py image_engine.py video_engine.py story_engine.py ./
 RUN python -c "import main; print('Estúdio 2D render API import OK')" \
@@ -43,7 +51,9 @@ RUN python -c "import main; print('Estúdio 2D render API import OK')" \
     && ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 /tmp/piper-smoke.wav | grep -Eq "^[0-9]+([.][0-9]+)?$" \
     && printf "Esta é uma segunda voz brasileira para testar a pronúncia." | piper --model /data/voices/pt_BR-cadu-medium.onnx --output_file /tmp/piper-cadu-smoke.wav \
     && test -s /tmp/piper-cadu-smoke.wav \
-    && rm -f /tmp/piper-smoke.wav /tmp/piper-cadu-smoke.wav
+    && printf "Olá! Esta é a voz Razo, uma nova opção masculina brasileira." | piper --model /data/voices/pt_BR-razo-medium.onnx --output_file /tmp/piper-razo-smoke.wav \
+    && test -s /tmp/piper-razo-smoke.wav \
+    && rm -f /tmp/piper-smoke.wav /tmp/piper-cadu-smoke.wav /tmp/piper-razo-smoke.wav
 RUN useradd --create-home --uid 10001 app \
     && chown -R app:app /app /data
 
