@@ -754,7 +754,7 @@ export default function App() {
       const response = await fetch(baseUrl + "/tts", {
         method: "POST",
         headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voice, duration_seconds: sceneClipDurationSeconds(selected) }),
+        body: JSON.stringify({ text, voice, duration_seconds: sceneClipDurationSeconds(selected), length_scale: 1.18 }),
       });
       const payload = await response.json().catch(() => ({} as { detail?: string; download_url?: string }));
       if (!response.ok || !payload.download_url) throw new Error(payload.detail || "O servidor não conseguiu gerar o áudio desta cena.");
@@ -778,7 +778,7 @@ export default function App() {
   const generateAiNarration = async () => {
     if (!selected) return;
     const sceneDuration = sceneClipDurationSeconds(selected);
-    const segments = selected.scenes.map(scene => ({ text: (scene.dialogue || "").trim(), voice: scene.voiceId || selectedTtsVoice, duration_seconds: sceneDuration }));
+    const segments = selected.scenes.map(scene => ({ text: (scene.dialogue || "").trim(), voice: scene.voiceId || selectedTtsVoice, duration_seconds: sceneDuration, length_scale: 1.18 }));
     if (!segments.some(segment => segment.text)) { Alert.alert("Roteiro sem diálogos", "Adicione pelo menos uma fala às cenas antes de gerar a narração."); return; }
     if (!selectedTtsVoice) { Alert.alert("Escolha uma voz", "Atualize a lista e selecione uma voz Piper disponível."); return; }
     let baseUrl = (engineConfig.renderBaseUrl || "").trim();
