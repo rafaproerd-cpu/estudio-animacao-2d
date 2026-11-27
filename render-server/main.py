@@ -283,6 +283,7 @@ class TTSRequest(BaseModel):
     text: str
     voice: str
     duration_seconds: float = 4.0
+    length_scale: float = Field(default=1.18, ge=0.8, le=2.0)
 
 
 class TTSResponse(BaseModel):
@@ -626,7 +627,7 @@ def generate_tts(payload: TTSRequest, authorization: Annotated[str | None, Heade
     output_file = OUTPUT_DIR / ("tts-" + tts_id + ".wav")
     try:
         result = subprocess.run(
-            [executable, "--model", str(model), "--output_file", str(output_file)],
+            [executable, "--model", str(model), "--length_scale", str(payload.length_scale), "--output_file", str(output_file)],
             input=text, capture_output=True, text=True, timeout=180, check=False,
         )
     except subprocess.TimeoutExpired as error:
@@ -667,7 +668,7 @@ def generate_tts_batch(payload: TTSBatchRequest, authorization: Annotated[str | 
             audio_file = temporary_dir / ("segment-" + str(index).zfill(3) + ".wav")
             if segment.text.strip():
                 model = PIPER_VOICES_DIR / (segment.voice.strip() + ".onnx")
-                result = subprocess.run([executable, "--model", str(model), "--output_file", str(audio_file)], input=segment.text.strip(), capture_output=True, text=True, timeout=180, check=False)
+                result = subprocess.run([executable, "--model", str(model), "--length_scale", str(segment.length_scale), "--output_file", str(audio_file)], input=segment.text.strip(), capture_output=True, text=True, timeout=180, check=False)
                 if result.returncode != 0 or not audio_file.is_file() or audio_file.stat().st_size == 0:
                     detail = (result.stderr or "Falha desconhecida no Piper")[-1200:]
                     raise HTTPException(status_code=422, detail="Falha ao gerar fala " + str(index + 1) + ": " + detail)
@@ -679,7 +680,8 @@ def generate_tts_batch(payload: TTSBatchRequest, authorization: Annotated[str | 
                     speech_duration = segment.duration_seconds
                 if speech_duration > segment.duration_seconds * 2.0:
                     raise HTTPException(status_code=422, detail="A fala " + str(index + 1) + " é longa demais para a duração desta cena. Encurte o diálogo.")
-                tempo = min(2.0, max(1.0, speech_duration / segment.duration_seconds))
+                # Evita acelerar agressivamente a fala para caber na cena; no máximo 15% mais rápido.
+                tempo = min(1.15, max(1.0, speech_duration / segment.duration_seconds))
                 audio_filter = f"aresample=22050,atempo={tempo:.4f},apad,atrim=duration={segment.duration_seconds:.3f},aformat=sample_fmts=s16:channel_layouts=mono"
                 fitted_file = temporary_dir / ("fitted-" + str(index).zfill(3) + ".wav")
                 run_ffmpeg(["-i", str(audio_file), "-af", audio_filter, "-ar", "22050", "-ac", "1", str(fitted_file)])
