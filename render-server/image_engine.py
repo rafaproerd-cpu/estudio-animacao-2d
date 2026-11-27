@@ -126,7 +126,7 @@ def generate_sdxl_image(
 # The token is read only by this server and must never be sent to the mobile app.
 # Default to a public community ZeroGPU Space so a new free account does not
 # need to host its own Space. The caller's HF token is used only on this server.
-HF_SPACE_ID = os.getenv("HF_SPACE_ID", "akhaliq/Z-Image-Turbo").strip()
+HF_SPACE_ID = os.getenv("HF_SPACE_ID", "mrfakename/Z-Image-Turbo").strip()
 HF_SPACE_MODE = os.getenv("HF_SPACE_MODE", "public_zimage").strip().lower()
 HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
 
