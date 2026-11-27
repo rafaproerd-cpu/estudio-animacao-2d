@@ -184,6 +184,13 @@ function SceneVideoPlayer({ uri }: { uri: string }) {
   return <VideoView player={player} style={styles.videoPlayer} nativeControls contentFit="contain" />;
 }
 
+function NarrationAudioPlayer({ uri }: { uri: string }) {
+  const player = useVideoPlayer(uri, instance => {
+    instance.loop = false;
+  });
+  return <VideoView player={player} style={{ width: "100%", height: 64, backgroundColor: "#171722", borderRadius: 10 }} nativeControls contentFit="contain" />;
+}
+
 export default function App() {
   const [idea, setIdea] = useState("");
   const [genre, setGenre] = useState("Aventura");
@@ -734,9 +741,12 @@ export default function App() {
       const download = await FileSystem.downloadAsync(audioUrl, destination, { headers: { Authorization: "Bearer " + token } });
       if (download.status < 200 || download.status >= 300) throw new Error("A voz foi gerada, mas o download do WAV falhou (HTTP " + download.status + ").");
       saveUpdatedProject({ ...selected, narrationUri: download.uri, finalVideoUri: undefined, finalVideoRemoteUri: undefined });
-      Alert.alert("Narração gerada", "A voz foi criada localmente pelo Piper e adicionada ao projeto.");
+      setTtsFeedback("Narração gerada e salva! Use o player abaixo para ouvir.");
+      Alert.alert("Narração gerada", "A voz foi criada e adicionada ao projeto. O player está na seção Áudio do projeto.");
     } catch (error) {
-      Alert.alert("Falha na geração de voz", error instanceof Error ? error.message : "Não foi possível gerar a narração.");
+      const message = error instanceof Error ? error.message : "Não foi possível gerar a narração.";
+      setTtsFeedback("Falha na geração: " + message);
+      Alert.alert("Falha na geração de voz", message);
     } finally {
       setBusyScene(null);
     }
@@ -1187,7 +1197,7 @@ export default function App() {
                 <Text style={styles.primaryText}>{busyScene === "tts:project" ? "GERANDO NARRAÇÃO…" : "GERAR NARRAÇÃO COM IA"}</Text><Text style={styles.arrow}>♫</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.secondary} onPress={() => pickProjectAudio("narrationUri")} disabled={!!busyScene || !!batchProgress}><Text style={styles.secondaryText}>{selected.narrationUri ? "NARRAÇÃO SELECIONADA · " + selected.narrationUri.split("/").pop() : "ESCOLHER NARRAÇÃO"}</Text></TouchableOpacity>
-              {selected.narrationUri ? <TouchableOpacity style={styles.secondary} onPress={() => saveUpdatedProject({ ...selected, narrationUri: undefined, finalVideoUri: undefined, finalVideoRemoteUri: undefined })}><Text style={styles.secondaryText}>REMOVER NARRAÇÃO</Text></TouchableOpacity> : null}
+              {selected.narrationUri ? <><Text style={styles.label}>OUVIR NARRAÇÃO GERADA</Text><NarrationAudioPlayer uri={selected.narrationUri} /><TouchableOpacity style={styles.secondary} onPress={() => saveUpdatedProject({ ...selected, narrationUri: undefined, finalVideoUri: undefined, finalVideoRemoteUri: undefined })}><Text style={styles.secondaryText}>REMOVER NARRAÇÃO</Text></TouchableOpacity></> : null}
               <TouchableOpacity style={styles.secondary} onPress={() => pickProjectAudio("musicUri")} disabled={!!busyScene || !!batchProgress}><Text style={styles.secondaryText}>{selected.musicUri ? "MÚSICA SELECIONADA · " + selected.musicUri.split("/").pop() : "ESCOLHER MÚSICA DE FUNDO"}</Text></TouchableOpacity>
               {selected.musicUri ? <TouchableOpacity style={styles.secondary} onPress={() => saveUpdatedProject({ ...selected, musicUri: undefined, finalVideoUri: undefined, finalVideoRemoteUri: undefined })}><Text style={styles.secondaryText}>REMOVER MÚSICA</Text></TouchableOpacity> : null}
               <TouchableOpacity style={styles.primary} onPress={renderFinalVideo} disabled={!!busyScene || !!batchProgress || selected.scenes.some(scene => !scene.videoUri)}>
