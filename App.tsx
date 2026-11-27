@@ -1092,9 +1092,28 @@ export default function App() {
     saveUpdatedProject(updated);
   };
 
+  const restoreVoiceSelectionScroll = (offset: number) => {
+    // A atualização do projeto recria os cartões de cena no navegador. Restaura
+    // a posição depois que o React Native Web terminar de recalcular o layout.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollViewRef.current?.scrollTo({ y: offset, animated: false });
+        scrollOffsetRef.current = offset;
+      });
+    });
+  };
+
+  const selectProjectVoice = (voiceId: string) => {
+    const offset = scrollOffsetRef.current;
+    setSelectedTtsVoice(voiceId);
+    restoreVoiceSelectionScroll(offset);
+  };
+
   const updateSceneVoice = (sceneTitle: string, voiceId: string) => {
     if (!selected) return;
+    const offset = scrollOffsetRef.current;
     saveUpdatedProject({ ...selected, scenes: selected.scenes.map(scene => scene.title === sceneTitle ? { ...scene, voiceId } : scene) });
+    restoreVoiceSelectionScroll(offset);
   };
 
   const updateScene = (sceneTitle: string, field: "description" | "dialogue" | "imagePrompt" | "videoPrompt", value: string) => {
@@ -1262,7 +1281,7 @@ export default function App() {
               <Text style={styles.note}>Carregue as vozes instaladas no servidor para gerar uma narração por cena. Você também pode usar um arquivo de áudio próprio.</Text>
               <TouchableOpacity style={styles.secondary} onPress={loadTtsVoices} disabled={!!busyScene || !!batchProgress || ttsLoading}><Text style={styles.secondaryText}>{ttsLoading ? "CARREGANDO VOZES…" : "CARREGAR VOZES DISPONÍVEIS"}</Text></TouchableOpacity>
               {ttsFeedback ? <Text accessibilityLiveRegion="polite" style={styles.note}>{ttsFeedback}</Text> : null}
-              {ttsVoices.length ? <View style={styles.chips}>{ttsVoices.map(voice => <TouchableOpacity key={voice} style={[styles.chip, selectedTtsVoice === voice && styles.chipActive]} onPress={() => setSelectedTtsVoice(voice)}><Text style={[styles.chipText, selectedTtsVoice === voice && styles.chipTextActive]}>{voice}</Text></TouchableOpacity>)}</View> : null}
+              {ttsVoices.length ? <View style={styles.chips}>{ttsVoices.map(voice => <TouchableOpacity key={voice} style={[styles.chip, selectedTtsVoice === voice && styles.chipActive]} onPress={() => selectProjectVoice(voice)}><Text style={[styles.chipText, selectedTtsVoice === voice && styles.chipTextActive]}>{voice}</Text></TouchableOpacity>)}</View> : null}
               <TouchableOpacity style={styles.primary} onPress={generateAiNarration} disabled={!!busyScene || !!batchProgress || !ttsVoices.length}>
                 <Text style={styles.primaryText}>{busyScene === "tts:project" ? "GERANDO NARRAÇÃO…" : "GERAR NARRAÇÃO COMPLETA (TODAS AS CENAS)"}</Text><Text style={styles.arrow}>♫</Text>
               </TouchableOpacity>
