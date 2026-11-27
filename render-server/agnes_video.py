@@ -25,13 +25,27 @@ def agnes_status() -> dict[str, object]:
             "model": "agnes-video-2.5-flash",
             "message": "Agnes AI ainda não está conectado: falta configurar AGNES_API_KEY no servidor.",
         }
+
+    # Fail closed: never submit a video task until the account's $0 access
+    # has been checked in the Agnes console and explicitly confirmed by the owner.
+    free_access_confirmed = os.getenv("AGNES_FREE_ACCESS_CONFIRMED", "").strip().lower() == "true"
+    if not free_access_confirmed:
+        return {
+            "available": False,
+            "status": "agnes_free_access_unconfirmed",
+            "provider": "Agnes AI",
+            "model": "agnes-video-2.5-flash",
+            "resolution": "720P",
+            "message": "Chave Agnes configurada, mas a geração está bloqueada até confirmar no painel da Agnes que o modelo Flash aparece com custo de US$ 0. Nenhuma solicitação será enviada.",
+        }
+
     return {
         "available": True,
         "status": "agnes_configured_unverified",
         "provider": "Agnes AI",
         "model": "agnes-video-2.5-flash",
         "resolution": "720P",
-        "message": "Agnes AI configurado. A disponibilidade, a cota e a cobrança dependem da conta e precisam ser confirmadas na primeira geração.",
+        "message": "Acesso gratuito ao Agnes Flash confirmado pelo responsável; usando somente o modelo 720P.",
     }
 
 
