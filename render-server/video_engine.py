@@ -248,7 +248,15 @@ def generate_wan_video(prompt: str, image_bytes: bytes, duration_seconds: float,
     if status["status"] == "ready_motion_only":
         return _generate_camera_motion_video(image_bytes, duration_seconds)
     if status["status"] == "remote_space_ready":
-        return _generate_huggingface_video(prompt, image_bytes, duration_seconds, seed)
+        try:
+            return _generate_huggingface_video(prompt, image_bytes, duration_seconds, seed)
+        except RuntimeError as error:
+            detail = str(error).lower()
+            # ZeroGPU free quota can be exhausted. Keep the editor usable with
+            # a local FFmpeg camera-motion MP4 instead of failing the whole job.
+            if "exceeded your zerogpu runs limit" in detail and shutil.which(FFMPEG):
+                return _generate_camera_motion_video(image_bytes, duration_seconds)
+            raise
 
     from PIL import Image
     import io
