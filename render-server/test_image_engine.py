@@ -158,6 +158,55 @@ class HuggingFaceImageEngineTests(unittest.TestCase):
             image_engine.IMAGE_OUTPUT_DIR = original_output
 
 
+    def test_public_zimage_uses_fixed_seed_and_text_only_api_arguments(self):
+        original_values = {
+            "HF_SPACE_ID": image_engine.HF_SPACE_ID,
+            "HF_SPACE_MODE": image_engine.HF_SPACE_MODE,
+            "HF_TOKEN": image_engine.HF_TOKEN,
+            "IMAGE_OUTPUT_DIR": image_engine.IMAGE_OUTPUT_DIR,
+        }
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                source = root / "source.png"
+                Image.new("RGB", (32, 24), (20, 40, 60)).save(source, format="PNG")
+                image_engine.HF_SPACE_ID = "mrfakename/Z-Image-Turbo"
+                image_engine.HF_SPACE_MODE = "public_zimage"
+                image_engine.HF_TOKEN = ""
+                image_engine.IMAGE_OUTPUT_DIR = root / "outputs"
+
+                class FakeClient:
+                    received = None
+                    def __init__(self, space_id, **kwargs):
+                        self.space_id = space_id
+                        self.kwargs = kwargs
+                    def predict(self, *args, **kwargs):
+                        self.__class__.received = (args, kwargs)
+                        return ({"path": str(source)}, 123)
+
+                fake_module = types.SimpleNamespace(Client=FakeClient)
+                with patch.dict(sys.modules, {"gradio_client": fake_module}), patch.object(
+                    image_engine,
+                    "huggingface_image_engine_status",
+                    return_value={"available": True, "status": "configured_unverified"},
+                ):
+                    output = image_engine.generate_huggingface_image(
+                        prompt="cinematic anime scene",
+                        width=768,
+                        height=432,
+                        seed=9876,
+                        reference_image_bytes=b"ignored-by-text-to-image-space",
+                    )
+
+                args, kwargs = FakeClient.received
+                self.assertEqual(args, ("cinematic anime scene", 432, 768, 9, 9876, False))
+                self.assertEqual(kwargs, {"api_name": "/generate_image"})
+                self.assertTrue(output.is_file())
+        finally:
+            for key, value in original_values.items():
+                setattr(image_engine, key, value)
+
+
 class HuggingFaceConnectivityDiagnosticTests(unittest.TestCase):
     def test_diagnostic_confirms_expected_api_without_running_inference(self):
         original_values = {
