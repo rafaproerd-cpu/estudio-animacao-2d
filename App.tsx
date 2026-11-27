@@ -150,6 +150,30 @@ function estimatedGeneratedDurationSeconds(project: Project): number {
   return sceneClipDurationSeconds(project) * project.scenes.length;
 }
 
+async function downloadGeneratedAudio(audioUrl: string, token: string, destination: string): Promise<string> {
+  if (Platform.OS === "web") {
+    // No navegador, Expo FileSystem.downloadAsync não é confiável. Baixa com fetch
+    // autenticado e grava como data URL para continuar disponível no projeto salvo.
+    const response = await fetch(audioUrl, { headers: { Authorization: "Bearer " + token } });
+    if (!response.ok) throw new Error("O servidor não entregou o áudio (HTTP " + response.status + ").");
+    const blob = await response.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("O navegador não conseguiu salvar o áudio recebido."));
+      reader.onload = () => typeof reader.result === "string"
+        ? resolve(reader.result)
+        : reject(new Error("Formato de áudio recebido inválido."));
+      reader.readAsDataURL(blob);
+    });
+  }
+  const directory = (FileSystem.documentDirectory || "") + "project-audio/";
+  const info = await FileSystem.getInfoAsync(directory);
+  if (!info.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
+  const download = await FileSystem.downloadAsync(audioUrl, destination, { headers: { Authorization: "Bearer " + token } });
+  if (download.status < 200 || download.status >= 300) throw new Error("O download do áudio falhou (HTTP " + download.status + ").");
+  return download.uri;
+}
+
 function updateCharacterInPrompt(prompt: string, previous: string, next: string): string {
   const marker = "\nFICHA FIXA DO PERSONAGEM: ";
   const markerAt = prompt.indexOf(marker);
@@ -734,15 +758,11 @@ export default function App() {
       });
       const payload = await response.json().catch(() => ({} as { detail?: string; download_url?: string }));
       if (!response.ok || !payload.download_url) throw new Error(payload.detail || "O servidor não conseguiu gerar o áudio desta cena.");
-      const directory = (FileSystem.documentDirectory || "") + "project-audio/";
-      const info = await FileSystem.getInfoAsync(directory);
-      if (!info.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
       const safeTitle = scene.title.replace(/[^a-zA-Z0-9_-]+/g, "-").slice(0, 40);
-      const destination = directory + selected.id + "-" + safeTitle + "-" + Date.now() + ".wav";
+      const destination = (FileSystem.documentDirectory || "") + "project-audio/" + selected.id + "-" + safeTitle + "-" + Date.now() + ".wav";
       const audioUrl = baseUrl + (payload.download_url.startsWith("/") ? payload.download_url : "/" + payload.download_url);
-      const download = await FileSystem.downloadAsync(audioUrl, destination, { headers: { Authorization: "Bearer " + token } });
-      if (download.status < 200 || download.status >= 300) throw new Error("O áudio foi criado, mas o download falhou (HTTP " + download.status + ").");
-      const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, audioUri: download.uri } : item) };
+      const audioUri = await downloadGeneratedAudio(audioUrl, token, destination);
+      const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, audioUri } : item) };
       saveUpdatedProject(updated);
       setTtsFeedback("Áudio da " + scene.title + " gerado e salvo.");
       Alert.alert("Áudio gerado", "O áudio desta cena está salvo. Você pode ouvi-lo no próprio cartão da cena.");
@@ -774,14 +794,10 @@ export default function App() {
       });
       const payload = await response.json();
       if (!response.ok || !payload.download_url) throw new Error(payload.detail || "O servidor não conseguiu gerar a voz.");
-      const directory = (FileSystem.documentDirectory || "") + "project-audio/";
-      const info = await FileSystem.getInfoAsync(directory);
-      if (!info.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
-      const destination = directory + selected.id + "-ai-narration-" + Date.now() + ".wav";
+      const destination = (FileSystem.documentDirectory || "") + "project-audio/" + selected.id + "-ai-narration-" + Date.now() + ".wav";
       const audioUrl = baseUrl + (payload.download_url.startsWith("/") ? payload.download_url : "/" + payload.download_url);
-      const download = await FileSystem.downloadAsync(audioUrl, destination, { headers: { Authorization: "Bearer " + token } });
-      if (download.status < 200 || download.status >= 300) throw new Error("A voz foi gerada, mas o download do WAV falhou (HTTP " + download.status + ").");
-      saveUpdatedProject({ ...selected, narrationUri: download.uri, finalVideoUri: undefined, finalVideoRemoteUri: undefined });
+      const audioUri = await downloadGeneratedAudio(audioUrl, token, destination);
+      saveUpdatedProject({ ...selected, narrationUri: audioUri, finalVideoUri: undefined, finalVideoRemoteUri: undefined });
       setTtsFeedback("Narração gerada e salva! Use o player abaixo para ouvir.");
       Alert.alert("Narração gerada", "A voz foi criada e adicionada ao projeto. O player está na seção Áudio do projeto.");
     } catch (error) {
