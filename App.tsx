@@ -267,9 +267,11 @@ export default function App() {
       if (!capabilitiesResponse.ok) throw new Error(capabilities.detail || "Não foi possível consultar os motores.");
       const story = capabilities.engines?.story;
       const image = capabilities.engines?.image;
+      const imageRemote = capabilities.engines?.image_remote;
       const video = capabilities.engines?.video;
       const audio = capabilities.engines?.audio;
-      const status = `Conectado · roteiro: ${story?.status || "desconhecido"} · imagem: ${image?.status || "desconhecido"} · vídeo: ${video?.status || "desconhecido"} · áudio: ${audio?.status || "desconhecido"}`;
+      const imageAuthentication = imageRemote?.authentication === "token_configured" ? "HF autenticado" : "HF sem token";
+      const status = `Conectado · roteiro: ${story?.status || "desconhecido"} · imagem: ${image?.status || "desconhecido"} (${imageAuthentication}) · vídeo: ${video?.status || "desconhecido"} · áudio: ${audio?.status || "desconhecido"}`;
       setConnectionStatus(status);
       Alert.alert(
         "Motor conectado",
