@@ -1002,7 +1002,7 @@ export default function App() {
               </TouchableOpacity>
             ))}</View>
 
-            <TouchableOpacity style={styles.primary} onPress={createProject} disabled={creatingStory} activeOpacity={0.75}>
+            <TouchableOpacity style={styles.primary} onPress={createProject} onPressIn={() => setStoryFeedback("Toque recebido. Iniciando a criação do roteiro...")} disabled={creatingStory} activeOpacity={0.75} accessibilityRole="button">
               <Text style={styles.primaryText}>{creatingStory ? "GERANDO ROTEIRO... AGUARDE" : "✦  CRIAR HISTÓRIA E PREENCHER CENAS"}</Text><Text style={styles.arrow}>{creatingStory ? "…" : "→"}</Text>
             </TouchableOpacity>
             {!!storyFeedback && <Text accessibilityLiveRegion="polite" style={styles.note}>{storyFeedback}</Text>}
