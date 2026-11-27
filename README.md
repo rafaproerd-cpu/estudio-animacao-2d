@@ -18,7 +18,7 @@ A interface de criação de roteiro e cenas funciona no navegador e no aplicativ
 - **Voz:** Piper local é opcional e depende do executável e de modelos de voz licenciados.
 - **Montagem:** FFmpeg concatena clipes enviados e pode mixar narração/música; isso não substitui a geração dos clipes.
 
-Nenhuma inferência real de imagem ou vídeo foi executada ainda. A prévia GitHub Pages é somente a interface; ela não hospeda modelos nem gera mídia sozinha. Para testar imagens, ainda é necessário publicar o Space Hugging Face e configurar o backend Render com `HF_SPACE_ID` (e `HF_TOKEN` somente se o Space for privado), depois conectar a URL HTTPS e o token do Render no aplicativo.
+Nenhuma inferência real de imagem ou vídeo foi executada ainda. A prévia GitHub Pages é somente a interface; ela não hospeda modelos nem gera mídia sozinha. Para testar imagens, o backend já aponta por padrão para o Space público `mrfakename/Z-Image-Turbo`, cujo endpoint `/generate_image` foi validado no catálogo público em 27/11/2026. Portanto, não é necessário publicar um Space próprio para a primeira tentativa. O proprietário pode trocar o provedor definindo `HF_SPACE_ID` e `HF_SPACE_MODE`; `HF_TOKEN` só é necessário para autenticação quando aplicável. Ainda é necessário publicar o backend Render e conectar sua URL HTTPS e token no aplicativo.
 
 ## Modelos e requisitos
 - **Imagem:** SDXL 1.0 Base; precisa de PyTorch/CUDA e Diffusers, além de GPU compatível. O backend agora aceita uma imagem de referência PNG/JPEG em Base64 via SDXL image-to-image; o app reutiliza a primeira cena como referência para cenas seguintes. A consistência visual ainda precisa ser validada em uma inferência real.
