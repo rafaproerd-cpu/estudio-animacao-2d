@@ -31,7 +31,7 @@ Referências oficiais:
 
 ## Publicar e conectar o backend
 
-O repositório inclui um `render.yaml` para iniciar a configuração pelo Render usando **New → Blueprint** e conectando este repositório. O plano gratuito pode suspender o serviço por inatividade e usa armazenamento efêmero; não trate os arquivos gerados como permanentes. O Blueprint cria `ESTUDIO_RENDER_TOKEN` e solicita `HF_SPACE_ID` e `HF_TOKEN` como variáveis de ambiente.
+O repositório inclui um `render.yaml` para iniciar a configuração pelo Render usando **New → Blueprint** e conectando este repositório. O plano gratuito pode suspender o serviço por inatividade e usa armazenamento efêmero; não trate os arquivos gerados como permanentes. O Blueprint configura automaticamente `ESTUDIO_RENDER_TOKEN` (gerado pelo Render) e `ESTUDIO_ALLOWED_ORIGINS`. Ele **não** cria nem solicita automaticamente `HF_SPACE_ID` ou `HF_TOKEN`: essas variáveis só precisam ser adicionadas manualmente nas configurações do serviço Render se você for usar um Space privado ou o motor remoto de imagens. A publicação do Blueprint e a cópia da URL/token ainda precisam ser feitas na conta Render do proprietário.
 
 Para habilitar a geração remota de imagens:
 1. Crie um Space Gradio com ZeroGPU na sua conta Hugging Face.
