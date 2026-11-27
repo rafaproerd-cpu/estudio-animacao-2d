@@ -54,7 +54,18 @@ function isAllowedEngineUrl(value: string): boolean {
 
 async function readRenderToken(): Promise<string | null> {
   if (Platform.OS === "web") {
-    return typeof window === "undefined" ? null : window.sessionStorage.getItem(RENDER_TOKEN_KEY);
+    if (typeof window === "undefined") return null;
+    // Keep the server token across reloads and browser restarts on the same device.
+    // Migrate a token saved by older builds in sessionStorage.
+    const persistentToken = window.localStorage.getItem(RENDER_TOKEN_KEY);
+    if (persistentToken) return persistentToken;
+    const legacyToken = window.sessionStorage.getItem(RENDER_TOKEN_KEY);
+    if (legacyToken) {
+      window.localStorage.setItem(RENDER_TOKEN_KEY, legacyToken);
+      window.sessionStorage.removeItem(RENDER_TOKEN_KEY);
+      return legacyToken;
+    }
+    return null;
   }
   return SecureStore.getItemAsync(RENDER_TOKEN_KEY);
 }
@@ -62,8 +73,11 @@ async function readRenderToken(): Promise<string | null> {
 async function writeRenderToken(token: string): Promise<void> {
   if (Platform.OS === "web") {
     if (typeof window !== "undefined") {
-      if (token) window.sessionStorage.setItem(RENDER_TOKEN_KEY, token);
-      else window.sessionStorage.removeItem(RENDER_TOKEN_KEY);
+      if (token) window.localStorage.setItem(RENDER_TOKEN_KEY, token);
+      else {
+        window.localStorage.removeItem(RENDER_TOKEN_KEY);
+        window.sessionStorage.removeItem(RENDER_TOKEN_KEY);
+      }
     }
     return;
   }
