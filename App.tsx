@@ -201,6 +201,8 @@ export default function App() {
   const [imageFeedback, setImageFeedback] = useState("");
   const [ttsVoices, setTtsVoices] = useState<string[]>([]);
   const [selectedTtsVoice, setSelectedTtsVoice] = useState("");
+  const [ttsLoading, setTtsLoading] = useState(false);
+  const [ttsFeedback, setTtsFeedback] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -665,24 +667,43 @@ export default function App() {
   };
 
   const loadTtsVoices = async () => {
+    if (ttsLoading) return;
     let baseUrl = (engineConfig.renderBaseUrl || "").trim();
     while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
     const token = (engineConfig.renderToken || "").trim();
     if (!baseUrl || !token) {
-      Alert.alert("Configure a montagem", "Informe o endereço e o token do servidor nas configurações.");
+      setTtsFeedback("Configure o endereço e o token do servidor em Conectar motor.");
       setShowSettings(true);
       return;
     }
+    setTtsLoading(true);
+    setTtsFeedback("Conectando ao servidor de voz…");
     try {
-      const response = await fetch(baseUrl + "/tts/voices", { headers: { Authorization: "Bearer " + token } });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.detail || "Não foi possível listar as vozes.");
-      const voices = Array.isArray(payload.voices) ? payload.voices as string[] : [];
+      const response = await fetch(baseUrl + "/tts/voices", {
+        method: "GET",
+        headers: { Authorization: "Bearer " + token, Accept: "application/json" },
+      });
+      const raw = await response.text();
+      let payload: any = {};
+      try { payload = raw ? JSON.parse(raw) : {}; }
+      catch { throw new Error("O servidor respondeu em formato inesperado (HTTP " + response.status + ")."); }
+      if (!response.ok) {
+        const detail = typeof payload.detail === "string" ? payload.detail : "HTTP " + response.status;
+        throw new Error(detail);
+      }
+      const voices = Array.isArray(payload.voices) ? payload.voices.filter((voice: unknown) => typeof voice === "string" && voice.trim()) as string[] : [];
       setTtsVoices(voices);
-      if (voices.length && !voices.includes(selectedTtsVoice)) setSelectedTtsVoice(voices[0]);
-      if (!voices.length) Alert.alert("Nenhuma voz instalada", "Instale o Piper e adicione pelo menos um modelo .onnx na pasta de vozes do render-server.");
+      if (voices.length) {
+        if (!voices.includes(selectedTtsVoice)) setSelectedTtsVoice(voices[0]);
+        setTtsFeedback(voices.length + " voz(es) carregada(s). Escolha uma voz para gerar a narração.");
+      } else {
+        setTtsFeedback("O servidor respondeu, mas não encontrou vozes instaladas. Verifique os modelos Piper no servidor.");
+      }
     } catch (error) {
-      Alert.alert("Vozes indisponíveis", error instanceof Error ? error.message : "Verifique o servidor Piper.");
+      const message = error instanceof Error ? error.message : "Falha ao consultar o servidor Piper.";
+      setTtsFeedback("Não foi possível carregar as vozes: " + message);
+    } finally {
+      setTtsLoading(false);
     }
   };
 
@@ -1159,7 +1180,8 @@ export default function App() {
               <Text style={styles.step}>ÁUDIO DO PROJETO</Text>
               <Text style={styles.note}>Adicione uma narração e/ou música de fundo. A voz será mixada em volume normal e a música em volume reduzido.</Text>
               <Text style={styles.note}>Carregue as vozes instaladas no servidor para gerar uma narração por cena. Você também pode usar um arquivo de áudio próprio.</Text>
-              <TouchableOpacity style={styles.secondary} onPress={loadTtsVoices} disabled={!!busyScene || !!batchProgress}><Text style={styles.secondaryText}>CARREGAR VOZES DISPONÍVEIS</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.secondary} onPress={loadTtsVoices} disabled={!!busyScene || !!batchProgress || ttsLoading}><Text style={styles.secondaryText}>{ttsLoading ? "CARREGANDO VOZES…" : "CARREGAR VOZES DISPONÍVEIS"}</Text></TouchableOpacity>
+              {ttsFeedback ? <Text accessibilityLiveRegion="polite" style={styles.note}>{ttsFeedback}</Text> : null}
               {ttsVoices.length ? <View style={styles.chips}>{ttsVoices.map(voice => <TouchableOpacity key={voice} style={[styles.chip, selectedTtsVoice === voice && styles.chipActive]} onPress={() => setSelectedTtsVoice(voice)}><Text style={[styles.chipText, selectedTtsVoice === voice && styles.chipTextActive]}>{voice}</Text></TouchableOpacity>)}</View> : null}
               <TouchableOpacity style={styles.primary} onPress={generateAiNarration} disabled={!!busyScene || !!batchProgress || !ttsVoices.length}>
                 <Text style={styles.primaryText}>{busyScene === "tts:project" ? "GERANDO NARRAÇÃO…" : "GERAR NARRAÇÃO COM IA"}</Text><Text style={styles.arrow}>♫</Text>
