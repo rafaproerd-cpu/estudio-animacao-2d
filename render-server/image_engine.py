@@ -324,8 +324,7 @@ def generate_cloudflare_image(
         + CLOUDFLARE_IMAGE_MODEL
     )
     payload = {"prompt": prompt[:2048], "steps": 4}
-    if seed is not None:
-        payload["seed"] = int(seed)
+    # Workers AI FLUX.1-schnell não aceita o campo seed neste endpoint.
     request = urllib.request.Request(
         endpoint,
         data=json.dumps(payload).encode("utf-8"),
