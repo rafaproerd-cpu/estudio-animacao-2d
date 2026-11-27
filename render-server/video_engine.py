@@ -213,20 +213,18 @@ def _generate_huggingface_video(prompt: str, image_bytes: bytes, duration_second
 
         client = Client(HF_VIDEO_SPACE_ID, token=HF_TOKEN or None, verbose=False)
         try:
-            # A API atual do Space recebe os argumentos na mesma ordem dos
-            # controles da interface: imagem, prompt, steps, negative_prompt,
-            # duration_seconds, guidance_scale, guidance_scale_2, seed e randomize_seed.
+            # Argumentos e endpoint confirmados pela definição pública do Space.
             result = client.predict(
-                handle_file(str(image_path)),
-                prompt or "Cinematic 2D anime animation. The characters move naturally: visible body movement, expressive facial motion, blinking, gestures and environmental motion. Preserve character identity, clothing, composition and art style. The camera remains mostly steady.",
-                6,
-                "static image, frozen character, deformed body, extra limbs, extra fingers, blurry face, text, watermark",
                 max(0.5, min(5.0, float(duration_seconds))),
                 1.0,
                 1.0,
-                int(seed if seed is not None else 42),
+                handle_file(str(image_path)),
+                "static image, frozen character, deformed body, extra limbs, extra fingers, blurry face, text, watermark",
+                prompt or "Cinematic 2D anime animation. The characters move naturally: visible body movement, expressive facial motion, blinking, gestures and environmental motion. Preserve character identity, clothing, composition and art style. The camera remains mostly steady.",
                 seed is None,
-                api_name="/generate_video",
+                int(seed if seed is not None else 42),
+                6,
+                api_name="/wan2_2_fp8da_aoti_faster_generate_video",
             )
         except Exception as error:
             detail = str(error).strip()[-1200:]
