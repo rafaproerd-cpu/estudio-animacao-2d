@@ -144,6 +144,54 @@ class WanOutputValidationTests(unittest.TestCase):
 
 
 
+class HuggingFaceVideoSpaceTests(unittest.TestCase):
+    def test_calls_the_actual_wan_22_video_endpoint_with_schema_order(self):
+        import io
+        import sys
+        from PIL import Image
+
+        image = io.BytesIO()
+        Image.new("RGB", (32, 18), "white").save(image, format="PNG")
+        observed = {}
+        with tempfile.TemporaryDirectory() as directory:
+            remote_video = Path(directory) / "remote.mp4"
+            remote_video.write_bytes(b"0000ftypisom0000")
+
+            class FakeClient:
+                def __init__(self, space_id, token=None, verbose=False):
+                    observed["space_id"] = space_id
+                    observed["token"] = token
+
+                def predict(self, *args, **kwargs):
+                    observed["args"] = args
+                    observed["kwargs"] = kwargs
+                    return (str(remote_video), 42)
+
+            fake_module = SimpleNamespace(
+                Client=FakeClient,
+                handle_file=lambda path: "uploaded:" + path,
+            )
+            with patch.dict(sys.modules, {"gradio_client": fake_module}), patch.object(
+                video_engine, "WAN_OUTPUT_DIR", Path(directory) / "outputs"
+            ):
+                output = video_engine._generate_huggingface_video(
+                    "A personagem caminha e pisca",
+                    image.getvalue(),
+                    3.5,
+                    123,
+                )
+
+            self.assertTrue(output.is_file())
+            self.assertEqual(observed["space_id"], "zerogpu-aoti/wan2-2-fp8da-aoti-faster")
+            self.assertEqual(observed["args"][0], 3.5)
+            self.assertEqual(observed["args"][1:3], (1.0, 1.0))
+            self.assertTrue(str(observed["args"][3]).startswith("uploaded:"))
+            self.assertEqual(observed["args"][5], "A personagem caminha e pisca")
+            self.assertFalse(observed["args"][6])
+            self.assertEqual(observed["args"][7:], (123, 6))
+            self.assertEqual(observed["kwargs"]["api_name"], "/wan2_2_fp8da_aoti_faster_generate_video")
+
+
 class VideoEngineDispatchTests(unittest.TestCase):
     def test_generate_video_uses_camera_fallback_when_wan_is_unavailable(self):
         expected = Path("/tmp/fallback-scene.mp4")
