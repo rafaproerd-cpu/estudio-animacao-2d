@@ -15,6 +15,9 @@ WAN_PYTHON = os.getenv("WAN_PYTHON", sys.executable)
 WAN_SIZE = os.getenv("WAN_SIZE", "1280*704")
 WAN_MIN_FREE_VRAM_MB = max(22000, int(os.getenv("WAN_MIN_FREE_VRAM_MB", "23000")))
 WAN_TIMEOUT_SECONDS = max(600, int(os.getenv("WAN_TIMEOUT_SECONDS", "10800")))
+HF_VIDEO_SPACE_ID = os.getenv("HF_VIDEO_SPACE_ID", "zerogpu-aoti/wan2-2-fp8da-aoti-faster").strip()
+HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
+HF_VIDEO_TIMEOUT_SECONDS = max(300, int(os.getenv("HF_VIDEO_TIMEOUT_SECONDS", "1200")))
 FFMPEG = os.getenv("FFMPEG_PATH", "ffmpeg")
 WAN_OUTPUT_DIR = Path(os.getenv("IMAGE_OUTPUT_DIR", os.getenv("RENDER_OUTPUT_DIR", "outputs"))).resolve()
 
@@ -54,10 +57,36 @@ def _wan_status() -> dict[str, object]:
     }
 
 
+def _hf_video_status() -> dict[str, object]:
+    if not HF_VIDEO_SPACE_ID:
+        return {"available": False, "status": "hf_video_space_missing", "message": "Space de vídeo do Hugging Face não configurado."}
+    try:
+        import gradio_client  # noqa: F401
+    except Exception:
+        return {"available": False, "status": "gradio_client_missing", "message": "Cliente Gradio não está instalado no servidor."}
+    return {
+        "available": True,
+        "status": "remote_space_ready",
+        "model": "Wan 2.2 I2V 14B (Hugging Face ZeroGPU)",
+        "provider": "Hugging Face Spaces",
+        "space_id": HF_VIDEO_SPACE_ID,
+        "authentication": "token_configured" if HF_TOKEN else "anonymous_quota",
+        "message": (
+            "Motor image-to-video remoto disponível; a geração depende da fila e da cota ZeroGPU do Hugging Face."
+            if HF_TOKEN else
+            "Motor image-to-video remoto disponível sem token; a cota anônima é pequena e pode bloquear gerações."
+        ),
+    }
+
+
 def video_engine_status() -> dict[str, object]:
     wan = _wan_status()
     if wan["available"]:
         return wan
+    remote = _hf_video_status()
+    if remote["available"]:
+        remote["fallback_reason"] = wan["message"]
+        return remote
     if shutil.which(FFMPEG):
         return {
             "available": True,
@@ -161,12 +190,59 @@ def wan_frame_count(duration_seconds: float) -> int:
     return max(5, min(121, round((frame_target - 1) / 4) * 4 + 1))
 
 
+def _generate_huggingface_video(prompt: str, image_bytes: bytes, duration_seconds: float, seed: int | None) -> Path:
+    from gradio_client import Client, handle_file
+
+    WAN_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    output = WAN_OUTPUT_DIR / ("video-" + uuid.uuid4().hex + ".mp4")
+    with tempfile.TemporaryDirectory(prefix="hf-wan-i2v-") as temp_dir:
+        temp = Path(temp_dir)
+        image_path = temp / "reference.png"
+        try:
+            from PIL import Image
+            import io
+            with Image.open(io.BytesIO(image_bytes)) as source:
+                source.convert("RGB").save(image_path, format="PNG")
+        except Exception as error:
+            raise RuntimeError("A imagem enviada não pôde ser preparada para o motor de vídeo remoto.") from error
+
+        client = Client(HF_VIDEO_SPACE_ID, token=HF_TOKEN or None, verbose=False)
+        try:
+            result = client.predict(
+                handle_file(str(image_path)),
+                prompt or "Cinematic 2D anime animation. The characters move naturally: visible body movement, expressive facial motion, blinking, gestures and environmental motion. Preserve character identity, clothing, composition and art style. The camera remains mostly steady.",
+                6,
+                "static image, frozen character, deformed body, extra limbs, extra fingers, blurry face, text, watermark",
+                max(0.5, min(5.0, float(duration_seconds))),
+                1,
+                1,
+                int(seed if seed is not None else -1) if seed is not None else 42,
+                seed is None,
+                api_name="/generate_video",
+            )
+        except Exception as error:
+            detail = str(error).strip()[-1200:]
+            raise RuntimeError("O Wan 2.2 remoto não conseguiu gerar o clipe. Pode ser fila cheia ou cota ZeroGPU esgotada. " + detail) from error
+
+        video_path = result[0] if isinstance(result, (tuple, list)) else result
+        if isinstance(video_path, dict):
+            video_path = video_path.get("path") or video_path.get("name")
+        if not video_path or not Path(str(video_path)).is_file():
+            raise RuntimeError("O Space Wan 2.2 respondeu, mas não retornou um arquivo de vídeo acessível.")
+        shutil.copy2(str(video_path), output)
+
+    validate_mp4_output(output)
+    return output
+
+
 def generate_wan_video(prompt: str, image_bytes: bytes, duration_seconds: float, seed: int | None) -> Path:
     status = video_engine_status()
     if not status["available"]:
         raise RuntimeError(str(status["message"]))
     if status["status"] == "ready_motion_only":
         return _generate_camera_motion_video(image_bytes, duration_seconds)
+    if status["status"] == "remote_space_ready":
+        return _generate_huggingface_video(prompt, image_bytes, duration_seconds, seed)
 
     from PIL import Image
     import io
