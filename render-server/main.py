@@ -599,7 +599,7 @@ def available_piper_voices() -> list[str]:
 
 
 @app.get("/tts/voices")
-def list_tts_voices(authorization: Annotated[str | None, Header()] = None) -> dict[str, list[str]]:
+def list_tts_voices(authorization: Annotated[str | None, Header()] = None) -> dict[str, object]:
     require_token(authorization)
     return {"voices": available_piper_voices(), "engine": "Piper local"}
 
