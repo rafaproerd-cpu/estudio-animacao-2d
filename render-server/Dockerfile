@@ -7,17 +7,29 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIPER_VOICES_DIR=/data/voices
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg \
+    && apt-get install -y --no-install-recommends ffmpeg curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir piper-tts==1.3.0
+
+# Instala uma voz masculina em português brasileiro por padrão.
+# O modelo Faber medium é distribuído em ONNX pelo repositório Piper Voices.
+RUN mkdir -p /data/outputs /data/voices \
+    && curl -fL --retry 3 --retry-delay 2 \
+      https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx \
+      -o /data/voices/pt_BR-faber-medium.onnx \
+    && curl -fL --retry 3 --retry-delay 2 \
+      https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx.json \
+      -o /data/voices/pt_BR-faber-medium.onnx.json \
+    && echo "e0724a2f07965f6523d2a1e96b488a4c  /data/voices/pt_BR-faber-medium.onnx" | md5sum -c -
 
 COPY main.py image_engine.py video_engine.py story_engine.py ./
-RUN python -c "import main; print('Estúdio 2D render API import OK')"
+RUN python -c "import main; print('Estúdio 2D render API import OK')" \
+    && piper --help >/dev/null
 RUN useradd --create-home --uid 10001 app \
-    && mkdir -p /data/outputs /data/voices \
     && chown -R app:app /app /data
 
 USER app
