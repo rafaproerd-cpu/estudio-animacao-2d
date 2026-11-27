@@ -242,6 +242,48 @@ def generate_huggingface_image(
     return output
 
 
+def diagnose_huggingface_image_space() -> dict[str, object]:
+    """Check Gradio Space reachability and API metadata without running inference."""
+    status = huggingface_image_engine_status()
+    if not status.get("available"):
+        return {**status, "connectivity": "not_checked"}
+    try:
+        from gradio_client import Client
+
+        client = Client(HF_SPACE_ID, hf_token=HF_TOKEN or None, verbose=False)
+        api = client.view_api(return_format="dict")
+        named = api.get("named_endpoints", {}) if isinstance(api, dict) else {}
+        expected = "/generate_image" if HF_SPACE_MODE == "public_zimage" else "/generate"
+        endpoint = named.get(expected) if isinstance(named, dict) else None
+        if endpoint is None and isinstance(named, dict):
+            endpoint = named.get(expected.lstrip("/"))
+        if endpoint is None:
+            available_endpoints = sorted(str(name) for name in named) if isinstance(named, dict) else []
+            return {
+                **status,
+                "connectivity": "reachable_api_mismatch",
+                "expected_endpoint": expected,
+                "available_endpoints": available_endpoints[:30],
+                "message": "O Space respondeu, mas não publicou o endpoint esperado " + expected + ".",
+            }
+        return {
+            **status,
+            "connectivity": "reachable",
+            "expected_endpoint": expected,
+            "endpoint_verified": True,
+            "message": "Conexão com o Space confirmada e endpoint " + expected + " encontrado. Nenhuma imagem foi gerada neste diagnóstico.",
+        }
+    except Exception as error:
+        detail = " ".join(str(error).split())[:900] or error.__class__.__name__
+        return {
+            **status,
+            "connectivity": "connection_failed",
+            "endpoint_verified": False,
+            "diagnostic_error": detail,
+            "message": "Não foi possível consultar a API do Space: " + detail,
+        }
+
+
 def active_image_engine_status() -> dict[str, object]:
     local = image_engine_status()
     if local["available"]:
