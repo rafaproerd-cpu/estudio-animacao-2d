@@ -28,6 +28,13 @@ def valid_story(count=4):
 
 
 class StoryEngineTests(unittest.TestCase):
+    def test_openrouter_defaults_only_require_api_key(self):
+        with patch.object(story_engine, "STORY_API_KEY", "secret"):
+            status = story_engine.story_engine_status()
+        self.assertTrue(status["available"])
+        self.assertEqual(story_engine.STORY_API_URL, "https://openrouter.ai/api/v1/chat/completions")
+        self.assertEqual(story_engine.STORY_MODEL, "openrouter/free")
+
     def test_status_requires_url_key_and_model(self):
         with patch.object(story_engine, "STORY_API_URL", ""), patch.object(
             story_engine, "STORY_API_KEY", "secret"
