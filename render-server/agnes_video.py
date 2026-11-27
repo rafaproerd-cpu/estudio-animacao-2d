@@ -79,6 +79,9 @@ def _request_json(url: str, method: str = "GET", payload: dict | None = None) ->
 
 
 def generate_agnes_video(prompt: str, image_url: str, duration_seconds: float, seed: int | None) -> Path:
+    # Independent safety guard: never call Agnes unless the owner explicitly confirms $0 access.
+    if os.getenv("AGNES_FREE_ACCESS_CONFIRMED", "").strip().lower() != "true":
+        raise RuntimeError("Geração Agnes bloqueada: confirme primeiro no painel que o custo da sua conta é US$ 0. Nenhuma solicitação foi enviada.")
     if not AGNES_API_KEY:
         raise RuntimeError("Configure AGNES_API_KEY no servidor para usar Agnes AI.")
     if not image_url.startswith("https://"):
