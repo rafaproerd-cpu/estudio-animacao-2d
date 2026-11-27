@@ -13,7 +13,7 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import { createStoryPlan, type Genre, type StoryPlan } from "./src/engine/storyEngine";
 import { HttpImageGenerationProvider, HttpVideoGenerationProvider } from "./src/engine/providers/httpGenerationProvider";
 
-type Scene = { title: string; description: string; dialogue: string; imagePrompt: string; videoPrompt: string; shot: string; camera: string; lighting: string; voiceId?: string; imageUri?: string; videoUri?: string; videoRemoteUri?: string };
+type Scene = { title: string; description: string; dialogue: string; imagePrompt: string; videoPrompt: string; shot: string; camera: string; lighting: string; voiceId?: string; imageUri?: string; videoUri?: string; videoRemoteUri?: string; audioUri?: string };
 type Project = {
   id: string;
   title: string;
@@ -714,6 +714,47 @@ export default function App() {
     }
   };
 
+  const generateSceneNarration = async (scene: Scene) => {
+    if (!selected) return;
+    const text = (scene.dialogue || "").trim();
+    if (!text) { Alert.alert("Cena sem fala", "Escreva o diálogo desta cena antes de gerar o áudio."); return; }
+    const voice = scene.voiceId || selectedTtsVoice;
+    if (!voice) { Alert.alert("Escolha uma voz", "Carregue as vozes disponíveis e selecione uma voz."); return; }
+    let baseUrl = (engineConfig.renderBaseUrl || "").trim();
+    while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
+    const token = (engineConfig.renderToken || "").trim();
+    if (!baseUrl || !token) { Alert.alert("Configure a montagem", "Informe o endereço e o token do servidor nas configurações."); setShowSettings(true); return; }
+    setBusyScene("tts:" + scene.title);
+    setTtsFeedback("Gerando áudio somente para " + scene.title + "…");
+    try {
+      const response = await fetch(baseUrl + "/tts", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ text, voice, duration_seconds: sceneClipDurationSeconds(selected) }),
+      });
+      const payload = await response.json().catch(() => ({} as { detail?: string; download_url?: string }));
+      if (!response.ok || !payload.download_url) throw new Error(payload.detail || "O servidor não conseguiu gerar o áudio desta cena.");
+      const directory = (FileSystem.documentDirectory || "") + "project-audio/";
+      const info = await FileSystem.getInfoAsync(directory);
+      if (!info.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
+      const safeTitle = scene.title.replace(/[^a-zA-Z0-9_-]+/g, "-").slice(0, 40);
+      const destination = directory + selected.id + "-" + safeTitle + "-" + Date.now() + ".wav";
+      const audioUrl = baseUrl + (payload.download_url.startsWith("/") ? payload.download_url : "/" + payload.download_url);
+      const download = await FileSystem.downloadAsync(audioUrl, destination, { headers: { Authorization: "Bearer " + token } });
+      if (download.status < 200 || download.status >= 300) throw new Error("O áudio foi criado, mas o download falhou (HTTP " + download.status + ").");
+      const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, audioUri: download.uri } : item) };
+      saveUpdatedProject(updated);
+      setTtsFeedback("Áudio da " + scene.title + " gerado e salvo.");
+      Alert.alert("Áudio gerado", "O áudio desta cena está salvo. Você pode ouvi-lo no próprio cartão da cena.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Não foi possível gerar o áudio desta cena.";
+      setTtsFeedback("Falha em " + scene.title + ": " + message);
+      Alert.alert("Falha ao gerar áudio", message);
+    } finally {
+      setBusyScene(null);
+    }
+  };
+
   const generateAiNarration = async () => {
     if (!selected) return;
     const sceneDuration = sceneClipDurationSeconds(selected);
@@ -1162,6 +1203,10 @@ export default function App() {
               <Text style={styles.label}>FALA / DIÁLOGO</Text>
               <TextInput value={scene.dialogue} onChangeText={value => updateScene(scene.title, "dialogue", value)} multiline textAlignVertical="top" placeholder="Escreva a fala do personagem..." placeholderTextColor="#777789" style={styles.sceneInput} />
               {ttsVoices.length ? <><Text style={styles.label}>VOZ DESTA CENA</Text><View style={styles.chips}>{ttsVoices.map(voice => <TouchableOpacity key={voice} style={[styles.chip, (scene.voiceId || selectedTtsVoice) === voice && styles.chipActive]} onPress={() => updateSceneVoice(scene.title, voice)}><Text style={[styles.chipText, (scene.voiceId || selectedTtsVoice) === voice && styles.chipTextActive]}>{voice}</Text></TouchableOpacity>)}</View></> : null}
+              <TouchableOpacity style={styles.primary} onPress={() => generateSceneNarration(scene)} disabled={!!busyScene || !!batchProgress || !ttsVoices.length}>
+                <Text style={styles.primaryText}>{busyScene === "tts:" + scene.title ? "GERANDO ÁUDIO DESTA CENA…" : scene.audioUri ? "GERAR ÁUDIO DESTA CENA NOVAMENTE" : "GERAR ÁUDIO DESTA CENA"}</Text><Text style={styles.arrow}>♫</Text>
+              </TouchableOpacity>
+              {scene.audioUri ? <><Text style={styles.label}>ÁUDIO DESTA CENA</Text><NarrationAudioPlayer uri={scene.audioUri} /><TouchableOpacity style={styles.secondary} onPress={() => saveUpdatedProject({ ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, audioUri: undefined } : item) })}><Text style={styles.secondaryText}>REMOVER ÁUDIO DESTA CENA</Text></TouchableOpacity></> : null}
               <Text style={styles.label}>ENQUADRAMENTO · {(scene.shot || "plano médio").toUpperCase()}</Text>
               <Text style={styles.body}>Câmera: {scene.camera}{"\n"}Luz: {scene.lighting}</Text>
               <Text style={styles.label}>PROMPT VISUAL · EDITÁVEL</Text>
@@ -1194,7 +1239,7 @@ export default function App() {
               {ttsFeedback ? <Text accessibilityLiveRegion="polite" style={styles.note}>{ttsFeedback}</Text> : null}
               {ttsVoices.length ? <View style={styles.chips}>{ttsVoices.map(voice => <TouchableOpacity key={voice} style={[styles.chip, selectedTtsVoice === voice && styles.chipActive]} onPress={() => setSelectedTtsVoice(voice)}><Text style={[styles.chipText, selectedTtsVoice === voice && styles.chipTextActive]}>{voice}</Text></TouchableOpacity>)}</View> : null}
               <TouchableOpacity style={styles.primary} onPress={generateAiNarration} disabled={!!busyScene || !!batchProgress || !ttsVoices.length}>
-                <Text style={styles.primaryText}>{busyScene === "tts:project" ? "GERANDO NARRAÇÃO…" : "GERAR NARRAÇÃO COM IA"}</Text><Text style={styles.arrow}>♫</Text>
+                <Text style={styles.primaryText}>{busyScene === "tts:project" ? "GERANDO NARRAÇÃO…" : "GERAR NARRAÇÃO COMPLETA (TODAS AS CENAS)"}</Text><Text style={styles.arrow}>♫</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.secondary} onPress={() => pickProjectAudio("narrationUri")} disabled={!!busyScene || !!batchProgress}><Text style={styles.secondaryText}>{selected.narrationUri ? "NARRAÇÃO SELECIONADA · " + selected.narrationUri.split("/").pop() : "ESCOLHER NARRAÇÃO"}</Text></TouchableOpacity>
               {selected.narrationUri ? <><Text style={styles.label}>OUVIR NARRAÇÃO GERADA</Text><NarrationAudioPlayer uri={selected.narrationUri} /><TouchableOpacity style={styles.secondary} onPress={() => saveUpdatedProject({ ...selected, narrationUri: undefined, finalVideoUri: undefined, finalVideoRemoteUri: undefined })}><Text style={styles.secondaryText}>REMOVER NARRAÇÃO</Text></TouchableOpacity></> : null}
