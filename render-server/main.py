@@ -486,7 +486,7 @@ def download_generated_media(
     token: Annotated[str | None, Query()] = None,
     authorization: Annotated[str | None, Header()] = None,
 ) -> FileResponse:
-    if not re.fullmatch(r"(?:image-[a-f0-9]{32}\.png|video-[a-f0-9]{32}\.mp4)", filename):
+    if not re.fullmatch(r"(?:image(?:-hf)?-[a-f0-9]{32}\.png|video-[a-f0-9]{32}\.mp4)", filename):
         raise HTTPException(status_code=404, detail="Arquivo gerado não encontrado.")
     if authorization:
         require_token(authorization)
