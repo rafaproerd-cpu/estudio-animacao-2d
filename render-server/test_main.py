@@ -132,7 +132,7 @@ class RenderServerTests(unittest.TestCase):
                 (Path(temp_dir) / filename).write_bytes(b"test-image")
                 main.generation_download_tokens[filename] = (token, main.time.time() + 60)
                 response = main.download_generated_media(filename, token=token)
-                self.assertEqual(response.path, str(Path(temp_dir) / filename))
+                self.assertEqual(Path(response.path), Path(temp_dir) / filename)
                 self.assertEqual(response.media_type, "image/png")
         finally:
             main.IMAGE_OUTPUT_DIR = original_dir
