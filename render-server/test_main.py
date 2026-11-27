@@ -15,6 +15,18 @@ import main
 
 
 class RenderServerTests(unittest.TestCase):
+    def setUp(self):
+        self._saved_jobs = dict(main.generation_jobs)
+        self._saved_download_tokens = dict(main.generation_download_tokens)
+        main.generation_jobs.clear()
+        main.generation_download_tokens.clear()
+
+    def tearDown(self):
+        main.generation_jobs.clear()
+        main.generation_jobs.update(self._saved_jobs)
+        main.generation_download_tokens.clear()
+        main.generation_download_tokens.update(self._saved_download_tokens)
+
     def test_video_request_rejects_non_finite_duration_values(self):
         for duration in (float("nan"), float("inf"), float("-inf")):
             with self.subTest(duration=duration):
@@ -352,7 +364,7 @@ class RenderServerTests(unittest.TestCase):
             main.API_TOKEN = "capabilities-test-token"
             with tempfile.TemporaryDirectory() as temp_dir:
                 main.PIPER_VOICES_DIR = Path(temp_dir)
-                with patch.object(main.shutil, "which", side_effect=lambda command: "/usr/bin/ffmpeg" if command == "ffmpeg" else None), patch.object(main, "video_engine_status", return_value={"available": False, "status": "wan_runtime_missing", "message": "Wan runtime ausente"}):
+                with patch.object(main.shutil, "which", side_effect=lambda command: "/usr/bin/ffmpeg" if command == "ffmpeg" else None), patch.object(main, "active_image_engine_status", return_value={"available": False, "status": "not_configured"}), patch.object(main, "video_engine_status", return_value={"available": False, "status": "wan_runtime_missing", "message": "Wan runtime ausente"}):
                     result = main.generation_capabilities("Bearer capabilities-test-token")
             self.assertFalse(result["engines"]["image"]["available"])
             self.assertEqual(result["engines"]["image"]["status"], "not_configured")
@@ -401,7 +413,7 @@ class RenderServerTests(unittest.TestCase):
         original_token = main.API_TOKEN
         try:
             main.API_TOKEN = "generation-test-token"
-            with patch.object(main, "image_engine_status", return_value={"available": False, "message": "Modelo SDXL ausente"}):
+            with patch.object(main, "image_engine_status", return_value={"available": False, "message": "Modelo SDXL ausente"}), patch.object(main, "huggingface_image_engine_status", return_value={"available": False, "message": "Space remoto ausente"}):
                 with self.assertRaises(HTTPException) as image_error:
                     main.request_image_generation(main.ImageGenerationRequest(prompt="anime cinematic scene"), BackgroundTasks(), "Bearer generation-test-token")
                 self.assertEqual(image_error.exception.status_code, 503)
