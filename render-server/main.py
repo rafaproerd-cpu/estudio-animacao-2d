@@ -198,7 +198,7 @@ def run_image_generation_job(job_id: str, payload: ImageGenerationRequest, refer
             seed=payload.seed,
             reference_image_bytes=reference_image_bytes,
         )
-        validate_mp4_output(output)
+        # generate_image já normaliza e grava PNG válido com Pillow; validação MP4 é exclusiva do pipeline de vídeo.
         download_token = secrets.token_urlsafe(32)
         with generation_jobs_lock:
             generation_download_tokens[output.name] = (download_token, time.time() + GENERATION_DOWNLOAD_TTL_SECONDS)
