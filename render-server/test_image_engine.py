@@ -158,6 +158,65 @@ class HuggingFaceImageEngineTests(unittest.TestCase):
             image_engine.IMAGE_OUTPUT_DIR = original_output
 
 
+class HuggingFaceConnectivityDiagnosticTests(unittest.TestCase):
+    def test_diagnostic_confirms_expected_api_without_running_inference(self):
+        original_values = {
+            "HF_SPACE_ID": image_engine.HF_SPACE_ID,
+            "HF_SPACE_MODE": image_engine.HF_SPACE_MODE,
+            "HF_TOKEN": image_engine.HF_TOKEN,
+        }
+        try:
+            image_engine.HF_SPACE_ID = "owner/test-space"
+            image_engine.HF_SPACE_MODE = "public_zimage"
+            image_engine.HF_TOKEN = "test-token"
+
+            class FakeClient:
+                def __init__(self, space_id, **kwargs):
+                    self.space_id = space_id
+                    self.kwargs = kwargs
+                def view_api(self, return_format):
+                    self.return_format = return_format
+                    return {"named_endpoints": {"/generate_image": {"parameters": []}}}
+                def predict(self, *args, **kwargs):
+                    raise AssertionError("diagnostic must not run inference")
+
+            fake_module = types.SimpleNamespace(Client=FakeClient)
+            with patch.dict(sys.modules, {"gradio_client": fake_module}):
+                result = image_engine.diagnose_huggingface_image_space()
+
+            self.assertEqual(result["connectivity"], "reachable")
+            self.assertTrue(result["endpoint_verified"])
+            self.assertEqual(result["expected_endpoint"], "/generate_image")
+            self.assertIn("Nenhuma imagem foi gerada", result["message"])
+        finally:
+            for key, value in original_values.items():
+                setattr(image_engine, key, value)
+
+    def test_diagnostic_reports_api_mismatch(self):
+        original_values = {
+            "HF_SPACE_ID": image_engine.HF_SPACE_ID,
+            "HF_SPACE_MODE": image_engine.HF_SPACE_MODE,
+            "HF_TOKEN": image_engine.HF_TOKEN,
+        }
+        try:
+            image_engine.HF_SPACE_ID = "owner/test-space"
+            image_engine.HF_SPACE_MODE = "public_zimage"
+            image_engine.HF_TOKEN = ""
+            class FakeClient:
+                def __init__(self, *args, **kwargs):
+                    pass
+                def view_api(self, return_format):
+                    return {"named_endpoints": {"/other": {}}}
+            fake_module = types.SimpleNamespace(Client=FakeClient)
+            with patch.dict(sys.modules, {"gradio_client": fake_module}):
+                result = image_engine.diagnose_huggingface_image_space()
+            self.assertEqual(result["connectivity"], "reachable_api_mismatch")
+            self.assertEqual(result["expected_endpoint"], "/generate_image")
+        finally:
+            for key, value in original_values.items():
+                setattr(image_engine, key, value)
+
+
 class LocalReferenceImageTests(unittest.TestCase):
     def test_local_img2img_loads_reference_and_uses_configured_strength(self):
         original_values = {
