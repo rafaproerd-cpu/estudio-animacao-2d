@@ -49,6 +49,14 @@ const genres = ["Aventura", "Comédia", "Fantasia", "Ação", "Drama", "Mistéri
 const durations = ["30 segundos", "1 minuto", "2 minutos", "3 minutos", "5 minutos", "10 minutos"];
 const RENDER_TOKEN_KEY = "@estudio2d/render-token";
 
+function showUserAlert(title: string, message: string): void {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    window.alert(title + "\\n\\n" + message);
+    return;
+  }
+  Alert.alert(title, message);
+}
+
 function isAllowedEngineUrl(value: string): boolean {
   try {
     const parsed = new URL(value.trim());
@@ -352,7 +360,7 @@ export default function App() {
     const baseUrl = (engineConfig.renderBaseUrl || "").trim().replace(new RegExp("/+$"), "");
     const token = (engineConfig.renderToken || "").trim();
     if (!isAllowedEngineUrl(baseUrl) || !token) {
-      Alert.alert("Conecte o motor do Estúdio 2D", "Informe um endereço HTTPS seguro e o token na opção Conectar motor.");
+      showUserAlert("Conecte o motor do Estúdio 2D", "Informe um endereço HTTPS seguro e o token na opção Conectar motor.");
       setShowSettings(true);
       return null;
     }
@@ -501,7 +509,7 @@ export default function App() {
   const generateSceneVideo = async (scene: Scene) => {
     if (!selected) return;
     if (!scene.imageUri) {
-      Alert.alert("Imagem necessária", "Gere primeiro a imagem desta cena para usá-la como referência do vídeo.");
+      showUserAlert("Imagem necessária", "Gere primeiro a imagem desta cena para usá-la como referência do vídeo.");
       return;
     }
     const connection = getEngineConnection();
@@ -515,9 +523,9 @@ export default function App() {
       const localVideoUri = await persistGeneratedVideo(result.outputUri, selected.id, scene.title);
       const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, videoUri: localVideoUri, videoRemoteUri: result.outputUri } : item) };
       saveUpdatedProject(updated);
-      Alert.alert("Clipe concluído", (result.message || "O clipe foi criado pelo motor do Estúdio 2D.") + " Você pode baixá-lo para o iPhone.");
+      showUserAlert("Clipe concluído", (result.message || "O clipe foi criado pelo motor do Estúdio 2D.") + " Você pode baixá-lo para o iPhone.");
     } catch (error) {
-      Alert.alert("Erro na geração do vídeo", error instanceof Error ? error.message : "Não foi possível gerar o clipe.");
+      showUserAlert("Erro na geração do vídeo", error instanceof Error ? error.message : "Não foi possível gerar o clipe.");
     } finally {
       setBusyScene(null);
     }
