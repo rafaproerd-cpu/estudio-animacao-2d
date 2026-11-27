@@ -5,6 +5,8 @@ import os
 import threading
 import tempfile
 import uuid
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -129,6 +131,9 @@ def generate_sdxl_image(
 HF_SPACE_ID = os.getenv("HF_SPACE_ID", "mrfakename/Z-Image-Turbo").strip()
 HF_SPACE_MODE = os.getenv("HF_SPACE_MODE", "public_zimage").strip().lower()
 HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
+CLOUDFLARE_ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
+CLOUDFLARE_API_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
+CLOUDFLARE_IMAGE_MODEL = os.getenv("CLOUDFLARE_IMAGE_MODEL", "@cf/black-forest-labs/flux-1-schnell").strip()
 
 
 def huggingface_image_engine_status() -> dict[str, object]:
@@ -302,6 +307,59 @@ def active_image_engine_status() -> dict[str, object]:
     }
 
 
+def generate_cloudflare_image(
+    prompt: str,
+    seed: int | None,
+) -> Path:
+    """Generate a fallback image through Cloudflare Workers AI's free daily allocation."""
+    if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
+        raise RuntimeError("Cloudflare não configurado: defina CLOUDFLARE_ACCOUNT_ID e CLOUDFLARE_API_TOKEN no Render.")
+    import base64
+    import json
+
+    endpoint = (
+        "https://api.cloudflare.com/client/v4/accounts/"
+        + CLOUDFLARE_ACCOUNT_ID
+        + "/ai/run/"
+        + CLOUDFLARE_IMAGE_MODEL
+    )
+    payload = {"prompt": prompt[:2048], "steps": 4}
+    if seed is not None:
+        payload["seed"] = int(seed)
+    request = urllib.request.Request(
+        endpoint,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": "Bearer " + CLOUDFLARE_API_TOKEN,
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=180) as response:
+            body = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")[:700]
+        raise RuntimeError("Cloudflare Workers AI respondeu HTTP " + str(error.code) + ": " + detail) from error
+    except Exception as error:
+        raise RuntimeError("Falha ao conectar ao Cloudflare Workers AI: " + str(error)[:500]) from error
+
+    encoded = (body.get("result") or {}).get("image") if isinstance(body, dict) else None
+    if not encoded:
+        raise RuntimeError("Cloudflare não retornou a imagem esperada.")
+    try:
+        image_bytes = base64.b64decode(encoded, validate=True)
+    except Exception as error:
+        raise RuntimeError("Cloudflare retornou uma imagem Base64 inválida.") from error
+
+    IMAGE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    output = IMAGE_OUTPUT_DIR / ("image-cloudflare-" + uuid.uuid4().hex + ".png")
+    from PIL import Image
+    with Image.open(io.BytesIO(image_bytes)) as image:
+        image.convert("RGB").save(output, format="PNG")
+    return output
+
+
 def generate_image(
     prompt: str,
     negative_prompt: str | None,
@@ -310,7 +368,7 @@ def generate_image(
     seed: int | None,
     reference_image_bytes: bytes | None = None,
 ) -> Path:
-    """Prefer a configured local SDXL engine; otherwise use the hosted Space."""
+    """Prefer local SDXL, then Hugging Face; use Cloudflare if the hosted Space fails."""
     if image_engine_status()["available"]:
         return generate_sdxl_image(
             prompt=prompt,
@@ -320,10 +378,21 @@ def generate_image(
             seed=seed,
             reference_image_bytes=reference_image_bytes,
         )
-    return generate_huggingface_image(
-        prompt=prompt,
-        width=width,
-        height=height,
-        seed=seed,
-        reference_image_bytes=reference_image_bytes,
-    )
+    try:
+        return generate_huggingface_image(
+            prompt=prompt,
+            width=width,
+            height=height,
+            seed=seed,
+            reference_image_bytes=reference_image_bytes,
+        )
+    except Exception as hf_error:
+        if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
+            raise
+        try:
+            return generate_cloudflare_image(prompt=prompt, seed=seed)
+        except Exception as cloudflare_error:
+            raise RuntimeError(
+                "Hugging Face falhou: " + str(hf_error)[:450]
+                + " | Cloudflare também falhou: " + str(cloudflare_error)[:450]
+            ) from cloudflare_error
