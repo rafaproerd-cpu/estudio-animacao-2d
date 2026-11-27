@@ -181,7 +181,11 @@ class HuggingFaceConnectivityDiagnosticTests(unittest.TestCase):
                     raise AssertionError("diagnostic must not run inference")
 
             fake_module = types.SimpleNamespace(Client=FakeClient)
-            with patch.dict(sys.modules, {"gradio_client": fake_module}):
+            with patch.dict(sys.modules, {"gradio_client": fake_module}), patch.object(
+                image_engine,
+                "huggingface_image_engine_status",
+                return_value={"available": True, "status": "configured_unverified"},
+            ):
                 result = image_engine.diagnose_huggingface_image_space()
 
             self.assertEqual(result["connectivity"], "reachable")
@@ -208,7 +212,11 @@ class HuggingFaceConnectivityDiagnosticTests(unittest.TestCase):
                 def view_api(self, return_format):
                     return {"named_endpoints": {"/other": {}}}
             fake_module = types.SimpleNamespace(Client=FakeClient)
-            with patch.dict(sys.modules, {"gradio_client": fake_module}):
+            with patch.dict(sys.modules, {"gradio_client": fake_module}), patch.object(
+                image_engine,
+                "huggingface_image_engine_status",
+                return_value={"available": True, "status": "configured_unverified"},
+            ):
                 result = image_engine.diagnose_huggingface_image_space()
             self.assertEqual(result["connectivity"], "reachable_api_mismatch")
             self.assertEqual(result["expected_endpoint"], "/generate_image")
