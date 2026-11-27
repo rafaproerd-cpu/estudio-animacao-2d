@@ -16,6 +16,7 @@ import image_engine
 class HuggingFaceImageEngineTests(unittest.TestCase):
     def test_remote_generation_normalizes_gradio_file_to_png(self):
         original_space = image_engine.HF_SPACE_ID
+        original_mode = image_engine.HF_SPACE_MODE
         original_token = image_engine.HF_TOKEN
         original_output = image_engine.IMAGE_OUTPUT_DIR
         try:
@@ -24,6 +25,7 @@ class HuggingFaceImageEngineTests(unittest.TestCase):
                 source = root / "source.webp"
                 Image.new("RGB", (32, 24), (20, 40, 60)).save(source, format="WEBP")
                 image_engine.HF_SPACE_ID = "owner/test-space"
+                image_engine.HF_SPACE_MODE = "legacy"
                 image_engine.HF_TOKEN = "test-secret"
                 image_engine.IMAGE_OUTPUT_DIR = root / "outputs"
 
@@ -65,6 +67,7 @@ class HuggingFaceImageEngineTests(unittest.TestCase):
                     self.assertEqual(generated.size, (32, 24))
         finally:
             image_engine.HF_SPACE_ID = original_space
+            image_engine.HF_SPACE_MODE = original_mode
             image_engine.HF_TOKEN = original_token
             image_engine.IMAGE_OUTPUT_DIR = original_output
 
