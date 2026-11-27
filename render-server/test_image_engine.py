@@ -14,6 +14,13 @@ import image_engine
 
 
 class HuggingFaceImageEngineTests(unittest.TestCase):
+    def setUp(self):
+        self._original_mode = image_engine.HF_SPACE_MODE
+        image_engine.HF_SPACE_MODE = "legacy"
+
+    def tearDown(self):
+        image_engine.HF_SPACE_MODE = self._original_mode
+
     def test_remote_generation_normalizes_gradio_file_to_png(self):
         original_space = image_engine.HF_SPACE_ID
         original_mode = image_engine.HF_SPACE_MODE
