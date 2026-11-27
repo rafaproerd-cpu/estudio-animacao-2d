@@ -198,6 +198,7 @@ def run_image_generation_job(job_id: str, payload: ImageGenerationRequest, refer
             seed=payload.seed,
             reference_image_bytes=reference_image_bytes,
         )
+        validate_mp4_output(output)
         download_token = secrets.token_urlsafe(32)
         with generation_jobs_lock:
             generation_download_tokens[output.name] = (download_token, time.time() + GENERATION_DOWNLOAD_TTL_SECONDS)
@@ -542,7 +543,7 @@ def request_video_generation(
     background_tasks: BackgroundTasks,
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict[str, object]:
-    """Enfileira animação de cena quando Wan2.2 ou o fallback FFmpeg estão disponíveis."""
+    """Enfileira animação de cena usando Agnes Flash, Wan2.2, HF ou fallback quando configurados."""
     require_token(authorization)
     status = video_engine_status()
     if not status["available"]:
