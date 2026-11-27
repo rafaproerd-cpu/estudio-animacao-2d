@@ -638,7 +638,7 @@ def synthesize_tts_file(text: str, voice: str, output_file: Path, length_scale: 
 @app.get("/tts/voices")
 def list_tts_voices(authorization: Annotated[str | None, Header()] = None) -> dict[str, object]:
     require_token(authorization)
-    voices = available_piper_voices() + list(TINY_PTBR_VOICES.keys())
+    voices = available_piper_voices() + ["ptbr-tiny-f"]
     return {"voices": voices, "engine": "Piper + Tiny Voca PT-BR"}
 
 
