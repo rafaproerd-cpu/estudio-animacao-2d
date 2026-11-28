@@ -80,6 +80,14 @@ class StoryEngineTests(unittest.TestCase):
         self.assertEqual(plan["estimatedSeconds"], 30)
 
 
+    def test_rejects_ai_duration_beyond_current_video_capacity(self):
+        with patch.object(story_engine, "STORY_API_KEY", "secret"), patch.object(
+            story_engine.urllib.request, "urlopen"
+        ) as mocked_urlopen:
+            with self.assertRaisesRegex(ValueError, "até 2 minutos e 30 segundos"):
+                story_engine.generate_story_plan("Uma ideia", "Aventura", "3 minutos", "Personagem")
+        mocked_urlopen.assert_not_called()
+
     def test_rejects_scene_without_narrator_text(self):
         broken = valid_story()
         broken["scenes"][0]["dialogue"] = ""
