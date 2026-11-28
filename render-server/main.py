@@ -297,7 +297,8 @@ def run_video_generation_job(job_id: str, payload: VideoGenerationRequest, image
             })
         persist_download_grant(output.name)
         persist_generation_job(job_id)
-    except Exception as error:        logger.exception("Video generation job %s failed", job_id)
+    except Exception as error:
+        logger.exception("Video generation job %s failed", job_id)
         with generation_jobs_lock:
             generation_jobs[job_id].update({
                 "status": "failed",
