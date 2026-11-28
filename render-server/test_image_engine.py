@@ -147,7 +147,7 @@ class HuggingFaceImageEngineTests(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, "simulated Gradio failure"):
                         image_engine.generate_huggingface_image(
                             prompt="cinematic anime scene", width=512, height=512,
-                            seed=123, reference_image_bytes=b"reference-image",
+                            seed=123, reference_image_bytes=b"\x89PNG-reference-image",
                         )
 
                 self.assertIsNotNone(FakeClient.reference_path)
@@ -472,11 +472,13 @@ class QwenImageEditReferenceTests(unittest.TestCase):
                 class FakeClient:
                     received = None
                     reference_path = None
+                    reference_suffix = None
                     def __init__(self, space_id, **kwargs):
                         self.space_id = space_id
                     def predict(self, *args, **kwargs):
                         self.__class__.received = (args, kwargs)
                         self.__class__.reference_path = Path(args[0][0][0])
+                        self.__class__.reference_suffix = self.__class__.reference_path.suffix
                         return ([{"image": {"path": str(source)}, "caption": None}], 321)
 
                 fake_module = types.SimpleNamespace(Client=FakeClient)
@@ -495,6 +497,7 @@ class QwenImageEditReferenceTests(unittest.TestCase):
 
                 args, kwargs = FakeClient.received
                 self.assertTrue(FakeClient.reference_path.exists() is False)
+                self.assertEqual(FakeClient.reference_suffix, ".png")
                 self.assertEqual(len(args[0]), 1)
                 self.assertEqual(args[0][0][1], None)
                 self.assertIn("strict visual identity reference", args[1])
