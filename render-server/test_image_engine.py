@@ -477,9 +477,9 @@ class QwenImageEditReferenceTests(unittest.TestCase):
                         self.space_id = space_id
                     def predict(self, *args, **kwargs):
                         self.__class__.received = (args, kwargs)
-                        self.__class__.reference_path = Path(args[0][0][0])
+                        self.__class__.reference_path = Path(args[0])
                         self.__class__.reference_suffix = self.__class__.reference_path.suffix
-                        return ([{"image": {"path": str(source)}, "caption": None}], 321)
+                        return ({"path": str(source)}, 321)
 
                 fake_module = types.SimpleNamespace(Client=FakeClient)
                 with patch.dict(sys.modules, {"gradio_client": fake_module}), patch.object(
@@ -498,12 +498,10 @@ class QwenImageEditReferenceTests(unittest.TestCase):
                 args, kwargs = FakeClient.received
                 self.assertTrue(FakeClient.reference_path.exists() is False)
                 self.assertEqual(FakeClient.reference_suffix, ".png")
-                self.assertEqual(len(args[0]), 1)
-                self.assertEqual(args[0][0][1], None)
+                self.assertEqual(args[0], str(FakeClient.reference_path))
                 self.assertIn("strict visual identity reference", args[1])
                 self.assertIn("same character walking through a forest", args[1])
-                self.assertEqual(args[2:6], (321, False, 4.0, 50))
-                self.assertEqual(args[6:9], (None, None, False))
+                self.assertEqual(args[2:7], (321, False, 4.0, 50, False))
                 self.assertEqual(kwargs, {"api_name": "/infer"})
                 self.assertTrue(output.is_file())
         finally:
