@@ -48,6 +48,7 @@ type EngineConfig = {
 const genres = ["Aventura", "Comédia", "Fantasia", "Ação", "Drama", "Mistério"];
 const durations = ["30 segundos", "1 minuto", "2 minutos", "3 minutos", "5 minutos", "10 minutos"];
 const RENDER_TOKEN_KEY = "@estudio2d/render-token";
+const DEFAULT_RENDER_BASE_URL = "https://estudio-2d-render-n83m.onrender.com";
 
 function showUserAlert(title: string, message: string): void {
   if (Platform.OS === "web" && typeof window !== "undefined") {
@@ -240,7 +241,7 @@ export default function App() {
   const [selected, setSelected] = useState<Project | null>(null);
   const [ready, setReady] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [engineConfig, setEngineConfig] = useState<EngineConfig>({ renderBaseUrl: "", renderToken: "" });
+  const [engineConfig, setEngineConfig] = useState<EngineConfig>({ renderBaseUrl: DEFAULT_RENDER_BASE_URL, renderToken: "" });
   const [connectionStatus, setConnectionStatus] = useState("Não testada");
   const [busyScene, setBusyScene] = useState<string | null>(null);
   const [creatingStory, setCreatingStory] = useState(false);
@@ -272,7 +273,7 @@ export default function App() {
           await AsyncStorage.setItem(ENGINE_STORAGE_KEY, JSON.stringify(saved));
           await AsyncStorage.removeItem(LEGACY_ENGINE_STORAGE_KEY);
         }
-        setEngineConfig(prev => ({ ...prev, ...saved, renderToken: token || legacyToken || "" }));
+        setEngineConfig(prev => ({ ...prev, ...saved, renderBaseUrl: saved.renderBaseUrl?.trim() || DEFAULT_RENDER_BASE_URL, renderToken: token || legacyToken || "" }));
       })
       .catch(() => Alert.alert("Aviso", "Não foi possível carregar as configurações seguras do servidor."));
   }, []);
