@@ -106,40 +106,56 @@ def _request_json(url: str, method: str = "GET", payload: dict | None = None) ->
 
 
 def _generate_huggingface_fallback(prompt: str, image_url: str, duration_seconds: float, seed: int | None) -> Path:
-    """Tenta o Space público gratuito quando a fila Agnes recusa a criação do job."""
+    """Usa o mesmo contrato Gradio validado no motor Hugging Face principal."""
     space_id = os.getenv("HF_VIDEO_SPACE_ID", "zerogpu-aoti/wan2-2-fp8da-aoti-faster").strip()
     if not space_id:
         raise RuntimeError("Space de vídeo Hugging Face não configurado.")
     try:
-        from gradio_client import Client
+        from gradio_client import Client, handle_file
     except Exception as error:
         raise RuntimeError("Cliente Hugging Face Gradio não está instalado.") from error
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    try:
-        client = Client(space_id)
-        result = client.predict(
-            input_image=image_url,
-            prompt=prompt or "Make this image come alive with cinematic motion and smooth animation. Animate visible body movement, facial expressions, blinking and gestures while preserving character identity and the original art style.",
-            duration_seconds=max(2.0, min(5.0, float(duration_seconds))),
-            guidance_scale=1.0,
-            guidance_scale_2=1.0,
-            negative_prompt="static image, frozen character, deformed body, extra limbs, extra fingers, blurry face, text, watermark",
-            randomize_seed=seed is None,
-            seed=int(seed if seed is not None else 42),
-            steps=6,
-            api_name="/generate_video",
-        )
-    except Exception as error:
-        raise RuntimeError("O motor gratuito alternativo do Hugging Face também não conseguiu gerar o vídeo: " + str(error).strip()[-1000:]) from error
-
-    video_path = result[0] if isinstance(result, (tuple, list)) else result
-    if isinstance(video_path, dict):
-        video_path = video_path.get("path") or video_path.get("name")
-    if not video_path or not Path(str(video_path)).is_file():
-        raise RuntimeError("Hugging Face respondeu, mas não retornou um arquivo de vídeo acessível.")
     output = OUTPUT_DIR / ("video-" + uuid.uuid4().hex + ".mp4")
-    shutil.copy2(str(video_path), output)
+    with tempfile.TemporaryDirectory(prefix="agnes-hf-fallback-") as temp_dir:
+        image_path = Path(temp_dir) / "reference.png"
+        request = urllib.request.Request(image_url, headers={"Accept": "image/*"})
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                image_bytes = response.read(20 * 1024 * 1024 + 1)
+            if len(image_bytes) > 20 * 1024 * 1024:
+                raise RuntimeError("A imagem de referência excede o limite de 20 MB.")
+            from PIL import Image
+            import io
+            with Image.open(io.BytesIO(image_bytes)) as source:
+                source.convert("RGB").save(image_path, format="PNG")
+        except Exception as error:
+            raise RuntimeError("Não foi possível baixar ou preparar a imagem para o Hugging Face.") from error
+
+        try:
+            client = Client(space_id, token=os.getenv("HF_TOKEN", "").strip() or None, verbose=False)
+            result = client.predict(
+                handle_file(str(image_path)),
+                prompt or "Cinematic 2D anime animation. The characters move naturally with visible body movement, expressive facial motion, blinking and gestures. Preserve character identity, clothing, composition and art style. Keep the camera mostly steady.",
+                6,
+                "static image, frozen character, deformed body, extra limbs, extra fingers, blurry face, text, watermark",
+                max(0.5, min(5.0, float(duration_seconds))),
+                1.0,
+                1.0,
+                int(seed if seed is not None else 42),
+                seed is None,
+                api_name="/generate_video",
+            )
+        except Exception as error:
+            raise RuntimeError("O motor Hugging Face não conseguiu gerar o vídeo: " + str(error).strip()[-1000:]) from error
+
+        video_path = result[0] if isinstance(result, (tuple, list)) else result
+        if isinstance(video_path, dict):
+            video_path = video_path.get("path") or video_path.get("name")
+        if not video_path or not Path(str(video_path)).is_file():
+            raise RuntimeError("Hugging Face respondeu, mas não retornou um arquivo de vídeo acessível.")
+        shutil.copy2(str(video_path), output)
+
     with output.open("rb") as generated:
         header = generated.read(12)
     if len(header) < 12 or header[4:8] != b"ftyp":
