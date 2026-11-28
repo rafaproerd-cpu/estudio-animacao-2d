@@ -1084,6 +1084,14 @@ export default function App() {
       return;
     }
     if (creatingStory) return;
+    if (requestedDurationSeconds(duration) > 150) {
+      const project = { ...buildProject(cleanIdea, genre, duration), storyEngine: "local-template" as const };
+      setProjects(previous => [project, ...previous]);
+      setSelected(project);
+      setIdea("");
+      setStoryFeedback(`Projeto criado com roteiro-base local (${project.scenes.length} cenas). A geração por IA ainda suporta até 2 min e 30 s; este projeto mais longo foi preparado pelo modelo local e pode ser editado.`);
+      return;
+    }
     setCreatingStory(true);
     setStoryFeedback("Conectando ao servidor e solicitando o roteiro à IA. Em uma primeira tentativa, o servidor pode levar até 1 minuto para despertar.");
     try {
