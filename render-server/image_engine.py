@@ -161,7 +161,7 @@ def huggingface_image_engine_status() -> dict[str, object]:
         "provider": "Hugging Face ZeroGPU",
         "space_id": HF_SPACE_ID,
         "mode": HF_SPACE_MODE,
-        "reference_images_supported": HF_SPACE_MODE in {"legacy", "flux_kontext"},
+        "reference_images_supported": HF_SPACE_MODE in {"legacy", "flux_kontext", "qwen_edit"},
         "reference_provider_notice": (
             "FLUX.1 Kontext [dev] permite referência visual, mas sua licença é não comercial e não autoriza uso em produção ou geração de receita sem licença comercial separada."
             if HF_SPACE_MODE == "flux_kontext"
@@ -225,6 +225,29 @@ def generate_huggingface_image(
                 False,
                 2.5,
                 28,
+                api_name="/infer",
+            )
+        finally:
+            if reference_path:
+                reference_path.unlink(missing_ok=True)
+    elif HF_SPACE_MODE == "qwen_edit":
+        # Public Qwen Image Edit Space. Disable prompt rewriting: it requires
+        # a separate DashScope key, which the Estudio must not depend on.
+        reference_path = None
+        try:
+            if reference_image_bytes:
+                suffix = ".png" if reference_image_bytes.startswith(b"\\x89PNG") else ".jpg"
+                with tempfile.NamedTemporaryFile(prefix="estudio-qwen-reference-", suffix=suffix, delete=False) as temporary:
+                    temporary.write(reference_image_bytes)
+                    reference_path = Path(temporary.name)
+            result = client.predict(
+                str(reference_path) if reference_path else None,
+                prompt,
+                int(seed if seed is not None else 42),
+                False,
+                4.0,
+                50,
+                False,
                 api_name="/infer",
             )
         finally:
@@ -297,7 +320,7 @@ def diagnose_huggingface_image_space() -> dict[str, object]:
         client = Client(HF_SPACE_ID, token=HF_TOKEN or None, verbose=False)
         api = client.view_api(return_format="dict")
         named = api.get("named_endpoints", {}) if isinstance(api, dict) else {}
-        expected = "/generate_image" if HF_SPACE_MODE == "public_zimage" else ("/infer" if HF_SPACE_MODE == "flux_kontext" else "/generate")
+        expected = "/generate_image" if HF_SPACE_MODE == "public_zimage" else ("/infer" if HF_SPACE_MODE in {"flux_kontext", "qwen_edit"} else "/generate")
         endpoint = named.get(expected) if isinstance(named, dict) else None
         if endpoint is None and isinstance(named, dict):
             endpoint = named.get(expected.lstrip("/"))
@@ -436,9 +459,9 @@ def generate_image(
             reference_image_bytes=reference_image_bytes,
         )
     except Exception as hf_error:
-        if HF_SPACE_MODE == "flux_kontext" and reference_image_bytes:
+        if HF_SPACE_MODE in {"flux_kontext", "qwen_edit"} and reference_image_bytes:
             raise RuntimeError(
-                "FLUX Kontext não conseguiu gerar a cena usando a imagem-base. "
+                ("FLUX Kontext" if HF_SPACE_MODE == "flux_kontext" else "Qwen Image Edit") + " não conseguiu gerar a cena usando a imagem-base. "
                 "A geração foi interrompida para não substituir silenciosamente a referência por um provedor só de texto. "
                 + str(hf_error)[:700]
             ) from hf_error
