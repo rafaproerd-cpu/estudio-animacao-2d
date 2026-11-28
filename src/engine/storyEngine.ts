@@ -253,6 +253,14 @@ function openingNarration(premise: string): string {
   return words.slice(0, 7).join(" ") + "…";
 }
 
+function sceneNarration(genre: Genre, beatIndex: number, progressionIndex: number): string {
+  const base = GENRE_NARRATION[genre][beatIndex];
+  const transitions = ["", "Logo depois, ", "Enquanto isso, ", "Em seguida, "];
+  const transition = transitions[progressionIndex] || "";
+  if (!transition) return base;
+  return transition + base.charAt(0).toLowerCase() + base.slice(1);
+}
+
 function durationInSeconds(duration: string): number {
   const normalized = duration.toLowerCase();
   const minutes = normalized.match(/(\d+(?:[.,]\d+)?)\s*min/);
@@ -294,7 +302,7 @@ function makeScene(
     title: `Cena ${sceneNumber} — ${phaseTitle}`,
     purpose: action,
     action: `${action} Desenvolver este momento de forma visual e conectá-lo naturalmente à cena anterior e à próxima.`,
-    dialogue: index === 0 ? openingNarration(premise) : GENRE_NARRATION[genre][beatIndex],
+    dialogue: index === 0 ? openingNarration(premise) : sceneNarration(genre, beatIndex, progressionIndex),
     shot,
     camera,
     lighting,
