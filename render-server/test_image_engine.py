@@ -449,3 +449,125 @@ class ImageEngineDispatchTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FluxKontextImageReferenceTests(unittest.TestCase):
+    def test_flux_kontext_passes_uploaded_reference_to_gradio_and_cleans_temp_file(self):
+        original_values = {
+            "HF_SPACE_ID": image_engine.HF_SPACE_ID,
+            "HF_SPACE_MODE": image_engine.HF_SPACE_MODE,
+            "HF_TOKEN": image_engine.HF_TOKEN,
+            "IMAGE_OUTPUT_DIR": image_engine.IMAGE_OUTPUT_DIR,
+        }
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                source = root / "edited.png"
+                Image.new("RGB", (48, 64), (12, 34, 56)).save(source, format="PNG")
+                image_engine.HF_SPACE_ID = "black-forest-labs/FLUX.1-Kontext-Dev"
+                image_engine.HF_SPACE_MODE = "flux_kontext"
+                image_engine.HF_TOKEN = "hf-test"
+                image_engine.IMAGE_OUTPUT_DIR = root / "outputs"
+
+                class FakeClient:
+                    received = None
+                    reference_path = None
+                    reference_existed_during_call = False
+
+                    def __init__(self, space_id, **kwargs):
+                        self.space_id = space_id
+                        self.kwargs = kwargs
+
+                    def predict(self, *args, **kwargs):
+                        self.__class__.received = (args, kwargs)
+                        self.__class__.reference_path = Path(args[0])
+                        self.__class__.reference_existed_during_call = self.__class__.reference_path.is_file()
+                        return ({"path": str(source)}, 42, None)
+
+                fake_module = types.SimpleNamespace(Client=FakeClient)
+                reference = io_bytes = b"\\x89PNG\\r\\n\\x1a\\nreference"
+                with patch.dict(sys.modules, {"gradio_client": fake_module}), patch.object(
+                    image_engine,
+                    "huggingface_image_engine_status",
+                    return_value={"available": True, "status": "configured_unverified"},
+                ):
+                    output = image_engine.generate_huggingface_image(
+                        prompt="same character, now walking through a forest",
+                        width=576,
+                        height=1024,
+                        seed=321,
+                        reference_image_bytes=reference,
+                    )
+
+                args, kwargs = FakeClient.received
+                self.assertEqual(args[1:], ("same character, now walking through a forest", 321, False, 2.5, 28))
+                self.assertEqual(kwargs, {"api_name": "/infer"})
+                self.assertTrue(FakeClient.reference_existed_during_call)
+                self.assertFalse(FakeClient.reference_path.exists())
+                self.assertTrue(output.is_file())
+                with Image.open(output) as generated:
+                    self.assertEqual(generated.format, "PNG")
+                    self.assertEqual(generated.size, (48, 64))
+        finally:
+            for key, value in original_values.items():
+                setattr(image_engine, key, value)
+
+    def test_flux_kontext_requires_a_reference_image(self):
+        original_values = {
+            "HF_SPACE_ID": image_engine.HF_SPACE_ID,
+            "HF_SPACE_MODE": image_engine.HF_SPACE_MODE,
+            "HF_TOKEN": image_engine.HF_TOKEN,
+        }
+        try:
+            image_engine.HF_SPACE_ID = "black-forest-labs/FLUX.1-Kontext-Dev"
+            image_engine.HF_SPACE_MODE = "flux_kontext"
+            image_engine.HF_TOKEN = ""
+            fake_module = types.SimpleNamespace(Client=lambda *args, **kwargs: None)
+            with patch.dict(sys.modules, {"gradio_client": fake_module}), patch.object(
+                image_engine,
+                "huggingface_image_engine_status",
+                return_value={"available": True, "status": "configured_unverified"},
+            ):
+                with self.assertRaisesRegex(RuntimeError, "exige uma imagem-base"):
+                    image_engine.generate_huggingface_image(
+                        prompt="another scene", width=576, height=1024,
+                        seed=1, reference_image_bytes=None,
+                    )
+        finally:
+            for key, value in original_values.items():
+                setattr(image_engine, key, value)
+
+    def test_flux_kontext_diagnostic_expects_infer_endpoint(self):
+        original_values = {
+            "HF_SPACE_ID": image_engine.HF_SPACE_ID,
+            "HF_SPACE_MODE": image_engine.HF_SPACE_MODE,
+            "HF_TOKEN": image_engine.HF_TOKEN,
+        }
+        try:
+            image_engine.HF_SPACE_ID = "black-forest-labs/FLUX.1-Kontext-Dev"
+            image_engine.HF_SPACE_MODE = "flux_kontext"
+            image_engine.HF_TOKEN = "hf-test"
+
+            class FakeClient:
+                def __init__(self, space_id, **kwargs):
+                    pass
+                def view_api(self, return_format):
+                    return {"named_endpoints": {"/infer": {"parameters": []}}}
+
+            fake_module = types.SimpleNamespace(Client=FakeClient)
+            with patch.dict(sys.modules, {"gradio_client": fake_module}), patch.object(
+                image_engine,
+                "huggingface_image_engine_status",
+                return_value={
+                    "available": True,
+                    "status": "configured_unverified",
+                    "reference_images_supported": True,
+                },
+            ):
+                result = image_engine.diagnose_huggingface_image_space()
+
+            self.assertEqual(result["expected_endpoint"], "/infer")
+            self.assertTrue(result["endpoint_verified"])
+        finally:
+            for key, value in original_values.items():
+                setattr(image_engine, key, value)
