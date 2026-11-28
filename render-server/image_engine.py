@@ -303,14 +303,25 @@ def generate_huggingface_image(
             if reference_path:
                 reference_path.unlink(missing_ok=True)
 
-    # Gradio image outputs may be a tuple (image, seed), FileData mapping or path.
+    # Gradio image outputs may be a tuple (image, seed), a Gallery
+    # collection of {image: FileData, caption: ...}, a FileData mapping or a path.
     candidate = result
     if isinstance(candidate, (list, tuple)):
         if not candidate:
             raise RuntimeError("O Space retornou uma resposta de imagem vazia.")
         candidate = candidate[0]
+    if isinstance(candidate, (list, tuple)):
+        if not candidate:
+            raise RuntimeError("A galeria do Space retornou uma imagem vazia.")
+        candidate = candidate[0]
+    if isinstance(candidate, (list, tuple)):
+        candidate = candidate[0] if candidate else None
     if isinstance(candidate, dict):
-        candidate = candidate.get("path")
+        image_data = candidate.get("image", candidate)
+        if isinstance(image_data, dict):
+            candidate = image_data.get("path")
+        else:
+            candidate = image_data
     elif not isinstance(candidate, (str, Path)):
         candidate = getattr(candidate, "path", None)
     if not isinstance(candidate, (str, Path)) or not str(candidate):
