@@ -500,7 +500,9 @@ class FluxKontextImageReferenceTests(unittest.TestCase):
                     )
 
                 args, kwargs = FakeClient.received
-                self.assertEqual(args[1:], ("same character, now walking through a forest", 321, False, 2.5, 28))
+                self.assertIn("strict visual identity reference", args[1])
+                self.assertIn("same character, now walking through a forest", args[1])
+                self.assertEqual(args[2:], (321, False, 2.5, 28))
                 self.assertEqual(kwargs, {"api_name": "/infer"})
                 self.assertTrue(FakeClient.reference_existed_during_call)
                 self.assertFalse(FakeClient.reference_path.exists())
