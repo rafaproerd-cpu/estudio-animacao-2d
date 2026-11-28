@@ -10,8 +10,8 @@ STORY_API_URL = os.getenv("STORY_API_URL", "https://openrouter.ai/api/v1/chat/co
 STORY_API_KEY = os.getenv("STORY_API_KEY", "").strip()
 STORY_MODEL = os.getenv("STORY_MODEL", "openrouter/free").strip()
 VISUAL_STYLE = (
-    "animação 2D cinematográfica com acabamento de anime, cenários detalhados, "
-    "iluminação dramática, profundidade 2.5D e movimentos de câmera"
+    "animação 2D narrativa para vídeos curtos e seriados, com identidade visual consistente, "
+    "personagens expressivos, cenários legíveis e composição cinematográfica"
 )
 
 
@@ -78,6 +78,15 @@ PERSONAGEM / CONTINUIDADE: {character}
 LINGUAGEM: português brasileiro natural, contemporâneo e expressivo.
 DIREÇÃO VISUAL: {VISUAL_STYLE}
 
+REFERÊNCIA DE LINGUAGEM AUDIOVISUAL
+- Use como referência a linguagem de vídeos de histórias narradas em animação 2D: cenas curtas,
+  progressão visual clara, personagens expressivos e acontecimentos fáceis de acompanhar.
+- A arte pode variar conforme a história: cartoon 2D simples e colorido, 2D cinematográfico com
+  profundidade 2.5D, ou anime 2D com iluminação dramática. Escolha a abordagem que melhor combina
+  com o gênero e mantenha-a consistente do início ao fim. Não misture estilos sem motivo.
+- A referência é a linguagem narrativa e a qualidade visual, não copiar personagens, cenas ou histórias
+  dos vídeos de exemplo.
+
 LIBERDADE CRIATIVA (MUITO IMPORTANTE)
 - O usuário pode fornecer apenas uma frase. Complete por conta própria as lacunas: protagonista,
   desejo, personalidade, cenário, personagens secundários, obstáculo, antagonismo e stakes.
@@ -86,8 +95,8 @@ LIBERDADE CRIATIVA (MUITO IMPORTANTE)
 - Não peça mais informações. Tome decisões criativas coerentes com a ideia e o gênero.
 - Não transforme a ideia do usuário em outra história: preserve seu núcleo e amplie-o.
 - Fuja de clichês automáticos, moral da história explícita, coincidências convenientes e soluções fáceis.
-- Dê aos personagens desejos, medos, contradições e vozes diferentes. Eles não devem falar como narradores
-  explicando o que a imagem já mostra.
+- Dê aos personagens personalidades distintas, desejos, medos e contradições, demonstrados por escolhas,
+  gestos, expressões e atitudes. Eles NÃO têm falas próprias.
 - O formato é SEMPRE NARRADO por uma voz narradora externa. Não escreva falas de personagens, diálogos, conversas, aspas de fala ou rubricas de locutor/personagem.
 - O campo "dialogue" do JSON é legado técnico: preencha-o exclusivamente com o TEXTO DA NARRAÇÃO daquela cena, em voz de narrador, pronto para TTS.
 - Narração com ritmo oral, natural e expressivo em português brasileiro. Crie frases com cadência, imagens sensoriais e transições que despertem curiosidade.
@@ -111,6 +120,10 @@ escolhas e relações; em fantasia, estabeleça regras e custos para o extraordi
 DIREÇÃO PARA ANIMAÇÃO
 - Planeje entre 4 e 30 cenas, em ritmo compatível com a duração. Cada cena deve funcionar como um clipe
   curto e animável, com uma ação principal legível.
+- Pense em episódios de uma série: se a ideia pedir continuação, termine com um gancho forte; se for
+  uma história fechada, entregue conclusão satisfatória. Não force um "continua" em toda história.
+- A narração deve ter conteúdo suficiente para conduzir a cena, mas ser enxuta para caber no tempo.
+  Use normalmente 1 a 3 frases por cena, variando conforme a duração e a intensidade da ação.
 - Escreva ações filmáveis: quem faz o quê, onde, com que objeto, e qual consequência visível acontece.
   Evite frases abstratas como "a tensão aumenta" sem mostrar como isso aparece na tela.
 - Varie planos e movimentos de câmera por intenção dramática. Não use zoom ou travelling em todas.
