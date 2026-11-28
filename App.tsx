@@ -1069,7 +1069,16 @@ export default function App() {
         if (!uri) return;
         const extension = uri.split("?")[0].split(".").pop()?.toLowerCase() || "mp3";
         const mimeTypes: Record<string, string> = { mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4", aac: "audio/aac", ogg: "audio/ogg", flac: "audio/flac" };
-        form.append(field, { uri, name: field + "." + extension, type: mimeTypes[extension] || "application/octet-stream" } as any);
+        const filename = field + "." + extension;
+        if (Platform.OS === "web") {
+          const response = await fetch(uri, {
+            headers: uri.startsWith("http") ? { Authorization: `Bearer ${renderToken}` } : undefined,
+          });
+          if (!response.ok) throw new Error(`Não foi possível preparar o áudio (${response.status}).`);
+          form.append(field, await response.blob(), filename);
+          return;
+        }
+        form.append(field, { uri, name: filename, type: mimeTypes[extension] || "application/octet-stream" } as any);
       };
       await appendAudio(narrationUri, "narration");
       await appendAudio(selected.musicUri, "music");
@@ -1077,28 +1086,33 @@ export default function App() {
       for (let index = 0; index < selected.scenes.length; index += 1) {
         const scene = selected.scenes[index];
         let localUri = scene.videoUri!;
-        if (!localUri.startsWith("file://")) {
-          const sourceUri = scene.videoRemoteUri || localUri;
-          const filenameParam = sourceUri.match(/[?&]filename=([^&]+)/)?.[1];
-          const sourceFilename = filenameParam ? decodeURIComponent(filenameParam) : "";
-          const extension = sourceFilename.match(/\.(mp4|webm|mov|mkv)$/i)?.[1] || "mp4";
-          const localPath = `${directory}${selected.id}-scene-${String(index + 1).padStart(2, "0")}-${Date.now()}.${extension}`;
-          const download = await FileSystem.downloadAsync(sourceUri, localPath);
-          if (download.status < 200 || download.status >= 300) throw new Error(`Não foi possível baixar o clipe ${index + 1} (HTTP ${download.status}).`);
-          localUri = download.uri;
-          workingProject = {
-            ...workingProject,
-            scenes: workingProject.scenes.map(item => item.title === scene.title
-              ? { ...item, videoUri: localUri, videoRemoteUri: sourceUri }
-              : item),
-          };
-          setSelected(workingProject);
-          setProjects(previous => previous.map(item => item.id === workingProject.id ? workingProject : item));
-        }
-
-        const extension = localUri.split("?")[0].split(".").pop()?.toLowerCase() || "mp4";
+        const sourceUri = scene.videoRemoteUri || localUri;
+        const filenameParam = sourceUri.match(/[?&]filename=([^&]+)/)?.[1];
+        const sourceFilename = filenameParam ? decodeURIComponent(filenameParam) : "";
+        const extension = sourceFilename.match(/\.(mp4|webm|mov|mkv)$/i)?.[1] || localUri.split("?")[0].split(".").pop()?.toLowerCase() || "mp4";
+        const filename = `scene-${String(index + 1).padStart(2, "0")}.${extension}`;
         const mimeType = extension === "webm" ? "video/webm" : extension === "mov" ? "video/quicktime" : extension === "mkv" ? "video/x-matroska" : "video/mp4";
-        form.append("clips", { uri: localUri, name: `scene-${String(index + 1).padStart(2, "0")}.${extension}`, type: mimeType } as any);
+        if (Platform.OS === "web") {
+          const clipResponse = await fetch(sourceUri, { headers: sourceUri.startsWith("http") ? { Authorization: `Bearer ${renderToken}` } : undefined });
+          if (!clipResponse.ok) throw new Error(`Não foi possível baixar o clipe ${index + 1} (HTTP ${clipResponse.status}).`);
+          form.append("clips", await clipResponse.blob(), filename);
+        } else {
+          if (!localUri.startsWith("file://")) {
+            const localPath = `${directory}${selected.id}-scene-${String(index + 1).padStart(2, "0")}-${Date.now()}.${extension}`;
+            const download = await FileSystem.downloadAsync(sourceUri, localPath);
+            if (download.status < 200 || download.status >= 300) throw new Error(`Não foi possível baixar o clipe ${index + 1} (HTTP ${download.status}).`);
+            localUri = download.uri;
+            workingProject = {
+              ...workingProject,
+              scenes: workingProject.scenes.map(item => item.title === scene.title
+                ? { ...item, videoUri: localUri, videoRemoteUri: sourceUri }
+                : item),
+            };
+            setSelected(workingProject);
+            setProjects(previous => previous.map(item => item.id === workingProject.id ? workingProject : item));
+          }
+          form.append("clips", { uri: localUri, name: filename, type: mimeType } as any);
+        }
         setBatchProgress({ current: index + 1, total: selected.scenes.length });
       }
 
