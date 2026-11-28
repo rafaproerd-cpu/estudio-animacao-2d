@@ -243,6 +243,13 @@ function cleanPremise(value: string): string {
   return value.trim().replace(/\s+/g, " ").slice(0, 700);
 }
 
+function openingNarration(premise: string): string {
+  const firstSentence = (premise.split(/[.!?]/, 1)[0] || premise).trim();
+  const words = firstSentence.split(" ").filter(Boolean);
+  if (words.length <= 8) return firstSentence.endsWith(".") ? firstSentence : firstSentence + ".";
+  return words.slice(0, 7).join(" ") + "…";
+}
+
 function durationInSeconds(duration: string): number {
   const normalized = duration.toLowerCase();
   const minutes = normalized.match(/(\d+(?:[.,]\d+)?)\s*min/);
@@ -284,7 +291,7 @@ function makeScene(
     title: `Cena ${sceneNumber} — ${phaseTitle}`,
     purpose: action,
     action: `${action} Desenvolver este momento de forma visual e conectá-lo naturalmente à cena anterior e à próxima.`,
-    dialogue: index === 0 ? `${premise.split(/\s+/).slice(0, 8).join(" ").replace(/[.!?]+$/, "")}.` : GENRE_NARRATION[genre][beatIndex],
+    dialogue: index === 0 ? openingNarration(premise) : GENRE_NARRATION[genre][beatIndex],
     shot,
     camera,
     lighting,
