@@ -452,6 +452,25 @@ if __name__ == "__main__":
 
 
 class FluxKontextImageReferenceTests(unittest.TestCase):
+    def test_flux_kontext_status_warns_that_dev_license_is_non_commercial(self):
+        original_values = {
+            "HF_SPACE_ID": image_engine.HF_SPACE_ID,
+            "HF_SPACE_MODE": image_engine.HF_SPACE_MODE,
+            "HF_TOKEN": image_engine.HF_TOKEN,
+        }
+        try:
+            image_engine.HF_SPACE_ID = "black-forest-labs/FLUX.1-Kontext-Dev"
+            image_engine.HF_SPACE_MODE = "flux_kontext"
+            image_engine.HF_TOKEN = ""
+            with patch("importlib.util.find_spec", return_value=object()):
+                status = image_engine.huggingface_image_engine_status()
+            self.assertTrue(status["reference_images_supported"])
+            self.assertIn("não comercial", status["reference_provider_notice"])
+            self.assertIn("produção", status["reference_provider_notice"])
+        finally:
+            for key, value in original_values.items():
+                setattr(image_engine, key, value)
+
     def test_flux_kontext_passes_uploaded_reference_to_gradio_and_cleans_temp_file(self):
         original_values = {
             "HF_SPACE_ID": image_engine.HF_SPACE_ID,
