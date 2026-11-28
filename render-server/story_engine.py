@@ -75,7 +75,8 @@ def generate_story_plan(idea: str, genre: str, duration: str, character: str, ap
         )
     planned_scene_count = max(4, min(30, (requested_seconds + 4) // 5))
     seconds_per_scene = requested_seconds / planned_scene_count
-    narration_word_limit = max(5, int(seconds_per_scene * 2.0))
+    narration_min_words = max(5, min(10, int(seconds_per_scene * 1.7)))
+    narration_word_limit = max(narration_min_words, int(seconds_per_scene * 2.2))
 
     prompt = f"""
 Você é o ROTEIRISTA-CHEFE e DIRETOR CRIATIVO de um estúdio profissional de animação.
@@ -135,8 +136,10 @@ DIREÇÃO PARA ANIMAÇÃO
 - Pense em episódios de uma série: se a ideia pedir continuação, termine com um gancho forte; se for
   uma história fechada, entregue conclusão satisfatória. Não force um "continua" em toda história.
 - A narração deve caber no tempo real do clipe. Cada cena terá aproximadamente
-  {seconds_per_scene:.1f} segundos de vídeo; limite a narração a no máximo {narration_word_limit} palavras
-  por cena, preferencialmente uma única frase curta. Não escreva texto que será cortado no fim do áudio.
+  {seconds_per_scene:.1f} segundos de vídeo; escreva uma narração completa, com aproximadamente
+  {narration_min_words} a {narration_word_limit} palavras por cena. Evite frases telegráficas ou
+  narrações de apenas poucas palavras. Use uma ou duas frases naturais, com informação e emoção,
+  respeitando o tempo do clipe. Não escreva texto que será cortado no fim do áudio.
   Distribua a informação pela sequência inteira, sem tentar contar tudo em uma única cena.
 - Escreva ações filmáveis: quem faz o quê, onde, com que objeto, e qual consequência visível acontece.
   Evite frases abstratas como "a tensão aumenta" sem mostrar como isso aparece na tela.
