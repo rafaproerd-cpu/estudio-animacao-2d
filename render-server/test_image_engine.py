@@ -207,6 +207,42 @@ class HuggingFaceImageEngineTests(unittest.TestCase):
                 setattr(image_engine, key, value)
 
 
+class HuggingFaceReferenceCapabilityTests(unittest.TestCase):
+    def test_public_zimage_reports_text_only_reference_limitation(self):
+        original_values = {
+            "HF_SPACE_ID": image_engine.HF_SPACE_ID,
+            "HF_SPACE_MODE": image_engine.HF_SPACE_MODE,
+            "HF_TOKEN": image_engine.HF_TOKEN,
+        }
+        try:
+            image_engine.HF_SPACE_ID = "mrfakename/Z-Image-Turbo"
+            image_engine.HF_SPACE_MODE = "public_zimage"
+            image_engine.HF_TOKEN = ""
+            with patch("importlib.util.find_spec", return_value=object()):
+                status = image_engine.huggingface_image_engine_status()
+            self.assertFalse(status["reference_images_supported"])
+        finally:
+            for key, value in original_values.items():
+                setattr(image_engine, key, value)
+
+    def test_legacy_gradio_mode_reports_reference_support(self):
+        original_values = {
+            "HF_SPACE_ID": image_engine.HF_SPACE_ID,
+            "HF_SPACE_MODE": image_engine.HF_SPACE_MODE,
+            "HF_TOKEN": image_engine.HF_TOKEN,
+        }
+        try:
+            image_engine.HF_SPACE_ID = "owner/custom-space"
+            image_engine.HF_SPACE_MODE = "legacy"
+            image_engine.HF_TOKEN = ""
+            with patch("importlib.util.find_spec", return_value=object()):
+                status = image_engine.huggingface_image_engine_status()
+            self.assertTrue(status["reference_images_supported"])
+        finally:
+            for key, value in original_values.items():
+                setattr(image_engine, key, value)
+
+
 class HuggingFaceConnectivityDiagnosticTests(unittest.TestCase):
     def test_diagnostic_confirms_expected_api_without_running_inference(self):
         original_values = {
