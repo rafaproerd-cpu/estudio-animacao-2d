@@ -14,6 +14,26 @@ from PIL import Image
 import main
 
 
+class CrossfadeFilterTests(unittest.TestCase):
+    def test_builds_dissolve_chain_for_multiple_clips(self):
+        graph, output = main.build_crossfade_filter([5.0, 4.0, 6.0])
+        self.assertIn("[0:v][1:v]xfade=transition=fade:duration=0.400:offset=4.600[v1]", graph)
+        self.assertIn("[v1][2:v]xfade=transition=fade:duration=0.400:offset=8.200[v2]", graph)
+        self.assertEqual(output, "[v2]")
+
+    def test_uses_shorter_transition_for_short_clips(self):
+        graph, output = main.build_crossfade_filter([0.9, 1.2])
+        self.assertIn("duration=0.300", graph)
+        self.assertEqual(output, "[v1]")
+
+    def test_single_clip_does_not_need_transition(self):
+        self.assertIsNone(main.build_crossfade_filter([4.0]))
+
+    def test_rejects_invalid_clip_durations(self):
+        with self.assertRaises(ValueError):
+            main.build_crossfade_filter([4.0, 0.0])
+
+
 class RenderServerTests(unittest.TestCase):
     def setUp(self):
         self._saved_jobs = dict(main.generation_jobs)
