@@ -218,13 +218,20 @@ def generate_agnes_video(prompt: str, image_url: str, duration_seconds: float, s
     except RuntimeError as error:
         if "video_queue_full" not in str(error):
             raise
+        # O fallback HF fica desligado por padrão: a cota ZeroGPU desta conta
+        # já foi esgotada no teste recente. Evita uma chamada que sabemos que falhará.
+        if os.getenv("HF_VIDEO_FALLBACK_ENABLED", "").strip().lower() != "true":
+            raise RuntimeError(
+                "A fila da Agnes continua cheia após as tentativas espaçadas. "
+                "O fallback Hugging Face está pausado porque a cota ZeroGPU foi esgotada. "
+                "Nenhum outro provedor foi acionado. " + str(error)[-700:]
+            ) from error
         try:
             return _generate_huggingface_fallback(prompt, image_url, duration_seconds, seed)
         except Exception as fallback_error:
             raise RuntimeError(
-                "A fila gratuita da Agnes AI continua cheia e o motor gratuito alternativo também falhou. "
-                "Nenhum serviço pago foi acionado. Agnes: " + str(error)[-700:] +
-                " | Hugging Face: " + str(fallback_error)[-700:]
+                "Agnes e o fallback Hugging Face falharam. Nenhum serviço pago foi acionado. "
+                "Agnes: " + str(error)[-700:] + " | Hugging Face: " + str(fallback_error)[-700:]
             ) from fallback_error
     video_id = created.get("video_id")
     if not isinstance(video_id, str) or not video_id:
