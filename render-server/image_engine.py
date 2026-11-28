@@ -266,6 +266,15 @@ def generate_huggingface_image(
                 False,
                 api_name="/infer",
             )
+        except Exception as exc:
+            error_text = str(exc).lower()
+            if "zerogpu quota exceeded" in error_text or "exceeded your zerogpu" in error_text:
+                raise RuntimeError(
+                    "O limite gratuito de geração do Hugging Face foi atingido. "
+                    "Aguarde a renovação da cota ou escolha outro provedor gratuito; "
+                    "nenhuma assinatura ou cobrança foi ativada."
+                ) from exc
+            raise
         finally:
             if reference_path:
                 reference_path.unlink(missing_ok=True)
