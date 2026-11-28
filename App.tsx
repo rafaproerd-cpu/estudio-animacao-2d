@@ -1134,19 +1134,48 @@ export default function App() {
     }
   };
 
+  const removeProject = (id: string) => {
+    setProjects(previous => previous.filter(item => item.id !== id));
+    if (selected?.id === id) setSelected(null);
+  };
+
   const deleteProject = (id: string) => {
+    // Alert.alert não executa os botões de confirmação de forma consistente no navegador.
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      if (window.confirm("Excluir este projeto? Ele será removido deste aparelho.")) removeProject(id);
+      return;
+    }
     Alert.alert("Excluir projeto?", "Essa ação remove o projeto salvo neste aparelho.", [
       { text: "Cancelar", style: "cancel" },
-      { text: "Excluir", style: "destructive", onPress: () => {
-        setProjects(previous => previous.filter(item => item.id !== id));
-        if (selected?.id === id) setSelected(null);
-      }}
+      { text: "Excluir", style: "destructive", onPress: () => removeProject(id) }
+    ]);
+  };
+
+  const deleteAllProjects = () => {
+    if (!projects.length) return;
+    const removeAll = () => {
+      setProjects([]);
+      setSelected(null);
+    };
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      if (window.confirm("Apagar todos os projetos salvos neste aparelho? Esta ação não pode ser desfeita.")) removeAll();
+      return;
+    }
+    Alert.alert("Apagar todos os projetos?", "Esta ação remove todas as histórias salvas neste aparelho.", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Apagar tudo", style: "destructive", onPress: removeAll }
     ]);
   };
 
   const startNew = () => {
     setSelected(null);
     setIdea("");
+    setStoryFeedback("");
+    setImageFeedback("");
+    setVideoFeedback("");
+    setTtsFeedback("");
+    setBatchProgress(null);
+    // Não altera nem apaga engineConfig, token ou conexão salva.
   };
 
   const saveUpdatedProject = (updated: Project) => {
@@ -1293,6 +1322,9 @@ export default function App() {
             <Text style={styles.sectionTitle}>MEUS PROJETOS</Text>
             <Text style={styles.projectCount}>{projects.length} salvo(s)</Text>
           </View>
+          {projects.length > 0 ? <TouchableOpacity onPress={deleteAllProjects} style={styles.deleteAllButton}>
+            <Text style={styles.deleteText}>APAGAR TODOS OS PROJETOS</Text>
+          </TouchableOpacity> : null}
           {!ready ? <Text style={styles.empty}>Carregando seus projetos…</Text> :
             projects.length === 0 ? <Text style={styles.empty}>Seus projetos criados aparecerão aqui.</Text> :
             projects.map(item => (
@@ -1308,11 +1340,14 @@ export default function App() {
             ))
           }
         </> : <>
-          <TouchableOpacity onPress={startNew} disabled={!!busyScene} style={styles.backButton}><Text style={styles.backText}>‹  VOLTAR AOS PROJETOS</Text></TouchableOpacity>
+          <TouchableOpacity onPress={startNew} disabled={!!busyScene} style={styles.backButton}><Text style={styles.backText}>‹  INÍCIO · CRIAR OUTRA HISTÓRIA</Text></TouchableOpacity>
           <View style={styles.panel} pointerEvents={busyScene ? "none" : "auto"}>
             <Text style={styles.step}>PROJETO SALVO NO APARELHO</Text>
             <Text style={styles.panelTitle}>{selected.title}</Text>
             <Text style={styles.projectMeta}>{selected.genre} · {selected.duration} · {selected.scenes.length} cenas · {selected.storyEngine === "ai-provider" ? "roteiro por IA" : "planejamento local"}</Text>
+            <TouchableOpacity onPress={() => deleteProject(selected.id)} style={styles.deleteAllButton}>
+              <Text style={styles.deleteText}>EXCLUIR ESTA HISTÓRIA</Text>
+            </TouchableOpacity>
             <Text style={styles.label}>IDEIA ORIGINAL</Text>
             <Text style={styles.body}>{selected.idea}</Text>
             <Text style={styles.label}>FICHA DO PERSONAGEM</Text>
@@ -1483,6 +1518,7 @@ const styles = StyleSheet.create({
   projectName: { color: "#F2EEFF", fontSize: 13, fontWeight: "700" },
   projectMeta: { color: "#9692A8", fontSize: 10, marginTop: 5 },
   deleteButton: { padding: 8 },
+  deleteAllButton: { alignSelf: "flex-end", paddingVertical: 9, paddingHorizontal: 10, marginBottom: 8, borderWidth: 1, borderColor: "#713B49", borderRadius: 9 },
   deleteText: { color: "#FCA5A5", fontSize: 10, fontWeight: "700" },
   backButton: { paddingVertical: 8, marginBottom: 12 },
   backText: { color: "#C4B5FD", fontSize: 10, fontWeight: "900", letterSpacing: 1 },
