@@ -161,7 +161,7 @@ def huggingface_image_engine_status() -> dict[str, object]:
         "provider": "Hugging Face ZeroGPU",
         "space_id": HF_SPACE_ID,
         "mode": HF_SPACE_MODE,
-        "reference_images_supported": HF_SPACE_MODE != "public_zimage",
+        "reference_images_supported": HF_SPACE_MODE in {"legacy", "flux_kontext"},
         "fallback_provider": "Cloudflare Workers AI" if CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN else None,
         "fallback_reference_images_supported": False if CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN else None,
         "authentication": "token_configured" if token_configured else "anonymous",
@@ -194,7 +194,30 @@ def generate_huggingface_image(
         token=HF_TOKEN or None,
         verbose=False,
     )
-    if HF_SPACE_MODE == "public_zimage":
+    if HF_SPACE_MODE == "flux_kontext":
+        # Official FLUX.1 Kontext Space accepts an input image and edits it in place.
+        # This mode is opt-in; the default text-only provider remains unchanged.
+        if not reference_image_bytes:
+            raise RuntimeError("O modo FLUX Kontext exige uma imagem-base para preservar a referência visual.")
+        reference_path = None
+        try:
+            suffix = ".png" if reference_image_bytes.startswith(b"\\x89PNG") else ".jpg"
+            with tempfile.NamedTemporaryFile(prefix="estudio-kontext-reference-", suffix=suffix, delete=False) as temporary:
+                temporary.write(reference_image_bytes)
+                reference_path = Path(temporary.name)
+            result = client.predict(
+                str(reference_path),
+                prompt,
+                int(seed if seed is not None else 42),
+                False,
+                2.5,
+                28,
+                api_name="/infer",
+            )
+        finally:
+            if reference_path:
+                reference_path.unlink(missing_ok=True)
+    elif HF_SPACE_MODE == "public_zimage":
         # Public Z-Image-Turbo community Space API:
         # prompt, height, width, inference steps, seed, randomize seed.
         # It is text-to-image only; reference images are not supported by this Space.
@@ -261,7 +284,7 @@ def diagnose_huggingface_image_space() -> dict[str, object]:
         client = Client(HF_SPACE_ID, token=HF_TOKEN or None, verbose=False)
         api = client.view_api(return_format="dict")
         named = api.get("named_endpoints", {}) if isinstance(api, dict) else {}
-        expected = "/generate_image" if HF_SPACE_MODE == "public_zimage" else "/generate"
+        expected = "/generate_image" if HF_SPACE_MODE == "public_zimage" else ("/infer" if HF_SPACE_MODE == "flux_kontext" else "/generate")
         endpoint = named.get(expected) if isinstance(named, dict) else None
         if endpoint is None and isinstance(named, dict):
             endpoint = named.get(expected.lstrip("/"))
