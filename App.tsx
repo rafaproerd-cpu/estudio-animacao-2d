@@ -1337,6 +1337,7 @@ export default function App() {
             </TouchableOpacity>
             {!!storyFeedback && <Text accessibilityLiveRegion="polite" style={styles.note}>{storyFeedback}</Text>}
             <Text style={styles.note}>Quando o provedor de roteiro estiver configurado, a IA cria uma história original pelo servidor. Se ele não estiver disponível, o Estúdio avisa e oferece um roteiro-base local. Imagens, animações e vozes dependem dos respectivos motores hospedados.</Text>
+            <Text style={styles.note}>Limite atual do roteiro por IA: até 2 min e 30 s (30 cenas de até 5 s). Para projetos mais longos, o Estúdio usa o roteiro-base local até o motor ser ampliado.</Text>
           </View>
 
           <View style={styles.sectionHeader}>
