@@ -22,7 +22,7 @@ def story_engine_status() -> dict[str, Any]:
         "status": "configured" if configured else "not_configured",
         "message": (
             "Modelo de roteiro conectado." if configured
-            else "Configure apenas STORY_API_KEY no Render. O endpoint e o modelo gratuito OpenRouter já vêm configurados por padrão."
+            else "Configure STORY_API_KEY no Render. O modelo openrouter/free usa apenas opções gratuitas disponíveis no OpenRouter; disponibilidade e limites dependem do provedor."
         ),
     }
 
@@ -215,7 +215,10 @@ CONTROLE DE QUALIDADE ANTES DE RESPONDER
         if not isinstance(scene, dict):
             raise ValueError(f"A cena {index} está em formato inválido.")
         normalized = {key: str(scene.get(key, "")).strip() for key in required}
-        if any(not normalized[key] for key in required if key != "dialogue"):
+        missing_fields = [key for key in required if not normalized[key]]
+        if missing_fields:
+            if "dialogue" in missing_fields:
+                raise ValueError(f"A cena {index} está sem narração do narrador.")
             raise ValueError(f"A cena {index} está incompleta.")
         normalized["id"] = f"scene-{index}"
         normalized_scenes.append(normalized)
