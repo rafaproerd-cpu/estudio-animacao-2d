@@ -191,6 +191,26 @@ def check_agnes_connection() -> dict[str, object]:
     }
 
 
+def _build_narrated_animation_prompt(prompt: str) -> str:
+    """Converte a descrição da cena em instruções de animação para vídeo narrado."""
+    direction = (
+        "Animate this exact illustrated 2D scene as a narrated story clip. "
+        "The characters must perform the action described below with clearly visible "
+        "body movement, gestures, facial expressions and interaction with nearby objects. "
+        "Animate the environment subtly where appropriate (hair, clothing, leaves, rain, "
+        "dust, lights or other elements already present). Create a readable progression "
+        "from the opening pose through the action to a natural ending pose. "
+        "Preserve each character's identity, face, hairstyle, clothing, proportions, colors, "
+        "background design and the original 2D art style. Keep motion coherent and anatomically "
+        "stable; do not invent new characters or change the scene. Use camera movement only "
+        "to support the action, never as a substitute for character movement. "
+        "This is voice-over narration: characters do not speak, no lip-sync, no dialogue, "
+        "no subtitles, no lettering, no logos, no soundtrack or generated speech. "
+        "Scene-specific animation direction: "
+    )
+    return (direction + " " + " ".join(str(prompt or "").split()))[:4000]
+
+
 def generate_agnes_video(prompt: str, image_url: str, duration_seconds: float, seed: int | None) -> Path:
     # Independent safety guard: never call Agnes unless the owner explicitly confirms $0 access.
     if os.getenv("AGNES_FREE_ACCESS_CONFIRMED", "").strip().lower() != "true":
@@ -200,9 +220,10 @@ def generate_agnes_video(prompt: str, image_url: str, duration_seconds: float, s
     if not image_url.startswith("https://"):
         raise RuntimeError("A imagem de referência precisa de um endereço HTTPS público temporário.")
     seconds = str(max(4, min(12, round(float(duration_seconds)))))
+    animation_prompt = _build_narrated_animation_prompt(prompt)
     payload: dict[str, object] = {
         "model": "agnes-video-2.5-flash",
-        "prompt": prompt,
+        "prompt": animation_prompt,
         "mode": "reference",
         "seconds": seconds,
         "size": "720P",
@@ -227,7 +248,7 @@ def generate_agnes_video(prompt: str, image_url: str, duration_seconds: float, s
                 "Nenhum outro provedor foi acionado. " + str(error)[-700:]
             ) from error
         try:
-            return _generate_huggingface_fallback(prompt, image_url, duration_seconds, seed)
+            return _generate_huggingface_fallback(animation_prompt, image_url, duration_seconds, seed)
         except Exception as fallback_error:
             raise RuntimeError(
                 "Agnes e o fallback Hugging Face falharam. Nenhum serviço pago foi acionado. "
