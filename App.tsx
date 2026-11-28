@@ -1543,7 +1543,7 @@ export default function App() {
                   <Text style={styles.secondaryText}>EXPORTAR MP4 FINAL PARA ARQUIVOS</Text>
                 </TouchableOpacity>
               </> : null}
-              <Text style={styles.note}>A montagem preserva a orientação dos clipes (vertical, horizontal ou quadrada), em 30 FPS e H.264. Narração e música podem ser incluídas; transições entre cenas ainda não estão disponíveis.</Text>
+              <Text style={styles.note}>A montagem preserva a orientação dos clipes (vertical, horizontal ou quadrada), em 30 FPS e H.264. Narração e música podem ser incluídas; entre múltiplas cenas, o vídeo aplica transições suaves de fade automaticamente.</Text>
             </View>
             <TouchableOpacity style={styles.primary} onPress={copyScript}>
               <Text style={styles.primaryText}>COPIAR ROTEIRO</Text><Text style={styles.arrow}>⧉</Text>
