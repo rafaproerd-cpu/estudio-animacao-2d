@@ -65,9 +65,9 @@ def _request_json(url: str, method: str = "GET", payload: dict | None = None) ->
     # A fila cheia significa que o provedor recusou a solicitação antes de
     # criar o job. Repetimos somente esse erro específico para evitar jobs
     # duplicados em falhas 503 genéricas ou em timeouts ambíguos.
-    max_queue_retries = max(0, min(6, int(os.getenv("AGNES_QUEUE_RETRIES", "6"))))
-    # Backoff progressivo para a fila compartilhada: 30s, 60s, 120s, 240s, 300s, 300s.
-    retry_delays = (30, 60, 120, 240, 300, 300)
+    max_queue_retries = max(0, min(3, int(os.getenv("AGNES_QUEUE_RETRIES", "3"))))
+    # Backoff curto para não manter uma tarefa ocupada por muitos minutos: 30s, 60s e 120s.
+    retry_delays = (30, 60, 120)
     for attempt in range(max_queue_retries + 1):
         try:
             with urllib.request.urlopen(request, timeout=60) as response:
