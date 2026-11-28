@@ -1110,6 +1110,9 @@ export default function App() {
       if (!Array.isArray(generatedPlan.scenes) || generatedPlan.scenes.length < 4) {
         throw new Error("A IA respondeu, mas não entregou as cenas necessárias. Tente novamente.");
       }
+      if (generatedPlan.scenes.some(scene => !scene.dialogue?.trim())) {
+        throw new Error("O roteiro recebido contém uma cena sem narração externa. Gere novamente para manter todas as cenas narradas.");
+      }
       const project = { ...buildProject(cleanIdea, genre, duration, generatedPlan), storyEngine: "ai-provider" as const };
       setProjects(previous => [project, ...previous]);
       setSelected(project);
@@ -1125,7 +1128,13 @@ export default function App() {
       setSelected(project);
       setIdea("");
       const reason = error instanceof Error ? error.message : "Servidor de IA indisponível.";
-      setStoryFeedback(`Projeto criado com roteiro-base local (${project.scenes.length} cenas). A IA remota não respondeu: ${reason} Você já pode editar o projeto; a geração por IA será ativada quando o servidor estiver conectado.`);
+      const reasonLower = reason.toLocaleLowerCase();
+      const statusMessage = reasonLower.includes("story_api_key") || reasonLower.includes("configure story_api_key")
+        ? "O provedor de histórias ainda não está configurado no servidor."
+        : reasonLower.includes("conexão incompleta")
+          ? "Conecte o motor do Estúdio 2D nas configurações para ativar a geração por IA."
+          : `A geração por IA não foi concluída: ${reason}`;
+      setStoryFeedback(`Projeto criado com roteiro-base local (${project.scenes.length} cenas). ${statusMessage} O roteiro-base pode ser editado enquanto a IA não estiver disponível.`);
     } finally {
       setCreatingStory(false);
     }
