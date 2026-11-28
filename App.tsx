@@ -207,6 +207,16 @@ function estimatedGeneratedDurationSeconds(project: Project): number {
   return sceneClipDurationSeconds(project) * project.scenes.length;
 }
 
+function narrationSegmentDurationSeconds(project: Project): number {
+  const sceneCount = Math.max(1, project.scenes.length);
+  const sceneDuration = sceneClipDurationSeconds(project);
+  // Cada transição xfade de 0,4s sobrepõe dois clipes e reduz a duração final.
+  // Distribui essa sobreposição igualmente entre os trechos de narração para
+  // que a última frase não seja cortada na montagem com -shortest.
+  const transitionOverlap = sceneCount > 1 ? 0.4 * (sceneCount - 1) / sceneCount : 0;
+  return Math.max(0.5, sceneDuration - transitionOverlap);
+}
+
 async function downloadGeneratedAudio(audioUrl: string, token: string, destination: string): Promise<string> {
   if (Platform.OS === "web") {
     // No navegador, Expo FileSystem.downloadAsync não é confiável. Baixa com fetch
