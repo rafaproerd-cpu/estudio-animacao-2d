@@ -65,8 +65,9 @@ def _request_json(url: str, method: str = "GET", payload: dict | None = None) ->
     # A fila cheia significa que o provedor recusou a solicitação antes de
     # criar o job. Repetimos somente esse erro específico para evitar jobs
     # duplicados em falhas 503 genéricas ou em timeouts ambíguos.
-    max_queue_retries = max(0, min(4, int(os.getenv("AGNES_QUEUE_RETRIES", "3"))))
-    base_delay = max(1, min(60, int(os.getenv("AGNES_QUEUE_RETRY_DELAY_SECONDS", "15"))))
+    max_queue_retries = max(0, min(6, int(os.getenv("AGNES_QUEUE_RETRIES", "6"))))
+    # Backoff progressivo para a fila compartilhada: 30s, 60s, 120s, 240s, 300s, 300s.
+    retry_delays = (30, 60, 120, 240, 300, 300)
     for attempt in range(max_queue_retries + 1):
         try:
             with urllib.request.urlopen(request, timeout=60) as response:
@@ -84,13 +85,13 @@ def _request_json(url: str, method: str = "GET", payload: dict | None = None) ->
                 and error_body.get("code") == "video_queue_full"
             )
             if queue_is_full and attempt < max_queue_retries:
-                delay = min(120, base_delay * (attempt + 1))
+                delay = retry_delays[min(attempt, len(retry_delays) - 1)]
                 time.sleep(delay)
                 continue
             if queue_is_full:
                 raise RuntimeError(
                     "A fila de vídeos da Agnes AI continua cheia após "
-                    f"{max_queue_retries} tentativas automáticas. Aguarde alguns minutos e tente novamente. "
+                    f"{max_queue_retries} tentativas automáticas com espera progressiva. "
                     f"Detalhes: {detail}"
                 ) from error
             raise RuntimeError(f"Agnes AI respondeu HTTP {error.code}: {detail}") from error
