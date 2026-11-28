@@ -531,19 +531,28 @@ export default function App() {
       const provider = new HttpImageGenerationProvider({ baseUrl: connection.baseUrl, token: connection.token });
       const referenceScene = findCharacterReference(selected.scenes, scene.title);
       const referenceImageBase64 = referenceScene?.imageUri ? await imageUriToBase64(referenceScene.imageUri) : undefined;
-      let result = await provider.generate({ prompt: buildConsistentImagePrompt(selected, scene), width: 576, height: 1024, seed: stableProjectSeed(selected.id), referenceImageBase64 });
-      // Se o motor remoto rejeitar a referência visual, repetir sem ela para
-      // que a geração individual ainda possa funcionar.
+      const sceneSeed = stableProjectSeed(`${selected.id}:${scene.title}`);
+      const scenePrompt = buildConsistentImagePrompt(selected, scene);
+      let result = await provider.generate({
+        prompt: scenePrompt,
+        width: 576,
+        height: 1024,
+        seed: sceneSeed,
+        referenceImageBase64,
+      });
+      // Se um provedor sem suporte rejeitar a referência, repetir a cena sem
+      // a imagem-base, mas preservar o prompt de continuidade e a semente
+      // exclusiva da cena para evitar composições repetidas no projeto.
       if (
         result.status !== "completed" &&
         referenceImageBase64 &&
         /somente texto|referência.*não.*suportada|não.*suporta.*referência/i.test(result.error || "")
       ) {
         result = await provider.generate({
-          prompt: scene.imagePrompt,
+          prompt: scenePrompt,
           width: 576,
           height: 1024,
-          seed: stableProjectSeed(`${selected.id}:${scene.title}`),
+          seed: sceneSeed,
         });
       }
       if (result.status !== "completed" || !result.outputUri) throw new Error(result.error || "O motor não retornou uma imagem.");
