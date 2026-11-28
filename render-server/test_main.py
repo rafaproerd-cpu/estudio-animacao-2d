@@ -303,7 +303,7 @@ class RenderServerTests(unittest.TestCase):
                 clip = UploadFile(filename="scene.mp4", file=BytesIO(b"fake-video"))
                 narration = UploadFile(filename="narration.wav", file=BytesIO(b"fake-narration"))
                 music = UploadFile(filename="music.mp3", file=BytesIO(b"fake-music"))
-                with patch.object(main, "run_ffmpeg", side_effect=fake_ffmpeg) as mocked:
+                with patch.object(main, "probe_video_dimensions", return_value=(1920, 1080)), patch.object(main, "run_ffmpeg", side_effect=fake_ffmpeg) as mocked:
                     result = asyncio.run(main.render_video(
                         [clip], narration, music, "Audio test", "Bearer integration-test-token"
                     ))
@@ -340,7 +340,7 @@ class RenderServerTests(unittest.TestCase):
                     clip = UploadFile(filename="scene.mp4", file=BytesIO(b"fake-video"))
                     narration = UploadFile(filename="narration.wav", file=BytesIO(b"fake-narration")) if audio_kind == "narration" else None
                     music = UploadFile(filename="music.mp3", file=BytesIO(b"fake-music")) if audio_kind == "music" else None
-                    with patch.object(main, "run_ffmpeg", side_effect=fake_ffmpeg) as mocked:
+                    with patch.object(main, "probe_video_dimensions", return_value=(1920, 1080)), patch.object(main, "run_ffmpeg", side_effect=fake_ffmpeg) as mocked:
                         result = asyncio.run(main.render_video(
                             [clip], narration, music, "Single audio test", "Bearer integration-test-token"
                         ))
