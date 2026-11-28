@@ -121,7 +121,7 @@ function stableProjectSeed(seedKey: string): number {
 }
 
 function buildProject(idea: string, genre: string, duration: string, generatedPlan?: StoryPlan): Project {
-  const character = generatedPlan?.characterBible?.trim() || "Personagem principal\\nAparência: manter exatamente a descrição visual apresentada nos prompts de cada cena.\\nRegra de continuidade: manter o mesmo rosto, cabelo, roupa, cores, proporções e acessórios em todas as cenas.";
+  const character = generatedPlan?.characterBible?.trim() || "Personagem principal\nAparência: manter exatamente a descrição visual apresentada nos prompts de cada cena.\nRegra de continuidade: manter o mesmo rosto, cabelo, roupa, cores, proporções e acessórios em todas as cenas.";
   const plan = generatedPlan || createStoryPlan(idea, genre as Genre, duration, character);
   return {
     id: Date.now().toString(),
