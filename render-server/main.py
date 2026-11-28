@@ -241,7 +241,7 @@ def video_generation_completion_message(engine_status: dict[str, object]) -> str
     if engine_status.get("model") == "Wan2.2 TI2V 5B":
         return "Clipe animado com Wan2.2: movimento gerado por IA."
     if engine_status.get("model") == "agnes-video-2.5-flash":
-        return "Clipe animado com Agnes Video 2.5 Flash (720p). A disponibilidade e a cobrança dependem da conta Agnes."
+        return "Clipe gerado por IA usando Agnes Video 2.5 Flash ou, se a fila gratuita estiver cheia, o motor alternativo gratuito do Hugging Face."
     return "Clipe de vídeo concluído. Consulte as capacidades do motor para identificar o modo usado."
 
 
@@ -297,8 +297,7 @@ def run_video_generation_job(job_id: str, payload: VideoGenerationRequest, image
             })
         persist_download_grant(output.name)
         persist_generation_job(job_id)
-    except Exception as error:
-        logger.exception("Video generation job %s failed", job_id)
+    except Exception as error:        logger.exception("Video generation job %s failed", job_id)
         with generation_jobs_lock:
             generation_jobs[job_id].update({
                 "status": "failed",
@@ -597,8 +596,7 @@ def health(authorization: Annotated[str | None, Header()] = None) -> dict[str, s
 
 
 def available_nvidia_gpus() -> list[dict[str, str]]:
-    """Detecta GPUs NVIDIA e métricas reportadas pelo driver, sem exigir CUDA."""
-    executable = shutil.which("nvidia-smi")
+    """Detecta GPUs NVIDIA e métricas reportadas pelo driver, sem exigir CUDA."""    executable = shutil.which("nvidia-smi")
     if not executable:
         return []
     try:
