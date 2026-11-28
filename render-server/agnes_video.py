@@ -211,7 +211,13 @@ def _build_narrated_animation_prompt(prompt: str) -> str:
     return (direction + " " + " ".join(str(prompt or "").split()))[:4000]
 
 
-def generate_agnes_video(prompt: str, image_url: str, duration_seconds: float, seed: int | None) -> Path:
+def generate_agnes_video(
+    prompt: str,
+    image_url: str,
+    duration_seconds: float,
+    seed: int | None,
+    aspect_ratio: str = "16:9",
+) -> Path:
     # Independent safety guard: never call Agnes unless the owner explicitly confirms $0 access.
     if os.getenv("AGNES_FREE_ACCESS_CONFIRMED", "").strip().lower() != "true":
         raise RuntimeError("Geração Agnes bloqueada: confirme primeiro no painel que o custo da sua conta é US$ 0. Nenhuma solicitação foi enviada.")
@@ -221,13 +227,14 @@ def generate_agnes_video(prompt: str, image_url: str, duration_seconds: float, s
         raise RuntimeError("A imagem de referência precisa de um endereço HTTPS público temporário.")
     seconds = str(max(4, min(12, round(float(duration_seconds)))))
     animation_prompt = _build_narrated_animation_prompt(prompt)
+    safe_aspect_ratio = aspect_ratio if aspect_ratio in {"9:16", "16:9", "1:1"} else "16:9"
     payload: dict[str, object] = {
         "model": "agnes-video-2.5-flash",
         "prompt": animation_prompt,
         "mode": "reference",
         "seconds": seconds,
         "size": "720P",
-        "aspect_ratio": "16:9",
+        "aspect_ratio": safe_aspect_ratio,
         "images": [image_url],
         "n": 1,
     }
