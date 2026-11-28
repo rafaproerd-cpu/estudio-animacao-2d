@@ -244,9 +244,9 @@ function cleanPremise(value: string): string {
 }
 
 function openingNarration(premise: string): string {
-  const match = premise.match(/^(.+?[.!?])(?:\\s|$)/);
+  const match = premise.match(/^(.+?[.!?])(?: |$)/);
   const firstSentence = (match?.[1] || premise).trim();
-  const words = firstSentence.split(/\\s+/).filter(Boolean);
+  const words = firstSentence.split(" ").filter(Boolean);
   if (words.length <= 8) {
     return /[.!?]$/.test(firstSentence) ? firstSentence : firstSentence + ".";
   }
