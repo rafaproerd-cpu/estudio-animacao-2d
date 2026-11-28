@@ -1067,18 +1067,23 @@ export default function App() {
       setBusyScene("render:final");
       const appendAudio = async (uri: string | undefined, field: "narration" | "music") => {
         if (!uri) return;
-        const extension = uri.split("?")[0].split(".").pop()?.toLowerCase() || "mp3";
         const mimeTypes: Record<string, string> = { mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4", aac: "audio/aac", ogg: "audio/ogg", flac: "audio/flac" };
-        const filename = field + "." + extension;
+        const dataMime = uri.match(/^data:audio\/([a-z0-9.+-]+);/i)?.[1]?.toLowerCase();
+        const mimeExtension: Record<string, string> = { mpeg: "mp3", "x-wav": "wav", wav: "wav", mp4: "m4a", aac: "aac", ogg: "ogg", flac: "flac" };
+        const pathExtension = uri.split("?")[0].match(/\.([a-z0-9]{2,5})$/i)?.[1]?.toLowerCase();
+        let extension = dataMime ? (mimeExtension[dataMime] || "mp3") : (pathExtension || "mp3");
         if (Platform.OS === "web") {
           const response = await fetch(uri, {
             headers: uri.startsWith("http") ? { Authorization: `Bearer ${renderToken}` } : undefined,
           });
           if (!response.ok) throw new Error(`Não foi possível preparar o áudio (${response.status}).`);
-          form.append(field, await response.blob(), filename);
+          const blob = await response.blob();
+          const blobExtension = Object.entries(mimeTypes).find(([, mime]) => mime === blob.type)?.[0];
+          if (!dataMime && !pathExtension && blobExtension) extension = blobExtension;
+          form.append(field, blob, field + "." + extension);
           return;
         }
-        form.append(field, { uri, name: filename, type: mimeTypes[extension] || "application/octet-stream" } as any);
+        form.append(field, { uri, name: field + "." + extension, type: mimeTypes[extension] || "application/octet-stream" } as any);
       };
       await appendAudio(narrationUri, "narration");
       await appendAudio(selected.musicUri, "music");
