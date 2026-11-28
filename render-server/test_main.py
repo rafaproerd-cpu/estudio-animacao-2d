@@ -491,7 +491,7 @@ class RenderServerTests(unittest.TestCase):
             ) as generator:
                 result = main.request_story_generation(payload, "Bearer story-test-token")
             self.assertEqual(result, expected)
-            generator.assert_called_once_with("Uma aventura", "Aventura", "1 minuto", "Herói de casaco azul")
+            generator.assert_called_once_with("Uma aventura", "Aventura", "1 minuto", "Herói de casaco azul", api_key=None)
         finally:
             main.API_TOKEN = original_token
 
