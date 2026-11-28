@@ -483,8 +483,8 @@ export default function App() {
       ) {
         result = await provider.generate({
           prompt: scene.imagePrompt,
-          width: 1024,
-          height: 576,
+          width: 576,
+          height: 1024,
           seed: stableProjectSeed(`${selected.id}:${scene.title}`),
         });
       }
