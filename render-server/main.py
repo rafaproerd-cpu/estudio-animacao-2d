@@ -1016,7 +1016,7 @@ async def render_video(
                     audio_inputs.extend(["-i", str(music_path)])
 
                 if narration_path and music_path:
-                    audio_filter = "[1:a]volume=1.0[narr];[2:a]volume=0.18[music];[narr][music]amix=inputs=2:duration=longest:dropout_transition=2,apad[aout]"
+                    audio_filter = "[1:a]volume=1.0[narr];[2:a]volume=0.18[bg];[bg][1:a]sidechaincompress=threshold=0.08:ratio=8:attack=20:release=450[ducked];[narr][ducked]amix=inputs=2:duration=longest:dropout_transition=2,apad[aout]"
                 elif narration_path:
                     audio_filter = "[1:a]volume=1.0,apad[aout]"
                 else:
