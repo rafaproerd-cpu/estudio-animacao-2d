@@ -805,5 +805,17 @@ class RenderServerTests(unittest.TestCase):
             main.generation_download_tokens.clear()
             main.generation_download_tokens.update(original_tokens)
 
+    def test_tts_fit_tempo_keeps_complete_narration_with_gentle_speedup(self):
+        tempo = main.tts_fit_tempo(4.4, 4.0)
+        self.assertAlmostEqual(tempo, 1.1)
+
+    def test_tts_fit_tempo_rejects_audio_that_would_be_cut_off(self):
+        with self.assertRaisesRegex(ValueError, "seria cortada"):
+            main.tts_fit_tempo(5.0, 4.0)
+
+    def test_tts_fit_tempo_rejects_invalid_target_duration(self):
+        with self.assertRaisesRegex(ValueError, "inválida"):
+            main.tts_fit_tempo(1.0, 0.0)
+
 if __name__ == "__main__":
     unittest.main()
