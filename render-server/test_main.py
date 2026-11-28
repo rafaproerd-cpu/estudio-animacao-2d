@@ -371,7 +371,7 @@ class RenderServerTests(unittest.TestCase):
 
                     def fake_ffmpeg(arguments):
                         Path(arguments[-1]).write_bytes(
-                            b"\\x00\\x00\\x00\\x18ftypisom\\x00\\x00\\x02\\x00" + (b"mock-mp4-data" * 3)
+                            b"0000ftypisom0000" + (b"mock-mp4-data" * 3)
                         )
 
                     upload = UploadFile(filename="scene.mp4", file=BytesIO(b"fake-source-video"))
