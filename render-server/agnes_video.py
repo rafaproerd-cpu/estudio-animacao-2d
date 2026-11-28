@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import time
+import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -104,6 +105,57 @@ def _request_json(url: str, method: str = "GET", payload: dict | None = None) ->
     return result
 
 
+def _generate_huggingface_fallback(prompt: str, image_url: str, duration_seconds: float, seed: int | None) -> Path:
+    """Tenta o Space público gratuito quando a fila Agnes recusa a criação do job."""
+    space_id = os.getenv("HF_VIDEO_SPACE_ID", "zerogpu-aoti/wan2-2-fp8da-aoti-faster").strip()
+    if not space_id:
+        raise RuntimeError("Space de vídeo Hugging Face não configurado.")
+    try:
+        from gradio_client import Client, handle_file
+    except Exception as error:
+        raise RuntimeError("Cliente Hugging Face Gradio não está instalado.") from error
+
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="estudio-hf-fallback-") as temp_dir:
+        image_path = Path(temp_dir) / "reference.png"
+        try:
+            image_request = urllib.request.Request(image_url, headers={"Accept": "image/png,image/jpeg"})
+            with urllib.request.urlopen(image_request, timeout=60) as response:
+                image_bytes = response.read(18 * 1024 * 1024 + 1)
+            if not image_bytes or len(image_bytes) > 18 * 1024 * 1024:
+                raise RuntimeError("Imagem de referência inválida ou acima de 18 MB.")
+            image_path.write_bytes(image_bytes)
+            client = Client(space_id, token=None, verbose=False)
+            result = client.predict(
+                handle_file(str(image_path)),
+                prompt or "Cinematic 2D anime animation. The characters move naturally: visible body movement, expressive facial motion, blinking, gestures and environmental motion. Preserve character identity, clothing, composition and art style. The camera remains mostly steady.",
+                6,
+                "static image, frozen character, deformed body, extra limbs, extra fingers, blurry face, text, watermark",
+                max(0.5, min(5.0, float(duration_seconds))),
+                1.0,
+                1.0,
+                int(seed if seed is not None else 42),
+                seed is None,
+                api_name="/generate_video",
+            )
+        except Exception as error:
+            raise RuntimeError("O motor gratuito alternativo do Hugging Face também não conseguiu gerar o vídeo: " + str(error).strip()[-1000:]) from error
+
+        video_path = result[0] if isinstance(result, (tuple, list)) else result
+        if isinstance(video_path, dict):
+            video_path = video_path.get("path") or video_path.get("name")
+        if not video_path or not Path(str(video_path)).is_file():
+            raise RuntimeError("Hugging Face respondeu, mas não retornou um arquivo de vídeo acessível.")
+        output = OUTPUT_DIR / ("video-" + uuid.uuid4().hex + ".mp4")
+        shutil.copy2(str(video_path), output)
+        with output.open("rb") as generated:
+            header = generated.read(12)
+        if len(header) < 12 or header[4:8] != b"ftyp":
+            output.unlink(missing_ok=True)
+            raise RuntimeError("O motor alternativo não retornou um MP4 válido.")
+        return output
+
+
 def generate_agnes_video(prompt: str, image_url: str, duration_seconds: float, seed: int | None) -> Path:
     # Independent safety guard: never call Agnes unless the owner explicitly confirms $0 access.
     if os.getenv("AGNES_FREE_ACCESS_CONFIRMED", "").strip().lower() != "true":
@@ -126,7 +178,19 @@ def generate_agnes_video(prompt: str, image_url: str, duration_seconds: float, s
     if seed is not None:
         payload["seed"] = int(seed)
 
-    created = _request_json(AGNES_BASE_URL + "/videos", "POST", payload)
+    try:
+        created = _request_json(AGNES_BASE_URL + "/videos", "POST", payload)
+    except RuntimeError as error:
+        if "video_queue_full" not in str(error):
+            raise
+        try:
+            return _generate_huggingface_fallback(prompt, image_url, duration_seconds, seed)
+        except Exception as fallback_error:
+            raise RuntimeError(
+                "A fila gratuita da Agnes AI continua cheia e o motor gratuito alternativo também falhou. "
+                "Nenhum serviço pago foi acionado. Agnes: " + str(error)[-700:] +
+                " | Hugging Face: " + str(fallback_error)[-700:]
+            ) from fallback_error
     video_id = created.get("video_id")
     if not isinstance(video_id, str) or not video_id:
         raise RuntimeError("Agnes AI não retornou video_id para acompanhar a geração.")
