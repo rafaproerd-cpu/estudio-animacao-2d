@@ -492,7 +492,7 @@ class QwenImageEditReferenceTests(unittest.TestCase):
                         width=576,
                         height=1024,
                         seed=321,
-                        reference_image_bytes=b"reference-image",
+                        reference_image_bytes=b"\x89PNG-reference-image",
                     )
 
                 args, kwargs = FakeClient.received
