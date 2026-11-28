@@ -452,6 +452,45 @@ if __name__ == "__main__":
 
 
 class QwenImageEditReferenceTests(unittest.TestCase):
+    def test_qwen_quota_error_is_explained_without_paid_fallback(self):
+        original_values = {
+            "HF_SPACE_ID": image_engine.HF_SPACE_ID,
+            "HF_SPACE_MODE": image_engine.HF_SPACE_MODE,
+            "HF_TOKEN": image_engine.HF_TOKEN,
+            "IMAGE_OUTPUT_DIR": image_engine.IMAGE_OUTPUT_DIR,
+        }
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                image_engine.HF_SPACE_ID = "Qwen/Qwen-Image-Edit"
+                image_engine.HF_SPACE_MODE = "qwen_edit"
+                image_engine.HF_TOKEN = ""
+                image_engine.IMAGE_OUTPUT_DIR = Path(temp_dir) / "outputs"
+
+                class FakeClient:
+                    def __init__(self, space_id, **kwargs):
+                        pass
+                    def predict(self, *args, **kwargs):
+                        raise RuntimeError("ZeroGPU quota exceeded: Subscribe to PRO")
+
+                fake_module = types.SimpleNamespace(Client=FakeClient)
+                with patch.dict(sys.modules, {"gradio_client": fake_module}), patch.object(
+                    image_engine,
+                    "huggingface_image_engine_status",
+                    return_value={"available": True, "status": "configured_unverified"},
+                ):
+                    with self.assertRaisesRegex(RuntimeError, "limite gratuito.*nenhuma assinatura ou cobrança") as caught:
+                        image_engine.generate_huggingface_image(
+                            prompt="same character in a new scene",
+                            width=576,
+                            height=1024,
+                            seed=42,
+                            reference_image_bytes=None,
+                        )
+                    self.assertIn("ZeroGPU quota exceeded", str(caught.exception.__cause__))
+        finally:
+            for key, value in original_values.items():
+                setattr(image_engine, key, value)
+
     def test_qwen_edit_passes_reference_without_dashscope_prompt_rewrite(self):
         original_values = {
             "HF_SPACE_ID": image_engine.HF_SPACE_ID,
