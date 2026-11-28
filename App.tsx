@@ -642,15 +642,28 @@ export default function App() {
         setImageFeedback(`Gerando imagem ${completed + 1} de ${pendingScenes.length}: ${scene.title}. O motor remoto pode levar alguns minutos.`);
         const referenceScene = findCharacterReference(workingProject.scenes, scene.title);
         const referenceImageBase64 = referenceScene?.imageUri ? await imageUriToBase64(referenceScene.imageUri) : undefined;
-        let result = await provider.generate({ prompt: buildConsistentImagePrompt(workingProject, scene), width: 576, height: 1024, seed: stableProjectSeed(workingProject.id), referenceImageBase64 });
-        // Se o motor remoto rejeitar a referência visual, repetir sem a imagem-base
-        // em vez de interromper toda a fila.
+        const sceneSeed = stableProjectSeed(`${workingProject.id}:${scene.title}`);
+        const scenePrompt = buildConsistentImagePrompt(workingProject, scene);
+        let result = await provider.generate({
+          prompt: scenePrompt,
+          width: 576,
+          height: 1024,
+          seed: sceneSeed,
+          referenceImageBase64,
+        });
+        // Se o provedor não aceitar referência, mantém as instruções de estilo
+        // e continuidade e tenta novamente com a semente exclusiva desta cena.
         if (
           result.status !== "completed" &&
           referenceImageBase64 &&
           /somente texto|referência.*não.*suportada|não.*suporta.*referência/i.test(result.error || "")
         ) {
-          result = await provider.generate({ prompt: scene.imagePrompt, width: 576, height: 1024, seed: stableProjectSeed(`${workingProject.id}:${scene.title}`) });
+          result = await provider.generate({
+            prompt: scenePrompt,
+            width: 576,
+            height: 1024,
+            seed: sceneSeed,
+          });
         }
         if (result.status !== "completed" || !result.outputUri) throw new Error(`${scene.title}: ${result.error || "o motor não retornou uma imagem"}`);
         const localUri = await persistGeneratedImage(result.outputUri, workingProject.id, scene.title);
