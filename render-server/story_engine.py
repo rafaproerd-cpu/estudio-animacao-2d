@@ -66,44 +66,93 @@ def generate_story_plan(idea: str, genre: str, duration: str, character: str) ->
         raise ValueError("Escreva uma ideia antes de criar o projeto.")
 
     prompt = f"""
-Crie um roteiro ORIGINAL em português brasileiro para uma animação.
-Ideia central: {clean_idea}
-Gênero: {genre}
-Duração pretendida: {duration}
-Ficha atual do personagem: {character}
-Estilo visual obrigatório: {VISUAL_STYLE}
+Você é o ROTEIRISTA-CHEFE e DIRETOR CRIATIVO de um estúdio profissional de animação.
+Sua missão não é preencher um modelo: é transformar uma ideia curta em uma história memorável,
+emocionante, visualmente inventiva e pronta para virar animação.
 
-Entregue somente JSON válido, sem Markdown, com esta estrutura:
+BRIEFING
+IDEIA DO USUÁRIO: {clean_idea}
+GÊNERO PRINCIPAL: {genre}
+DURAÇÃO: {duration}
+PERSONAGEM / CONTINUIDADE: {character}
+LINGUAGEM: português brasileiro natural, contemporâneo e expressivo.
+DIREÇÃO VISUAL: {VISUAL_STYLE}
+
+LIBERDADE CRIATIVA (MUITO IMPORTANTE)
+- O usuário pode fornecer apenas uma frase. Complete por conta própria as lacunas: protagonista,
+  desejo, personalidade, cenário, personagens secundários, obstáculo, antagonismo e stakes.
+- Seja ousado e específico. Crie uma premissa própria, imagens marcantes, situações inesperadas
+  e uma reviravolta que faça sentido quando o público olhar para trás.
+- Não peça mais informações. Tome decisões criativas coerentes com a ideia e o gênero.
+- Não transforme a ideia do usuário em outra história: preserve seu núcleo e amplie-o.
+- Fuja de clichês automáticos, moral da história explícita, coincidências convenientes e soluções fáceis.
+- Dê aos personagens desejos, medos, contradições e vozes diferentes. Eles não devem falar como narradores
+  explicando o que a imagem já mostra.
+- Diálogo curto, falável e com subtexto. Use silêncio quando a ação contar melhor a história.
+- Cada cena precisa ter uma imagem ou ação memorável. Não repita a mesma composição, ação ou emoção.
+
+ARQUITETURA DRAMÁTICA
+1. Abertura com um gancho visual ou acontecimento intrigante nos primeiros segundos.
+2. Apresente rapidamente quem é o protagonista, o que quer e o que pode perder.
+3. Incidente que coloca a história em movimento; não demore em exposição.
+4. Obstáculos que pioram por causa das escolhas dos personagens. Cada cena causa a próxima.
+5. Uma descoberta, erro, traição ou mudança de perspectiva que altere o rumo da trama.
+6. Clímax com decisão difícil e ação visual clara — o protagonista precisa agir, não apenas assistir.
+7. Desfecho emocionalmente satisfatório, com consequência concreta e imagem final marcante.
+Ajuste a intensidade ao gênero. Em comédia, construa escalada e payoff; em mistério, plante pistas
+e entregue uma revelação justa; em aventura/ação, varie set pieces e objetivos; em drama, priorize
+escolhas e relações; em fantasia, estabeleça regras e custos para o extraordinário.
+
+DIREÇÃO PARA ANIMAÇÃO
+- Planeje entre 4 e 30 cenas, em ritmo compatível com a duração. Cada cena deve funcionar como um clipe
+  curto e animável, com uma ação principal legível.
+- Escreva ações filmáveis: quem faz o quê, onde, com que objeto, e qual consequência visível acontece.
+  Evite frases abstratas como "a tensão aumenta" sem mostrar como isso aparece na tela.
+- Varie planos e movimentos de câmera por intenção dramática. Não use zoom ou travelling em todas.
+- Inclua movimento corporal concreto, expressão facial, interação com objetos e movimento do ambiente.
+- Mantenha geografia, figurino, aparência, objetos importantes e direção de movimento consistentes.
+- Se houver fala, escreva falas específicas do personagem, não frases genéricas que poderiam servir a qualquer história.
+- O prompt de imagem descreve um único quadro-chave coerente, sem pedir texto, legendas ou logotipos.
+- O prompt de vídeo descreve movimento que realmente pode ser animado, não apenas movimento de câmera.
+
+ENTREGUE SOMENTE JSON VÁLIDO, sem Markdown, exatamente nesta estrutura:
 {{
-  "title": "título curto",
-  "premise": "sinopse fiel à ideia",
-  "continuityRules": ["regras de continuidade visual e narrativa"],
+  "title": "título curto, original e evocativo",
+  "premise": "sinopse de 2 a 4 frases com protagonista, objetivo, conflito e diferencial da história",
+  "continuityRules": ["regras concretas de aparência, objetos, cenário e continuidade"],
   "scenes": [
     {{
-      "title": "Cena 1 — título específico",
-      "purpose": "função dramática desta cena",
-      "action": "ação concreta, visual e específica",
-      "dialogue": "fala natural em português ou string vazia",
-      "shot": "plano geral, plano médio, close cinematográfico ou plano de ação",
-      "camera": "movimento de câmera específico",
-      "lighting": "iluminação específica",
-      "imagePrompt": "prompt visual completo em português, com o estilo visual e ficha do personagem",
-      "videoPrompt": "instrução de movimento corporal, ambiente e câmera"
+      "title": "Cena 1 — título específico e cinematográfico",
+      "purpose": "o que muda na história nesta cena e por que ela é necessária",
+      "action": "ação visual específica, com personagem, espaço, gesto, objeto e consequência",
+      "dialogue": "fala curta e natural em português brasileiro ou string vazia",
+      "shot": "plano e enquadramento adequados à ação",
+      "camera": "movimento de câmera motivado pela emoção ou ação",
+      "lighting": "luz e atmosfera coerentes com o momento",
+      "imagePrompt": "quadro-chave completo em português, descrevendo personagem, ação, cenário, composição e estilo",
+      "videoPrompt": "movimento corporal e facial, interação com objetos, movimento do ambiente e câmera; preservar identidade"
     }}
   ]
 }}
 
-Faça cenas diferentes entre si, com causa e consequência, progressão emocional, conflito crescente e conclusão satisfatória. Não repita falas nem use frases genéricas. Cada cena deve avançar a história e ter detalhes próprios. Preserve a identidade do personagem em todos os prompts. Gere entre 4 e 30 cenas, distribuídas pela duração. Não invente texto, logotipos ou legendas dentro das imagens.
+CONTROLE DE QUALIDADE ANTES DE RESPONDER
+- Leia mentalmente as cenas em sequência: há começo, progressão, virada, clímax e conclusão?
+- Se eu trocar a ideia do usuário por qualquer outra, as cenas ainda serviriam? Se sim, estão genéricas: reescreva.
+- Cada cena acrescenta informação, consequência ou emoção nova? Remova cenas repetitivas.
+- A reviravolta foi preparada por pistas? O final recompensa a atenção do público?
+- As falas soam como pessoas reais e diferentes entre si?
+- Os prompts descrevem exatamente o que acontece na ação, sem contradizer a história?
+- Preserve o núcleo da ideia do usuário e a identidade visual do personagem em todas as cenas.
 """.strip()
 
     request_body = {
         "model": STORY_MODEL,
-        "temperature": 0.7,
-        "max_tokens": 12000,
+        "temperature": 0.95,
+        "max_tokens": 16000,
         "response_format": {"type": "json_object"},
         "plugins": [{"id": "response-healing"}],
         "messages": [
-            {"role": "system", "content": "Você é roteirista e diretor de animação. Siga exatamente o formato JSON solicitado."},
+            {"role": "system", "content": "Você é um roteirista-chefe de animação, inventivo, exigente e cinematográfico. Nunca entregue texto genérico; cumpra as regras criativas e de qualidade do briefing."},
             {"role": "user", "content": prompt},
         ],
     }
