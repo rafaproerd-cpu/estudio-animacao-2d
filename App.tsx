@@ -473,7 +473,7 @@ export default function App() {
       const provider = new HttpImageGenerationProvider({ baseUrl: connection.baseUrl, token: connection.token });
       const referenceScene = findCharacterReference(selected.scenes, scene.title);
       const referenceImageBase64 = referenceScene?.imageUri ? await imageUriToBase64(referenceScene.imageUri) : undefined;
-      let result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, seed: stableProjectSeed(`${selected.id}:${scene.title}`), referenceImageBase64 });
+      let result = await provider.generate({ prompt: scene.imagePrompt, width: 576, height: 1024, seed: stableProjectSeed(`${selected.id}:${scene.title}`), referenceImageBase64 });
       // Se o motor remoto rejeitar a referência visual, repetir sem ela para
       // que a geração individual ainda possa funcionar.
       if (
@@ -575,7 +575,7 @@ export default function App() {
         setImageFeedback(`Gerando imagem ${completed + 1} de ${pendingScenes.length}: ${scene.title}. O motor remoto pode levar alguns minutos.`);
         const referenceScene = findCharacterReference(workingProject.scenes, scene.title);
         const referenceImageBase64 = referenceScene?.imageUri ? await imageUriToBase64(referenceScene.imageUri) : undefined;
-        let result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, seed: stableProjectSeed(`${workingProject.id}:${scene.title}`), referenceImageBase64 });
+        let result = await provider.generate({ prompt: scene.imagePrompt, width: 576, height: 1024, seed: stableProjectSeed(`${workingProject.id}:${scene.title}`), referenceImageBase64 });
         // Se o motor remoto rejeitar a referência visual, repetir sem a imagem-base
         // em vez de interromper toda a fila.
         if (
@@ -583,7 +583,7 @@ export default function App() {
           referenceImageBase64 &&
           /somente texto|referência.*não.*suportada|não.*suporta.*referência/i.test(result.error || "")
         ) {
-          result = await provider.generate({ prompt: scene.imagePrompt, width: 1024, height: 576, seed: stableProjectSeed(`${workingProject.id}:${scene.title}`) });
+          result = await provider.generate({ prompt: scene.imagePrompt, width: 576, height: 1024, seed: stableProjectSeed(`${workingProject.id}:${scene.title}`) });
         }
         if (result.status !== "completed" || !result.outputUri) throw new Error(`${scene.title}: ${result.error || "o motor não retornou uma imagem"}`);
         const localUri = await persistGeneratedImage(result.outputUri, workingProject.id, scene.title);
