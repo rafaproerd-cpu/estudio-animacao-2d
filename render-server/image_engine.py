@@ -161,6 +161,7 @@ def huggingface_image_engine_status() -> dict[str, object]:
         "provider": "Hugging Face ZeroGPU",
         "space_id": HF_SPACE_ID,
         "mode": HF_SPACE_MODE,
+        "reference_images_supported": HF_SPACE_MODE != "public_zimage",
         "authentication": "token_configured" if token_configured else "anonymous",
         "token_configured": token_configured,
         "message": (
