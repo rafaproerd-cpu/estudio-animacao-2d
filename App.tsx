@@ -831,7 +831,7 @@ export default function App() {
   const generateSceneNarration = async (scene: Scene) => {
     if (!selected) return;
     const text = (scene.dialogue || "").trim();
-    if (!text) { Alert.alert("Cena sem fala", "Escreva o diálogo desta cena antes de gerar o áudio."); return; }
+    if (!text) { Alert.alert("Cena sem narração", "Escreva a narração desta cena antes de gerar o áudio."); return; }
     const voice = scene.voiceId || selectedTtsVoice;
     if (!voice) { Alert.alert("Escolha uma voz", "Carregue as vozes disponíveis e selecione uma voz."); return; }
     let baseUrl = (engineConfig.renderBaseUrl || "").trim();
@@ -869,7 +869,7 @@ export default function App() {
     if (!selected) return;
     const sceneDuration = sceneClipDurationSeconds(selected);
     const segments = selected.scenes.map(scene => ({ text: (scene.dialogue || "").trim(), voice: scene.voiceId || selectedTtsVoice, duration_seconds: sceneDuration, length_scale: 1.18 }));
-    if (!segments.some(segment => segment.text)) { Alert.alert("Roteiro sem diálogos", "Adicione pelo menos uma fala às cenas antes de gerar a narração."); return; }
+    if (!segments.some(segment => segment.text)) { Alert.alert("Roteiro sem narração", "Adicione o texto narrado às cenas antes de gerar o áudio."); return; }
     if (!selectedTtsVoice) { Alert.alert("Escolha uma voz", "Atualize a lista e selecione uma voz Piper disponível."); return; }
     let baseUrl = (engineConfig.renderBaseUrl || "").trim();
     while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
@@ -1363,7 +1363,7 @@ export default function App() {
               <Text style={styles.label}>AÇÃO DA CENA</Text>
               <TextInput value={scene.description} onChangeText={value => updateScene(scene.title, "description", value)} multiline textAlignVertical="top" placeholder="Descreva o que acontece nesta cena..." placeholderTextColor="#777789" style={styles.sceneInput} />
               <Text style={styles.label}>FALA / DIÁLOGO</Text>
-              <TextInput value={scene.dialogue} onChangeText={value => updateScene(scene.title, "dialogue", value)} multiline textAlignVertical="top" placeholder="Escreva a fala do personagem..." placeholderTextColor="#777789" style={styles.sceneInput} />
+              <TextInput value={scene.dialogue} onChangeText={value => updateScene(scene.title, "dialogue", value)} multiline textAlignVertical="top" placeholder="Texto narrado por uma voz externa, sem falas dos personagens..." placeholderTextColor="#777789" style={styles.sceneInput} />
               {ttsVoices.length ? <><Text style={styles.label}>VOZ DESTA CENA</Text><View style={styles.chips}>{ttsVoices.map(voice => <TouchableOpacity key={voice} style={[styles.chip, (scene.voiceId || selectedTtsVoice) === voice && styles.chipActive]} onPress={() => updateSceneVoice(scene.title, voice)}><Text style={[styles.chipText, (scene.voiceId || selectedTtsVoice) === voice && styles.chipTextActive]}>{ttsVoiceLabel(voice)}</Text></TouchableOpacity>)}</View></> : null}
               <TouchableOpacity style={styles.primary} onPress={() => generateSceneNarration(scene)} disabled={!!busyScene || !!batchProgress || !ttsVoices.length}>
                 <Text style={styles.primaryText}>{busyScene === "tts:" + scene.title ? "GERANDO ÁUDIO DESTA CENA…" : scene.audioUri ? "GERAR ÁUDIO DESTA CENA NOVAMENTE" : "GERAR ÁUDIO DESTA CENA"}</Text><Text style={styles.arrow}>♫</Text>
