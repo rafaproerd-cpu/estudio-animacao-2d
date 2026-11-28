@@ -129,6 +129,7 @@ DIREÇÃO PARA ANIMAÇÃO
 - Varie planos e movimentos de câmera por intenção dramática. Não use zoom ou travelling em todas.
 - Inclua movimento corporal concreto, expressão facial, interação com objetos e movimento do ambiente.
 - Mantenha geografia, figurino, aparência, objetos importantes e direção de movimento consistentes.
+- Antes de dividir as cenas, defina uma ficha visual concreta para o protagonista e o elenco recorrente: nome, idade aparente, rosto, cabelo, pele, porte físico, roupa completa, paleta, acessórios e traços únicos. Nunca use "a definir".
 - Escreva somente narração em todas as cenas. Nenhum personagem deve falar diretamente.
 - O prompt de imagem descreve um único quadro-chave coerente, sem pedir texto, legendas ou logotipos.
 - O prompt de vídeo descreve movimento que realmente pode ser animado, não apenas movimento de câmera.
