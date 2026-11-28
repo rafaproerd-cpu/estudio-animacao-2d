@@ -209,7 +209,7 @@ function makeScene(
     title: `Cena ${sceneNumber} — ${phaseTitle}`,
     purpose: action,
     action: `${action} Desenvolver este momento de forma visual e conectá-lo naturalmente à cena anterior e à próxima.`,
-    dialogue: index === 0 ? `A história começa assim: ${premise.slice(0, 85)}. ${beats[beatIndex]}` : beats[beatIndex],
+    dialogue: index === 0 ? `${premise.split(/\s+/).slice(0, 8).join(" ").replace(/[.!?]+$/, "")}.` : beats[beatIndex],
     shot,
     camera,
     lighting,
