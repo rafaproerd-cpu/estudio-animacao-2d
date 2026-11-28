@@ -477,7 +477,7 @@ class QwenImageEditReferenceTests(unittest.TestCase):
                     def predict(self, *args, **kwargs):
                         self.__class__.received = (args, kwargs)
                         self.__class__.reference_path = Path(args[0][0][0])
-                        return ({"path": str(source)}, 321)
+                        return ([{"image": {"path": str(source)}, "caption": None}], 321)
 
                 fake_module = types.SimpleNamespace(Client=FakeClient)
                 with patch.dict(sys.modules, {"gradio_client": fake_module}), patch.object(
