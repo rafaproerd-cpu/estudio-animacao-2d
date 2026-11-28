@@ -597,7 +597,8 @@ def health(authorization: Annotated[str | None, Header()] = None) -> dict[str, s
 
 
 def available_nvidia_gpus() -> list[dict[str, str]]:
-    """Detecta GPUs NVIDIA e métricas reportadas pelo driver, sem exigir CUDA."""    executable = shutil.which("nvidia-smi")
+    """Detecta GPUs NVIDIA e métricas reportadas pelo driver, sem exigir CUDA."""
+    executable = shutil.which("nvidia-smi")
     if not executable:
         return []
     try:
