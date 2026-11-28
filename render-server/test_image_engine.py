@@ -485,7 +485,7 @@ class FluxKontextImageReferenceTests(unittest.TestCase):
                         return ({"path": str(source)}, 42, None)
 
                 fake_module = types.SimpleNamespace(Client=FakeClient)
-                reference = io_bytes = b"\\x89PNG\\r\\n\\x1a\\nreference"
+                reference = b"\x89PNG\r\n\x1a\nreference"
                 with patch.dict(sys.modules, {"gradio_client": fake_module}), patch.object(
                     image_engine,
                     "huggingface_image_engine_status",
