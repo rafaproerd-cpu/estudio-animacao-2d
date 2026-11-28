@@ -138,6 +138,17 @@ def validate_mp4_output(path: Path) -> None:
         raise RuntimeError("O motor terminou sem produzir um arquivo MP4 válido.")
 
 
+def camera_motion_dimensions(width: int, height: int) -> tuple[int, int]:
+    """Escolhe um canvas 16:9, 9:16 ou quadrado conforme a imagem de origem."""
+    if width < 1 or height < 1:
+        raise ValueError("Dimensões da imagem inválidas.")
+    if height > width:
+        return (720, 1280)
+    if width == height:
+        return (768, 768)
+    return (1280, 720)
+
+
 def _generate_camera_motion_video(image_bytes: bytes, duration_seconds: float) -> Path:
     if not shutil.which(FFMPEG):
         raise RuntimeError("FFmpeg não está instalado para criar o movimento de câmera.")
@@ -153,15 +164,16 @@ def _generate_camera_motion_video(image_bytes: bytes, duration_seconds: float) -
             import io
 
             with Image.open(io.BytesIO(image_bytes)) as source:
+                canvas_width, canvas_height = camera_motion_dimensions(*source.size)
                 source.convert("RGB").save(image_path, format="PNG")
         except Exception as error:
             raise RuntimeError("A imagem enviada não pôde ser decodificada.") from error
         video_filter = (
-            "scale=1280:720:force_original_aspect_ratio=increase,"
-            "crop=1280:720,"
+            f"scale={canvas_width}:{canvas_height}:force_original_aspect_ratio=increase,"
+            f"crop={canvas_width}:{canvas_height},"
             f"zoompan=z='min(zoom+0.00035,1.04)':"
             "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
-            f"d={frames}:s=1280x720:fps=24,"
+            f"d={frames}:s={canvas_width}x{canvas_height}:fps=24,"
             "format=yuv420p"
         )
         command = [
