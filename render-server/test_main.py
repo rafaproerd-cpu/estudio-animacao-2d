@@ -331,7 +331,8 @@ class RenderServerTests(unittest.TestCase):
                 audio_command = mocked.call_args_list[-1].args[0]
                 audio_filter = audio_command[audio_command.index("-filter_complex") + 1]
                 self.assertIn("[1:a]volume=1.0[narr]", audio_filter)
-                self.assertIn("[2:a]volume=0.18[music]", audio_filter)
+                self.assertIn("[2:a]volume=0.18[bg]", audio_filter)
+                self.assertIn("sidechaincompress=threshold=0.08:ratio=8:attack=20:release=450[ducked]", audio_filter)
                 self.assertIn("amix=inputs=2", audio_filter)
                 self.assertIn("apad[aout]", audio_filter)
                 self.assertIn("-shortest", audio_command)
