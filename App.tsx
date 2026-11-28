@@ -197,9 +197,10 @@ function requestedDurationSeconds(duration: string): number {
 function sceneClipDurationSeconds(project: Project): number {
   const targetSeconds = requestedDurationSeconds(project.duration);
   const sceneCount = Math.max(1, project.scenes.length);
-  // Mantém a duração fracionária para que a soma dos clipes acompanhe
-  // a duração escolhida, sem perder segundos ao arredondar cada cena.
-  return Math.min(5, Math.max(1, targetSeconds / sceneCount));
+  // O motor de vídeo remoto aceita clipes a partir de 4 segundos.
+  // Mantém o valor fracionário entre 4 e 5 para evitar estimativas
+  // menores que o tempo mínimo realmente solicitado ao gerador.
+  return Math.min(5, Math.max(4, targetSeconds / sceneCount));
 }
 
 function estimatedGeneratedDurationSeconds(project: Project): number {
@@ -1495,7 +1496,7 @@ export default function App() {
               <TouchableOpacity style={styles.primary} onPress={generateAllSceneVideos} disabled={!!busyScene || !!batchProgress || selected.scenes.some(scene => !scene.imageUri)}>
                 <Text style={styles.primaryText}>ANIMAR TODAS AS CENAS</Text><Text style={styles.arrow}>▶</Text>
               </TouchableOpacity>
-              <Text style={styles.note}>Duração planejada dos clipes: {estimatedGeneratedDurationSeconds(selected).toFixed(1)} segundos ({sceneClipDurationSeconds(selected).toFixed(2)} s por cena). Cada clipe respeita o limite de 5 segundos; a duração final pode variar alguns quadros conforme a taxa de 24 FPS e o motor utilizado. O app não exige workflows ou ComfyUI. As imagens podem usar o Space remoto Hugging Face ZeroGPU (com cota diária limitada). A animação pode criar clipes com movimento de câmera pelo FFmpeg mesmo sem GPU; movimentos reais dos personagens ainda dependem de um modelo de vídeo como Wan2.2 e de uma GPU compatível.</Text>
+              <Text style={styles.note}>Duração estimada dos clipes: {estimatedGeneratedDurationSeconds(selected).toFixed(1)} segundos ({sceneClipDurationSeconds(selected).toFixed(2)} s por cena). O motor trabalha com clipes de 4 a 5 segundos; por isso, projetos curtos com muitas cenas podem ficar um pouco mais longos que a duração escolhida. O app não exige workflows ou ComfyUI. As imagens podem usar o Space remoto Hugging Face ZeroGPU (com cota diária limitada). A animação pode criar clipes com movimento de câmera pelo FFmpeg mesmo sem GPU; movimentos reais dos personagens ainda dependem de um modelo de vídeo como Wan2.2 e de uma GPU compatível.</Text>
               <Text style={styles.step}>ÁUDIO DO PROJETO</Text>
               <Text style={styles.note}>Adicione uma narração e/ou música de fundo. A voz será mixada em volume normal e a música em volume reduzido.</Text>
               <Text style={styles.note}>Carregue as vozes instaladas no servidor para gerar uma narração por cena. Você também pode usar um arquivo de áudio próprio.</Text>
