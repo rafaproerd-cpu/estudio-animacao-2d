@@ -51,10 +51,14 @@ export type StoryPlan = {
   generatedBy: "local-template" | "ai-provider";
 };
 
-const VISUAL_STYLE =
-  "animação 2D cinematográfica com acabamento de anime, composição detalhada, " +
-  "personagens expressivos, cenários ricos, iluminação dramática, sombras suaves, " +
-  "profundidade 2.5D, cores coerentes, qualidade de longa-metragem";
+const VISUAL_STYLE_BY_GENRE: Record<Genre, string> = {
+  Aventura: "animação 2D de aventura, cenários amplos e coloridos, composição cinematográfica, personagens expressivos e profundidade 2.5D",
+  Comédia: "animação 2D cartoon estilizada, formas claras, expressões exageradas, timing visual divertido e cores vivas",
+  Fantasia: "animação 2D de fantasia, cenários imaginativos, efeitos mágicos desenhados, iluminação atmosférica e profundidade 2.5D",
+  Ação: "animação 2D de ação, poses dinâmicas, linhas de movimento, enquadramentos energéticos e leitura visual clara",
+  Drama: "animação 2D cinematográfica, atuação corporal sutil, expressões emocionais, composição delicada e iluminação natural",
+  Mistério: "animação 2D de suspense, cenários detalhados, sombras expressivas, paleta atmosférica e enquadramentos de investigação",
+};
 
 const GENRE_BEATS: Record<Genre, string[]> = {
   Aventura: [
@@ -280,12 +284,12 @@ function makeScene(
     title: `Cena ${sceneNumber} — ${phaseTitle}`,
     purpose: action,
     action: `${action} Desenvolver este momento de forma visual e conectá-lo naturalmente à cena anterior e à próxima.`,
-    dialogue: GENRE_DIALOGUE[genre][index % GENRE_DIALOGUE[genre].length],
+    dialogue: `O narrador conta: ${action}`,
     shot,
     camera,
     lighting,
     imagePrompt:
-      `${VISUAL_STYLE}. ${shot}; ${lighting}. ` +
+      `${VISUAL_STYLE_BY_GENRE[genre]}. ${shot}; ${lighting}. ` +
       `Cena ${sceneNumber} de ${total}. Personagem: ${characterDescription}. ` +
       `Ação visual: ${action} Ideia central: ${premise}. ` +
       "Manter design, rosto, roupa, proporções e paleta do personagem idênticos às demais cenas. " +
@@ -307,7 +311,7 @@ export function createStoryPlan(
   idea: string,
   genre: Genre,
   duration: string,
-  characterDescription = "personagem principal a definir; manter aparência consistente",
+  characterDescription = "personagem principal com aparência definida pela história; manter aparência consistente",
 ): StoryPlan {
   const premise = cleanPremise(idea);
   if (!premise) throw new Error("Escreva uma ideia antes de criar o projeto.");
@@ -324,7 +328,7 @@ export function createStoryPlan(
     genre,
     duration,
     estimatedSeconds,
-    visualStyle: VISUAL_STYLE,
+    visualStyle: VISUAL_STYLE_BY_GENRE[genre],
     continuityRules: [
       "Usar a mesma referência visual do personagem em todas as cenas.",
       "Não alterar rosto, cabelo, roupa, proporções ou paleta sem autorização.",
@@ -353,7 +357,7 @@ export function buildProductionPrompt(plan: StoryPlan): string {
     ...plan.scenes.flatMap((scene, index) => [
       `CENA ${index + 1}: ${scene.title}`,
       `Objetivo: ${scene.purpose}`,
-      `Fala: ${scene.dialogue}`,
+      `Narração externa: ${scene.dialogue}`,
       `Prompt de imagem: ${scene.imagePrompt}`,
       `Prompt de animação: ${scene.videoPrompt}`,
       "",
