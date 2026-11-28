@@ -162,6 +162,8 @@ def huggingface_image_engine_status() -> dict[str, object]:
         "space_id": HF_SPACE_ID,
         "mode": HF_SPACE_MODE,
         "reference_images_supported": HF_SPACE_MODE != "public_zimage",
+        "fallback_provider": "Cloudflare Workers AI" if CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN else None,
+        "fallback_reference_images_supported": False if CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN else None,
         "authentication": "token_configured" if token_configured else "anonymous",
         "token_configured": token_configured,
         "message": (
