@@ -1034,7 +1034,7 @@ export default function App() {
           throw new Error("O servidor ainda não disponibilizou uma voz em português. Aguarde a implantação do motor Piper.");
         }
         const defaultVoice = selectedTtsVoice || voices[0];
-        const sceneDuration = sceneClipDurationSeconds(selected);
+        const sceneDuration = narrationSegmentDurationSeconds(selected);
         const segments = selected.scenes.map(scene => ({
           text: (scene.dialogue || "").trim(),
           voice: scene.voiceId || defaultVoice,
