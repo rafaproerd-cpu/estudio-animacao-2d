@@ -774,23 +774,40 @@ export default function App() {
     if (!selected?.finalVideoRemoteUri) return;
     setBusyScene("download:final");
     try {
+      const headers = engineConfig.renderToken
+        ? { Authorization: `Bearer ${engineConfig.renderToken}` }
+        : undefined;
+      if (Platform.OS === "web") {
+        const response = await fetch(selected.finalVideoRemoteUri, { headers });
+        if (!response.ok) throw new Error(`O servidor retornou HTTP ${response.status}.`);
+        const blob = await response.blob();
+        if (!blob.size) throw new Error("O servidor entregou um arquivo vazio.");
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = objectUrl;
+        anchor.download = `${selected.id}-estudio-2d.mp4`;
+        anchor.style.display = "none";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+        showUserAlert("Download do MP4 iniciado", "Se o navegador não salvar automaticamente, abra o vídeo e use a opção de compartilhar ou salvar em Arquivos.");
+        return;
+      }
       const directory = `${FileSystem.documentDirectory}final-videos/`;
       const info = await FileSystem.getInfoAsync(directory);
       if (!info.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
       const destination = `${directory}${selected.id}-final-${Date.now()}.mp4`;
-      const result = await FileSystem.downloadAsync(selected.finalVideoRemoteUri, destination, {
-        headers: engineConfig.renderToken ? { Authorization: `Bearer ${engineConfig.renderToken}` } : undefined,
-      });
+      const result = await FileSystem.downloadAsync(selected.finalVideoRemoteUri, destination, { headers });
       if (result.status < 200 || result.status >= 300) throw new Error(`O servidor retornou HTTP ${result.status}.`);
       saveUpdatedProject({ ...selected, finalVideoUri: result.uri });
       Alert.alert("MP4 salvo no iPhone", "Agora você pode exportar o vídeo para Arquivos ou compartilhar.");
     } catch (error) {
-      Alert.alert("Falha ao baixar o MP4", error instanceof Error ? error.message : "Tente novamente.");
+      showUserAlert("Falha ao baixar o MP4", error instanceof Error ? error.message : "Tente novamente.");
     } finally {
       setBusyScene(null);
     }
   };
-
   const exportSceneVideo = async (scene: Scene) => {
     if (!scene.videoUri) return;
     if (!scene.videoUri.startsWith("file://")) {
