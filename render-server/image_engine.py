@@ -253,18 +253,16 @@ def generate_huggingface_image(
                     "change the pose, action, framing and environment as requested; do not simply reproduce "
                     "the reference image. Keep the same 2D art direction. Scene: " + prompt
                 )
-            # The Space uses a Gradio Gallery input (a list of image/caption
-            # pairs), followed by height and width before rewrite_prompt.
-            gallery_images = [(str(reference_path), None)] if reference_path else []
+            # The Space declares a single gr.Image(type="pil") input, not a
+            # Gallery. Its infer signature is image, prompt, seed,
+            # randomize_seed, guidance_scale, steps, rewrite_prompt.
             result = client.predict(
-                gallery_images,
+                str(reference_path) if reference_path else None,
                 contextual_prompt,
                 int(seed if seed is not None else 42),
                 False,
                 4.0,
                 50,
-                None,
-                None,
                 False,
                 api_name="/infer",
             )
