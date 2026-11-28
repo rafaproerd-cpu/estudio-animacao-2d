@@ -50,7 +50,7 @@ app.add_middleware(
     allow_origins=_allowed_origins or ["*"],
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Story-API-Key"],
 )
 
 generation_jobs: dict[str, dict[str, object]] = {}
@@ -500,15 +500,17 @@ def diagnose_agnes_provider(authorization: Annotated[str | None, Header()] = Non
 def request_story_generation(
     payload: StoryGenerationRequest,
     authorization: Annotated[str | None, Header()] = None,
+    story_api_key: Annotated[str | None, Header(alias="X-Story-API-Key")] = None,
 ) -> dict[str, object]:
-    """Gera roteiro original com provedor configurado no servidor; nunca expõe a chave ao app."""
+    """Gera roteiro com chave OpenRouter fornecida pelo aparelho ou chave privada do servidor."""
     require_token(authorization)
     if not payload.idea.strip():
         raise HTTPException(status_code=400, detail="Informe a ideia da animação.")
-    if not story_engine_status()["available"]:
-        raise HTTPException(status_code=503, detail=str(story_engine_status()["message"]))
+    effective_key = (story_api_key or "").strip()
+    if not story_engine_status(bool(effective_key) or None)["available"]:
+        raise HTTPException(status_code=503, detail="Configure uma chave OpenRouter no aplicativo ou no ambiente privado do servidor para gerar roteiros por IA.")
     try:
-        return generate_story_plan(payload.idea, payload.genre, payload.duration, payload.character)
+        return generate_story_plan(payload.idea, payload.genre, payload.duration, payload.character, api_key=effective_key or None)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     except RuntimeError as error:
