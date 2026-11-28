@@ -89,7 +89,7 @@ class StoryEngineTests(unittest.TestCase):
         mocked_urlopen.assert_not_called()
 
     def test_rejects_scene_without_narrator_text(self):
-        broken = valid_story()
+        broken = valid_story(6)
         broken["scenes"][0]["dialogue"] = ""
         response = {"choices": [{"message": {"content": json.dumps(broken)}}]}
         class FakeResponse:
@@ -114,7 +114,7 @@ class StoryEngineTests(unittest.TestCase):
         self.assertEqual(story_engine._duration_in_seconds("2 min 15 seg"), 135)
 
     def test_rejects_incomplete_scene(self):
-        broken = valid_story()
+        broken = valid_story(6)
         broken["scenes"][0]["imagePrompt"] = ""
         response = {"choices": [{"message": {"content": json.dumps(broken)}}]}
         class FakeResponse:
