@@ -840,12 +840,30 @@ export default function App() {
         Alert.alert("Formato não aceito", "Escolha um áudio MP3, WAV, M4A, AAC, OGG ou FLAC.");
         return;
       }
-      const audioDirectory = (FileSystem.documentDirectory || "") + "project-audio/";
-      const directoryInfo = await FileSystem.getInfoAsync(audioDirectory);
-      if (!directoryInfo.exists) await FileSystem.makeDirectoryAsync(audioDirectory, { intermediates: true });
       const safeName = asset.name.replace(/[^a-zA-Z0-9._-]+/g, "-");
-      const permanentUri = audioDirectory + selected.id + "-" + kind + "-" + Date.now() + "-" + safeName;
-      await FileSystem.copyAsync({ from: asset.uri, to: permanentUri });
+      let permanentUri = "";
+      if (Platform.OS === "web") {
+        // Guarde o áudio como data URL: o endereço blob do seletor deixa de
+        // funcionar após recarregar a página e não pode ser usado no projeto.
+        const selectedFile = asset.file || await fetch(asset.uri).then(response => {
+          if (!response.ok) throw new Error("Não foi possível ler o áudio selecionado.");
+          return response.blob();
+        });
+        permanentUri = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => typeof reader.result === "string"
+            ? resolve(reader.result)
+            : reject(new Error("Não foi possível preparar o áudio para o navegador."));
+          reader.onerror = () => reject(new Error("Falha ao ler o arquivo de áudio."));
+          reader.readAsDataURL(selectedFile);
+        });
+      } else {
+        const audioDirectory = (FileSystem.documentDirectory || "") + "project-audio/";
+        const directoryInfo = await FileSystem.getInfoAsync(audioDirectory);
+        if (!directoryInfo.exists) await FileSystem.makeDirectoryAsync(audioDirectory, { intermediates: true });
+        permanentUri = audioDirectory + selected.id + "-" + kind + "-" + Date.now() + "-" + safeName;
+        await FileSystem.copyAsync({ from: asset.uri, to: permanentUri });
+      }
       saveUpdatedProject({ ...selected, [kind]: permanentUri, finalVideoUri: undefined, finalVideoRemoteUri: undefined });
     } catch (error) {
       Alert.alert("Não foi possível selecionar o áudio", error instanceof Error ? error.message : "Tente novamente.");
