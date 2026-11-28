@@ -767,6 +767,18 @@ def generate_tts(payload: TTSRequest, authorization: Annotated[str | None, Heade
     return TTSResponse(id=tts_id, download_url="/tts/" + tts_id, voice=voice)
 
 
+def tts_fit_tempo(speech_duration: float, target_duration: float) -> float:
+    """Avoid silently truncating narration when it cannot fit a scene."""
+    if target_duration <= 0 or speech_duration < 0:
+        raise ValueError("Duração de áudio inválida.")
+    max_speed = 1.15
+    if speech_duration > target_duration * max_speed + 0.05:
+        raise ValueError(
+            "A narração ficou longa demais para esta cena e seria cortada. "
+            "Reduza o texto da cena e tente gerar o áudio novamente."
+        )
+    return min(max_speed, max(1.0, speech_duration / target_duration))
+
 @app.post("/tts/batch")
 def generate_tts_batch(payload: TTSBatchRequest, authorization: Annotated[str | None, Header()] = None) -> TTSResponse:
     require_token(authorization)
@@ -806,10 +818,14 @@ def generate_tts_batch(payload: TTSBatchRequest, authorization: Annotated[str | 
                         speech_duration = wav_file.getnframes() / float(wav_file.getframerate())
                 except (wave.Error, OSError, ZeroDivisionError, EOFError):
                     speech_duration = segment.duration_seconds
-                if speech_duration > segment.duration_seconds * 2.0:
-                    raise HTTPException(status_code=422, detail="A fala " + str(index + 1) + " é longa demais para a duração desta cena. Encurte o diálogo.")
-                # Evita acelerar agressivamente a fala para caber na cena; no máximo 15% mais rápido.
-                tempo = min(1.15, max(1.0, speech_duration / segment.duration_seconds))
+                # Não corta silenciosamente o fim da narração: só acelera até 15%.
+                try:
+                    tempo = tts_fit_tempo(speech_duration, segment.duration_seconds)
+                except ValueError as error:
+                    raise HTTPException(
+                        status_code=422,
+                        detail="Narração da cena " + str(index + 1) + ": " + str(error),
+                    ) from error
                 audio_filter = f"aresample=22050,atempo={tempo:.4f},apad,atrim=duration={segment.duration_seconds:.3f},aformat=sample_fmts=s16:channel_layouts=mono"
                 fitted_file = temporary_dir / ("fitted-" + str(index).zfill(3) + ".wav")
                 run_ffmpeg(["-i", str(audio_file), "-af", audio_filter, "-ar", "22050", "-ac", "1", str(fitted_file)])
