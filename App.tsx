@@ -794,240 +794,11 @@ export default function App() {
         showUserAlert("Download do MP4 iniciado", "Se o navegador não salvar automaticamente, abra o vídeo e use a opção de compartilhar ou salvar em Arquivos.");
         return;
       }
-      const directory = `${FileSystem.documentDirectory}final-videos/`;
-      const info = await FileSystem.getInfoAsync(directory);
-      if (!info.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
-      const destination = `${directory}${selected.id}-final-${Date.now()}.mp4`;
-      const result = await FileSystem.downloadAsync(selected.finalVideoRemoteUri, destination, { headers });
-      if (result.status < 200 || result.status >= 300) throw new Error(`O servidor retornou HTTP ${result.status}.`);
-      saveUpdatedProject({ ...selected, finalVideoUri: result.uri });
-      Alert.alert("MP4 salvo no iPhone", "Agora você pode exportar o vídeo para Arquivos ou compartilhar.");
-    } catch (error) {
-      showUserAlert("Falha ao baixar o MP4", error instanceof Error ? error.message : "Tente novamente.");
-    } finally {
-      setBusyScene(null);
-    }
-  };
-  const exportSceneVideo = async (scene: Scene) => {
-    if (!scene.videoUri) return;
-    if (!scene.videoUri.startsWith("file://")) {
-      Alert.alert("Baixe primeiro", "Salve o clipe no iPhone antes de exportá-lo para Arquivos ou outro aplicativo.");
-      return;
-    }
-    try {
-      const available = await Sharing.isAvailableAsync();
-      if (!available) throw new Error("O compartilhamento de arquivos não está disponível neste aparelho.");
-      const extension = scene.videoUri.split("?")[0].split(".").pop()?.toLowerCase();
-      const mimeType = extension === "webm" ? "video/webm" : extension === "mov" ? "video/quicktime" : "video/mp4";
-      await Sharing.shareAsync(scene.videoUri, {
-        mimeType,
-        dialogTitle: "Exportar clipe",
-        UTI: "public.movie",
-      });
-    } catch (error) {
-      Alert.alert("Não foi possível exportar", error instanceof Error ? error.message : "Tente novamente.");
-    }
-  };
-
-  const pickProjectAudio = async (kind: "narrationUri" | "musicUri") => {
-    if (!selected) return;
-    try {
-      const result = await DocumentPicker.getDocumentAsync({ type: "audio/*", copyToCacheDirectory: true, multiple: false });
-      if (result.canceled || !result.assets?.[0]) return;
-      const asset = result.assets[0];
-      const extension = asset.name.split(".").pop()?.toLowerCase() || "";
-      if (!["mp3", "wav", "m4a", "aac", "ogg", "flac"].includes(extension)) {
-        Alert.alert("Formato não aceito", "Escolha um áudio MP3, WAV, M4A, AAC, OGG ou FLAC.");
-        return;
+      const directory = Platform.OS === "web" ? "" : `${FileSystem.documentDirectory}final-videos/`;
+      if (Platform.OS !== "web") {
+        const directoryInfo = await FileSystem.getInfoAsync(directory);
+        if (!directoryInfo.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
       }
-      const audioDirectory = (FileSystem.documentDirectory || "") + "project-audio/";
-      const directoryInfo = await FileSystem.getInfoAsync(audioDirectory);
-      if (!directoryInfo.exists) await FileSystem.makeDirectoryAsync(audioDirectory, { intermediates: true });
-      const safeName = asset.name.replace(/[^a-zA-Z0-9._-]+/g, "-");
-      const permanentUri = audioDirectory + selected.id + "-" + kind + "-" + Date.now() + "-" + safeName;
-      await FileSystem.copyAsync({ from: asset.uri, to: permanentUri });
-      saveUpdatedProject({ ...selected, [kind]: permanentUri, finalVideoUri: undefined, finalVideoRemoteUri: undefined });
-    } catch (error) {
-      Alert.alert("Não foi possível selecionar o áudio", error instanceof Error ? error.message : "Tente novamente.");
-    }
-  };
-
-  const loadTtsVoices = async () => {
-    if (ttsLoading) return;
-    let baseUrl = (engineConfig.renderBaseUrl || "").trim();
-    while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-    const token = (engineConfig.renderToken || "").trim();
-    if (!baseUrl || !token) {
-      setTtsFeedback("Configure o endereço e o token do servidor em Conectar motor.");
-      setShowSettings(true);
-      return;
-    }
-    const previousScrollOffset = scrollOffsetRef.current;
-    setTtsLoading(true);
-    setTtsFeedback("Conectando ao servidor de voz…");
-    try {
-      const response = await fetch(baseUrl + "/tts/voices", {
-        method: "GET",
-        headers: { Authorization: "Bearer " + token, Accept: "application/json" },
-      });
-      const raw = await response.text();
-      let payload: any = {};
-      try { payload = raw ? JSON.parse(raw) : {}; }
-      catch { throw new Error("O servidor respondeu em formato inesperado (HTTP " + response.status + ")."); }
-      if (!response.ok) {
-        const detail = typeof payload.detail === "string" ? payload.detail : "HTTP " + response.status;
-        throw new Error(detail);
-      }
-      const voices = Array.isArray(payload.voices) ? payload.voices.filter((voice: unknown) => typeof voice === "string" && voice.trim()) as string[] : [];
-      setTtsVoices(voices);
-      if (voices.length) {
-        if (!voices.includes(selectedTtsVoice)) setSelectedTtsVoice(voices[0]);
-        setTtsFeedback(voices.length + " voz(es) carregada(s). Escolha uma voz para gerar a narração.");
-      } else {
-        setTtsFeedback("O servidor respondeu, mas não encontrou vozes instaladas. Verifique os modelos Piper no servidor.");
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Falha ao consultar o servidor Piper.";
-      setTtsFeedback("Não foi possível carregar as vozes: " + message);
-    } finally {
-      setTtsLoading(false);
-      // A lista de vozes altera a altura do conteúdo no navegador; restaura a posição
-      // para o botão continuar visível em vez de mandar a página para o topo.
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => scrollViewRef.current?.scrollTo({ y: previousScrollOffset, animated: false }));
-      });
-    }
-  };
-
-  const previewTtsVoice = async (voice: string) => {
-    let baseUrl = (engineConfig.renderBaseUrl || "").trim();
-    while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-    const token = (engineConfig.renderToken || "").trim();
-    if (!baseUrl || !token) {
-      setTtsFeedback("Configure o endereço e o token do servidor em Conectar motor para ouvir uma amostra.");
-      setShowSettings(true);
-      return;
-    }
-    setPreviewLoadingId(voice);
-    setTtsFeedback("Gerando uma amostra curta de " + ttsVoiceLabel(voice) + "…");
-    try {
-      const response = await fetch(baseUrl + "/tts", {
-        method: "POST",
-        headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: "Olá! Esta é uma amostra da minha voz. Assim você pode me ouvir antes de me escolher para o seu personagem.",
-          voice,
-          duration_seconds: 5,
-          length_scale: 1.18,
-        }),
-      });
-      const payload = await response.json().catch(() => ({} as { detail?: string; download_url?: string }));
-      if (!response.ok || !payload.download_url) throw new Error(payload.detail || "Não foi possível gerar a amostra desta voz.");
-      const audioUrl = baseUrl + (payload.download_url.startsWith("/") ? payload.download_url : "/" + payload.download_url);
-      const destination = (FileSystem.documentDirectory || "") + "project-audio/voice-preview-" + voice.replace(/[^a-zA-Z0-9_-]/g, "-") + "-" + Date.now() + ".wav";
-      const audioUri = await downloadGeneratedAudio(audioUrl, token, destination);
-      setVoicePreviewUri(audioUri);
-      setVoicePreviewId(voice);
-      setTtsFeedback("Amostra pronta! Toque no player para ouvir " + ttsVoiceLabel(voice) + ".");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Falha ao gerar amostra.";
-      setTtsFeedback("Não foi possível ouvir esta voz: " + message);
-    } finally {
-      setPreviewLoadingId("");
-    }
-  };
-
-  const generateSceneNarration = async (scene: Scene) => {
-    if (!selected) return;
-    const text = (scene.dialogue || "").trim();
-    if (!text) { Alert.alert("Cena sem narração", "Escreva a narração desta cena antes de gerar o áudio."); return; }
-    const voice = scene.voiceId || selectedTtsVoice;
-    if (!voice) { Alert.alert("Escolha uma voz", "Carregue as vozes disponíveis e selecione uma voz."); return; }
-    let baseUrl = (engineConfig.renderBaseUrl || "").trim();
-    while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-    const token = (engineConfig.renderToken || "").trim();
-    if (!baseUrl || !token) { Alert.alert("Configure a montagem", "Informe o endereço e o token do servidor nas configurações."); setShowSettings(true); return; }
-    setBusyScene("tts:" + scene.title);
-    setTtsFeedback("Gerando áudio somente para " + scene.title + "…");
-    try {
-      const response = await fetch(baseUrl + "/tts", {
-        method: "POST",
-        headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voice, duration_seconds: sceneClipDurationSeconds(selected), length_scale: 1.18 }),
-      });
-      const payload = await response.json().catch(() => ({} as { detail?: string; download_url?: string }));
-      if (!response.ok || !payload.download_url) throw new Error(payload.detail || "O servidor não conseguiu gerar o áudio desta cena.");
-      const safeTitle = scene.title.replace(/[^a-zA-Z0-9_-]+/g, "-").slice(0, 40);
-      const destination = (FileSystem.documentDirectory || "") + "project-audio/" + selected.id + "-" + safeTitle + "-" + Date.now() + ".wav";
-      const audioUrl = baseUrl + (payload.download_url.startsWith("/") ? payload.download_url : "/" + payload.download_url);
-      const audioUri = await downloadGeneratedAudio(audioUrl, token, destination);
-      const updated = { ...selected, finalVideoUri: undefined, finalVideoRemoteUri: undefined, scenes: selected.scenes.map(item => item.title === scene.title ? { ...item, audioUri } : item) };
-      saveUpdatedProject(updated);
-      setTtsFeedback("Áudio da " + scene.title + " gerado e salvo.");
-      Alert.alert("Áudio gerado", "O áudio desta cena está salvo. Você pode ouvi-lo no próprio cartão da cena.");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Não foi possível gerar o áudio desta cena.";
-      setTtsFeedback("Falha em " + scene.title + ": " + message);
-      Alert.alert("Falha ao gerar áudio", message);
-    } finally {
-      setBusyScene(null);
-    }
-  };
-
-  const generateAiNarration = async () => {
-    if (!selected) return;
-    const sceneDuration = sceneClipDurationSeconds(selected);
-    const segments = selected.scenes.map(scene => ({ text: (scene.dialogue || "").trim(), voice: scene.voiceId || selectedTtsVoice, duration_seconds: sceneDuration, length_scale: 1.18 }));
-    if (!segments.some(segment => segment.text)) { Alert.alert("Roteiro sem narração", "Adicione o texto narrado às cenas antes de gerar o áudio."); return; }
-    if (!selectedTtsVoice) { Alert.alert("Escolha uma voz", "Atualize a lista e selecione uma voz Piper disponível."); return; }
-    let baseUrl = (engineConfig.renderBaseUrl || "").trim();
-    while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-    const token = (engineConfig.renderToken || "").trim();
-    if (!baseUrl || !token) { Alert.alert("Configure a montagem", "Informe o endereço e o token do servidor nas configurações."); setShowSettings(true); return; }
-    setBusyScene("tts:project");
-    try {
-      const response = await fetch(baseUrl + "/tts/batch", {
-        method: "POST",
-        headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ segments }),
-      });
-      const payload = await response.json();
-      if (!response.ok || !payload.download_url) throw new Error(payload.detail || "O servidor não conseguiu gerar a voz.");
-      const destination = (FileSystem.documentDirectory || "") + "project-audio/" + selected.id + "-ai-narration-" + Date.now() + ".wav";
-      const audioUrl = baseUrl + (payload.download_url.startsWith("/") ? payload.download_url : "/" + payload.download_url);
-      const audioUri = await downloadGeneratedAudio(audioUrl, token, destination);
-      saveUpdatedProject({ ...selected, narrationUri: audioUri, finalVideoUri: undefined, finalVideoRemoteUri: undefined });
-      setTtsFeedback("Narração gerada e salva! Use o player abaixo para ouvir.");
-      Alert.alert("Narração gerada", "A voz foi criada e adicionada ao projeto. O player está na seção Áudio do projeto.");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Não foi possível gerar a narração.";
-      setTtsFeedback("Falha na geração: " + message);
-      Alert.alert("Falha na geração de voz", message);
-    } finally {
-      setBusyScene(null);
-    }
-  };
-
-  const renderFinalVideo = async () => {
-    if (!selected) return;
-    const missingClips = selected.scenes.filter(scene => !scene.videoUri);
-    if (missingClips.length) {
-      Alert.alert("Faltam animações", `Ainda faltam ${missingClips.length} clipes. Gere todas as cenas antes de montar o MP4.`);
-      return;
-    }
-    const renderBaseUrl = (engineConfig.renderBaseUrl || "").trim().replace(/\/+$/, "");
-    const renderToken = (engineConfig.renderToken || "").trim();
-    if (!renderBaseUrl || !renderToken) {
-      Alert.alert("Configure a montagem", "Informe o endereço e o token do servidor de montagem nas configurações.");
-      setShowSettings(true);
-      return;
-    }
-    setBusyScene("render:final");
-    setBatchProgress({ current: 0, total: selected.scenes.length });
-    try {
-      const directory = `${FileSystem.documentDirectory}final-videos/`;
-      const directoryInfo = await FileSystem.getInfoAsync(directory);
-      if (!directoryInfo.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
 
       const form = new FormData();
       form.append("project_name", selected.title);
@@ -1067,17 +838,22 @@ export default function App() {
           throw new Error(ttsPayload.detail || "O servidor não conseguiu gerar a narração automática.");
         }
         const audioUrl = `${renderBaseUrl}${ttsPayload.download_url.startsWith("/") ? ttsPayload.download_url : `/${ttsPayload.download_url}`}`;
-        const audioDirectory = `${FileSystem.documentDirectory}project-audio/`;
-        const audioDirectoryInfo = await FileSystem.getInfoAsync(audioDirectory);
-        if (!audioDirectoryInfo.exists) await FileSystem.makeDirectoryAsync(audioDirectory, { intermediates: true });
-        const audioPath = `${audioDirectory}${selected.id}-auto-narration-${Date.now()}.wav`;
-        const audioDownload = await FileSystem.downloadAsync(audioUrl, audioPath, {
-          headers: { Authorization: `Bearer ${renderToken}` },
-        });
-        if (audioDownload.status < 200 || audioDownload.status >= 300) {
-          throw new Error(`A narração foi gerada, mas o download falhou (HTTP ${audioDownload.status}).`);
+        if (Platform.OS === "web") {
+          // Keep the authenticated server URL; appendAudio fetches it as a Blob below.
+          narrationUri = audioUrl;
+        } else {
+          const audioDirectory = `${FileSystem.documentDirectory}project-audio/`;
+          const audioDirectoryInfo = await FileSystem.getInfoAsync(audioDirectory);
+          if (!audioDirectoryInfo.exists) await FileSystem.makeDirectoryAsync(audioDirectory, { intermediates: true });
+          const audioPath = `${audioDirectory}${selected.id}-auto-narration-${Date.now()} .wav`.replace(" .wav", ".wav");
+          const audioDownload = await FileSystem.downloadAsync(audioUrl, audioPath, {
+            headers: { Authorization: `Bearer ${renderToken}` },
+          });
+          if (audioDownload.status < 200 || audioDownload.status >= 300) {
+            throw new Error(`A narração foi gerada, mas o download falhou (HTTP ${audioDownload.status}).`);
+          }
+          narrationUri = audioDownload.uri;
         }
-        narrationUri = audioDownload.uri;
         workingProject = { ...workingProject, narrationUri };
         saveUpdatedProject(workingProject);
       }
@@ -1149,22 +925,22 @@ export default function App() {
       }
 
       const remoteFinalUri = `${renderBaseUrl}${payload.download_url.startsWith("/") ? payload.download_url : `/${payload.download_url}`}`;
-      const finalPath = `${directory}${selected.id}-final-${Date.now()}.mp4`;
       let finalVideoUri = remoteFinalUri;
       let savedOnDevice = false;
-      try {
-        const finalDownload = await FileSystem.downloadAsync(remoteFinalUri, finalPath, {
-          headers: { Authorization: `Bearer ${renderToken}` },
-        });
-        if (finalDownload.status < 200 || finalDownload.status >= 300) {
-          throw new Error(`HTTP ${finalDownload.status}`);
+      if (Platform.OS !== "web") {
+        const finalPath = `${directory}${selected.id}-final-${Date.now()} .mp4`.replace(" .mp4", ".mp4");
+        try {
+          const finalDownload = await FileSystem.downloadAsync(remoteFinalUri, finalPath, {
+            headers: { Authorization: `Bearer ${renderToken}` },
+          });
+          if (finalDownload.status < 200 || finalDownload.status >= 300) {
+            throw new Error(`HTTP ${finalDownload.status}`);
+          }
+          finalVideoUri = finalDownload.uri;
+          savedOnDevice = true;
+        } catch (downloadError) {
+          console.warn("MP4 montado, mas não foi possível copiá-lo para o aparelho:", downloadError);
         }
-        finalVideoUri = finalDownload.uri;
-        savedOnDevice = true;
-      } catch (downloadError) {
-        // A montagem já foi concluída no servidor. Não transforme uma falha
-        // de cópia local em falha de renderização: mantenha o link remoto.
-        console.warn("MP4 montado, mas não foi possível copiá-lo para o aparelho:", downloadError);
       }
       const completedProject = {
         ...workingProject,
