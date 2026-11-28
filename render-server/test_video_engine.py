@@ -38,6 +38,17 @@ class ReferenceImageValidationTests(unittest.TestCase):
             video_engine.validate_reference_image(buffer.getvalue())
 
 
+class CameraMotionDimensionsTests(unittest.TestCase):
+    def test_preserves_portrait_landscape_and_square_formats(self):
+        self.assertEqual(video_engine.camera_motion_dimensions(576, 1024), (720, 1280))
+        self.assertEqual(video_engine.camera_motion_dimensions(1024, 576), (1280, 720))
+        self.assertEqual(video_engine.camera_motion_dimensions(800, 800), (768, 768))
+
+    def test_rejects_invalid_dimensions(self):
+        with self.assertRaisesRegex(ValueError, "Dimensões"):
+            video_engine.camera_motion_dimensions(0, 800)
+
+
 class WanFrameCountTests(unittest.TestCase):
     def test_frame_count_is_within_supported_bounds_and_matches_four_n_plus_one(self):
         for duration in (0, 0.2, 1, 3, 5, 10, 30, 300):
@@ -116,7 +127,30 @@ class WanOutputValidationTests(unittest.TestCase):
             self.assertTrue(output.name.endswith(".mp4"))
             command = run.call_args.args[0]
             self.assertIn("zoompan", command[command.index("-vf") + 1])
+            self.assertIn("scale=1280:720", command[command.index("-vf") + 1])
             self.assertIn("libx264", command)
+
+    def test_fallback_preserves_portrait_canvas(self):
+        import io
+        from PIL import Image
+
+        image = io.BytesIO()
+        Image.new("RGB", (18, 32), "white").save(image, format="PNG")
+        with tempfile.TemporaryDirectory() as output_dir:
+            def fake_run(command, **kwargs):
+                target = Path(command[-1])
+                target.write_bytes(b"0000ftypisom0000")
+                return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+            with patch.object(video_engine, "WAN_OUTPUT_DIR", Path(output_dir)), patch.object(
+                video_engine.shutil, "which", return_value="/usr/bin/ffmpeg"
+            ), patch.object(video_engine.subprocess, "run", side_effect=fake_run) as run:
+                video_engine._generate_camera_motion_video(image.getvalue(), 3)
+
+            video_filter = run.call_args.args[0][run.call_args.args[0].index("-vf") + 1]
+            self.assertIn("scale=720:1280", video_filter)
+            self.assertIn("crop=720:1280", video_filter)
+            self.assertIn("s=720x1280", video_filter)
 
 
     def test_fallback_normalizes_jpeg_input_to_png_for_ffmpeg(self):
