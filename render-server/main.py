@@ -258,6 +258,8 @@ def run_video_generation_job(job_id: str, payload: VideoGenerationRequest, image
             from PIL import Image
             import io
             with Image.open(io.BytesIO(image_bytes)) as source:
+                width, height = source.size
+                aspect_ratio = "9:16" if height > width else ("16:9" if width > height else "1:1")
                 source.convert("RGB").save(reference_path, format="PNG")
             reference_token = secrets.token_urlsafe(32)
             expires_at = time.time() + 1800
@@ -272,6 +274,7 @@ def run_video_generation_job(job_id: str, payload: VideoGenerationRequest, image
                     image_url=reference_url,
                     duration_seconds=payload.duration_seconds,
                     seed=payload.seed,
+                    aspect_ratio=aspect_ratio,
                 )
             finally:
                 reference_path.unlink(missing_ok=True)
