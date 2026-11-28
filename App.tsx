@@ -48,6 +48,7 @@ type EngineConfig = {
 const genres = ["Aventura", "Comédia", "Fantasia", "Ação", "Drama", "Mistério"];
 const durations = ["30 segundos", "1 minuto", "2 minutos", "3 minutos", "5 minutos", "10 minutos"];
 const RENDER_TOKEN_KEY = "@estudio2d/render-token";
+const STORY_API_KEY_STORAGE = "@estudio2d/openrouter-key";
 const DEFAULT_RENDER_BASE_URL = "https://estudio-2d-render-n83m.onrender.com";
 
 function showUserAlert(title: string, message: string): void {
@@ -85,6 +86,26 @@ async function readRenderToken(): Promise<string | null> {
     return null;
   }
   return SecureStore.getItemAsync(RENDER_TOKEN_KEY);
+}
+
+async function readStoryApiKey(): Promise<string | null> {
+  if (Platform.OS === "web") {
+    if (typeof window === "undefined") return null;
+    return window.sessionStorage.getItem(STORY_API_KEY_STORAGE);
+  }
+  return SecureStore.getItemAsync(STORY_API_KEY_STORAGE);
+}
+
+async function writeStoryApiKey(key: string): Promise<void> {
+  if (Platform.OS === "web") {
+    if (typeof window !== "undefined") {
+      if (key) window.sessionStorage.setItem(STORY_API_KEY_STORAGE, key);
+      else window.sessionStorage.removeItem(STORY_API_KEY_STORAGE);
+    }
+    return;
+  }
+  if (key) await SecureStore.setItemAsync(STORY_API_KEY_STORAGE, key);
+  else await SecureStore.deleteItemAsync(STORY_API_KEY_STORAGE);
 }
 
 async function writeRenderToken(token: string): Promise<void> {
@@ -243,6 +264,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [engineConfig, setEngineConfig] = useState<EngineConfig>({ renderBaseUrl: DEFAULT_RENDER_BASE_URL, renderToken: "" });
   const [connectionStatus, setConnectionStatus] = useState("Não testada");
+  const [storyApiKey, setStoryApiKey] = useState("");
   const [busyScene, setBusyScene] = useState<string | null>(null);
   const [creatingStory, setCreatingStory] = useState(false);
   const [storyFeedback, setStoryFeedback] = useState("");
@@ -263,8 +285,9 @@ export default function App() {
     Promise.all([
       AsyncStorage.getItem(ENGINE_STORAGE_KEY).then(async current => current ?? await AsyncStorage.getItem(LEGACY_ENGINE_STORAGE_KEY)),
       readRenderToken(),
+      readStoryApiKey(),
     ])
-      .then(async ([value, token]) => {
+      .then(async ([value, token, savedStoryKey]) => {
         const saved = value ? JSON.parse(value) as Partial<EngineConfig> : {};
         const legacyToken = saved.renderToken;
         delete saved.renderToken;
@@ -274,6 +297,7 @@ export default function App() {
           await AsyncStorage.removeItem(LEGACY_ENGINE_STORAGE_KEY);
         }
         setEngineConfig(prev => ({ ...prev, ...saved, renderBaseUrl: saved.renderBaseUrl?.trim() || DEFAULT_RENDER_BASE_URL, renderToken: token || legacyToken || "" }));
+        setStoryApiKey(savedStoryKey || "");
       })
       .catch(() => Alert.alert("Aviso", "Não foi possível carregar as configurações seguras do servidor."));
   }, []);
@@ -299,7 +323,8 @@ export default function App() {
       const { renderToken, ...publicConfig } = engineConfig;
       await AsyncStorage.setItem(ENGINE_STORAGE_KEY, JSON.stringify(publicConfig));
       await writeRenderToken(renderToken?.trim() || "");
-      Alert.alert("Conexão salva", "O endereço do motor foi guardado no aparelho; o token fica no armazenamento seguro do iPhone.");
+      await writeStoryApiKey(storyApiKey.trim());
+      Alert.alert("Conexão salva", "O endereço do motor foi guardado. A chave do OpenRouter fica no armazenamento seguro do iPhone; no navegador, permanece somente nesta sessão.");
     } catch {
       Alert.alert("Erro", "Não foi possível salvar as configurações. Verifique o armazenamento do aparelho.");
     }
@@ -1102,7 +1127,7 @@ export default function App() {
       }
       const response = await fetch(`${baseUrl}/v1/stories/generate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...((storyApiKey.trim()) ? { "X-Story-API-Key": storyApiKey.trim() } : {}) },
         body: JSON.stringify({
           idea: cleanIdea,
           genre,
@@ -1310,6 +1335,9 @@ export default function App() {
           <Text style={styles.note}>O aplicativo conversa diretamente com a API do estúdio. Não precisa de ComfyUI, workflows ou plugins. Para imagens, o servidor pode chamar um Space do Hugging Face ZeroGPU, sujeito a fila e cota gratuita limitada. Atenção: esse Space não gera vídeos. Sem um servidor separado com GPU compatível e Wan2.2 configurado, o vídeo disponível usa apenas movimento de câmera sobre uma imagem estática; não anima personagens.</Text>
           <Text style={styles.label}>ENDEREÇO HTTPS DO SERVIDOR</Text>
           <TextInput value={engineConfig.renderBaseUrl || ""} onChangeText={value => setEngineConfig(previous => ({ ...previous, renderBaseUrl: value }))} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="https://seu-servidor-do-estudio" placeholderTextColor="#777789" style={styles.smallInput} />
+          <Text style={styles.label}>CHAVE OPENROUTER PARA ROTEIROS POR IA (OPCIONAL)</Text>
+          <TextInput value={storyApiKey} onChangeText={setStoryApiKey} autoCapitalize="none" autoCorrect={false} secureTextEntry placeholder="sk-or-v1-..." placeholderTextColor="#777789" style={styles.smallInput} />
+          <Text style={styles.note}>Use uma chave criada em openrouter.ai/keys. O Estúdio solicita somente o modelo openrouter/free; isso não garante disponibilidade contínua. A chave é enviada apenas ao servidor para gerar o roteiro, não é salva no Render. No navegador, ela fica só na sessão atual.</Text>
           <Text style={styles.label}>TOKEN DE ACESSO</Text>
           <TextInput value={engineConfig.renderToken || ""} onChangeText={value => setEngineConfig(previous => ({ ...previous, renderToken: value }))} autoCapitalize="none" autoCorrect={false} secureTextEntry placeholder="Token privado do servidor" placeholderTextColor="#777789" style={styles.smallInput} />
           <TouchableOpacity style={styles.primary} onPress={saveEngineConfig}><Text style={styles.primaryText}>SALVAR CONEXÃO</Text><Text style={styles.arrow}>✓</Text></TouchableOpacity>
