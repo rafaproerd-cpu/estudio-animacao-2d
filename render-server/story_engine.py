@@ -15,8 +15,9 @@ VISUAL_STYLE = (
 )
 
 
-def story_engine_status() -> dict[str, Any]:
-    configured = bool(STORY_API_URL and STORY_API_KEY and STORY_MODEL)
+def story_engine_status(api_key_configured: bool | None = None) -> dict[str, Any]:
+    has_key = bool(STORY_API_KEY) if api_key_configured is None else api_key_configured
+    configured = bool(STORY_API_URL and has_key and STORY_MODEL)
     return {
         "available": configured,
         "status": "configured" if configured else "not_configured",
@@ -58,9 +59,10 @@ def _extract_json(content: str) -> dict[str, Any]:
     return result
 
 
-def generate_story_plan(idea: str, genre: str, duration: str, character: str) -> dict[str, Any]:
-    if not all((STORY_API_URL, STORY_API_KEY, STORY_MODEL)):
-        raise RuntimeError(story_engine_status()["message"])
+def generate_story_plan(idea: str, genre: str, duration: str, character: str, api_key: str | None = None) -> dict[str, Any]:
+    effective_api_key = (api_key or STORY_API_KEY).strip()
+    if not all((STORY_API_URL, effective_api_key, STORY_MODEL)):
+        raise RuntimeError(story_engine_status(bool(effective_api_key))["message"])
     clean_idea = " ".join(idea.split())[:700]
     if not clean_idea:
         raise ValueError("Escreva uma ideia antes de criar o projeto.")
@@ -192,7 +194,7 @@ CONTROLE DE QUALIDADE ANTES DE RESPONDER
         STORY_API_URL,
         data=json.dumps(request_body).encode("utf-8"),
         headers={
-            "Authorization": f"Bearer {STORY_API_KEY}",
+            "Authorization": f"Bearer {effective_api_key}",
             "Content-Type": "application/json",
             "Accept": "application/json",
             "HTTP-Referer": "https://rafaproerd-cpu.github.io/estudio-animacao-2d/",
