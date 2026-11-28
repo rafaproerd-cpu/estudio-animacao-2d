@@ -48,7 +48,7 @@ class StoryEngineTests(unittest.TestCase):
         self.assertEqual(parsed["title"], "Teste")
 
     def test_rejects_invalid_scene_count(self):
-        response = {"choices": [{"message": {"content": json.dumps(valid_story(3))}}]}
+        response = {"choices": [{"message": {"content": json.dumps(valid_story(5))}}]}
         class FakeResponse:
             def __enter__(self): return self
             def __exit__(self, *args): return False
@@ -58,11 +58,11 @@ class StoryEngineTests(unittest.TestCase):
         ), patch.object(story_engine, "STORY_MODEL", "test-model"), patch.object(
             story_engine.urllib.request, "urlopen", return_value=FakeResponse()
         ):
-            with self.assertRaisesRegex(ValueError, "entre 4 e 30"):
+            with self.assertRaisesRegex(ValueError, "exatamente 6 cenas"):
                 story_engine.generate_story_plan("Uma ideia", "Aventura", "30 segundos", "Personagem")
 
     def test_normalizes_ai_story_to_app_contract(self):
-        response = {"choices": [{"message": {"content": json.dumps(valid_story())}}]}
+        response = {"choices": [{"message": {"content": json.dumps(valid_story(6))}}]}
         class FakeResponse:
             def __enter__(self): return self
             def __exit__(self, *args): return False
@@ -74,7 +74,7 @@ class StoryEngineTests(unittest.TestCase):
         ):
             plan = story_engine.generate_story_plan("Uma ideia", "Aventura", "30 segundos", "Personagem")
         self.assertEqual(plan["generatedBy"], "ai-provider")
-        self.assertEqual(len(plan["scenes"]), 4)
+        self.assertEqual(len(plan["scenes"]), 6)
         self.assertEqual(plan["scenes"][0]["id"], "scene-1")
         self.assertEqual(plan["scenes"][0]["action"], "A protagonista encontra uma pista diferente 1.")
         self.assertEqual(plan["estimatedSeconds"], 30)
