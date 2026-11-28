@@ -380,11 +380,12 @@ export default function App() {
         if (diagnosticResponse.ok) {
           const diagnostic = await diagnosticResponse.json();
           imageDiagnostic = diagnostic.connectivity === "reachable"
-            ? (diagnostic.reference_images_supported
+            ? ((diagnostic.reference_images_supported
               ? "Space HF acessível · referência visual suportada"
               : diagnostic.fallback_provider
                 ? "Space HF acessível · sem referência visual; fallback " + diagnostic.fallback_provider + " também não usa imagem-base"
                 : "Space HF acessível · geração por texto, sem referência visual")
+              + (diagnostic.reference_provider_notice ? " · AVISO: " + diagnostic.reference_provider_notice : ""))
             : diagnostic.connectivity === "reachable_api_mismatch"
               ? "Space HF acessível, mas endpoint incompatível"
               : diagnostic.connectivity === "connection_failed"
