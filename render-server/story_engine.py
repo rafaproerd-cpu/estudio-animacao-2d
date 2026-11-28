@@ -71,6 +71,9 @@ def generate_story_plan(idea: str, genre: str, duration: str, character: str) ->
             "A geração de roteiro por IA atualmente suporta até 2 minutos e 30 segundos "
             "(30 cenas de até 5 segundos). Para durações maiores, use o roteiro-base local."
         )
+    planned_scene_count = max(4, min(30, (requested_seconds + 4) // 5))
+    seconds_per_scene = requested_seconds / planned_scene_count
+    narration_word_limit = max(5, int(seconds_per_scene * 2.0))
 
     prompt = f"""
 Você é o ROTEIRISTA-CHEFE e DIRETOR CRIATIVO de um estúdio profissional de animação.
@@ -129,8 +132,10 @@ DIREÇÃO PARA ANIMAÇÃO
   curto e animável, com uma ação principal legível.
 - Pense em episódios de uma série: se a ideia pedir continuação, termine com um gancho forte; se for
   uma história fechada, entregue conclusão satisfatória. Não force um "continua" em toda história.
-- A narração deve ter conteúdo suficiente para conduzir a cena, mas ser enxuta para caber no tempo.
-  Use normalmente 1 a 3 frases por cena, variando conforme a duração e a intensidade da ação.
+- A narração deve caber no tempo real do clipe. Cada cena terá aproximadamente
+  {seconds_per_scene:.1f} segundos de vídeo; limite a narração a no máximo {narration_word_limit} palavras
+  por cena, preferencialmente uma única frase curta. Não escreva texto que será cortado no fim do áudio.
+  Distribua a informação pela sequência inteira, sem tentar contar tudo em uma única cena.
 - Escreva ações filmáveis: quem faz o quê, onde, com que objeto, e qual consequência visível acontece.
   Evite frases abstratas como "a tensão aumenta" sem mostrar como isso aparece na tela.
 - Varie planos e movimentos de câmera por intenção dramática. Não use zoom ou travelling em todas.
