@@ -495,7 +495,9 @@ class QwenImageEditReferenceTests(unittest.TestCase):
 
                 args, kwargs = FakeClient.received
                 self.assertTrue(FakeClient.reference_path.exists() is False)
-                self.assertEqual(args[1:], ("same character walking through a forest", 321, False, 4.0, 50, False))
+                self.assertIn("strict visual identity reference", args[1])
+                self.assertIn("same character walking through a forest", args[1])
+                self.assertEqual(args[2:], (321, False, 4.0, 50, False))
                 self.assertEqual(kwargs, {"api_name": "/infer"})
                 self.assertTrue(output.is_file())
         finally:
