@@ -148,7 +148,21 @@ def initialize_generation_state() -> None:
 
 def prune_generation_state() -> None:
     now = time.time()
+    active_timeout_seconds = max(900, int(os.getenv("ACTIVE_JOB_TIMEOUT_SECONDS", "2700")))
+    timed_out_jobs: list[str] = []
     with generation_jobs_lock:
+        for job_id, job in generation_jobs.items():
+            if job.get("status") not in {"queued", "running"}:
+                continue
+            created_at = float(job.get("created_at", now))
+            if now - created_at > active_timeout_seconds:
+                job.update({
+                    "status": "failed",
+                    "progress": 0.0,
+                    "message": "A tarefa demorou mais que o limite de segurança e foi liberada. Inicie uma nova geração.",
+                    "error": "generation_job_timeout",
+                })
+                timed_out_jobs.append(job_id)
         expired_jobs = [
             job_id for job_id, job in generation_jobs.items()
             if job.get("status") in {"completed", "failed", "cancelled"}
@@ -159,8 +173,15 @@ def prune_generation_state() -> None:
         expired_tokens = [name for name, grant in generation_download_tokens.items() if grant[1] < now]
         for name in expired_tokens:
             generation_download_tokens.pop(name, None)
-    if expired_jobs or expired_tokens:
+    if timed_out_jobs or expired_jobs or expired_tokens:
         with _state_connection() as connection:
+            for job_id in timed_out_jobs:
+                with generation_jobs_lock:
+                    snapshot = dict(generation_jobs[job_id])
+                connection.execute(
+                    "UPDATE generation_jobs SET payload=? WHERE job_id=?",
+                    (json.dumps(snapshot), job_id),
+                )
             if expired_jobs:
                 connection.executemany("DELETE FROM generation_jobs WHERE job_id=?", [(job_id,) for job_id in expired_jobs])
             if expired_tokens:
