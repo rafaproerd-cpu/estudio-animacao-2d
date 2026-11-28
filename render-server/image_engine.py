@@ -201,7 +201,7 @@ def generate_huggingface_image(
             raise RuntimeError("O modo FLUX Kontext exige uma imagem-base para preservar a referência visual.")
         reference_path = None
         try:
-            suffix = ".png" if reference_image_bytes.startswith(b"\\x89PNG") else ".jpg"
+            suffix = ".png" if reference_image_bytes.startswith(b"\x89PNG") else ".jpg"
             with tempfile.NamedTemporaryFile(prefix="estudio-kontext-reference-", suffix=suffix, delete=False) as temporary:
                 temporary.write(reference_image_bytes)
                 reference_path = Path(temporary.name)
