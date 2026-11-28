@@ -427,6 +427,49 @@ def probe_video_dimensions(video_path: Path) -> tuple[int, int]:
     return width, height
 
 
+def probe_video_duration(video_path: Path) -> float:
+    executable = shutil.which(FFPROBE)
+    if not executable:
+        raise HTTPException(status_code=503, detail="FFprobe não encontrado para medir a duração dos clipes.")
+    try:
+        result = subprocess.run(
+            [executable, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(video_path)],
+            capture_output=True, text=True, timeout=20, check=False,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise HTTPException(status_code=504, detail="Não foi possível medir a duração do clipe a tempo.") from error
+    try:
+        duration = float(result.stdout.strip())
+    except (TypeError, ValueError) as error:
+        raise HTTPException(status_code=422, detail="Não foi possível ler a duração de um dos clipes.") from error
+    if result.returncode != 0 or not (duration > 0):
+        raise HTTPException(status_code=422, detail="Um dos clipes tem duração inválida.")
+    return duration
+
+
+def build_crossfade_filter(durations: list[float], transition_seconds: float = 0.4) -> tuple[str, str] | None:
+    """Cria uma cadeia de dissoluções suaves; retorna None para um único clipe."""
+    if len(durations) < 2:
+        return None
+    if any(duration <= 0 for duration in durations):
+        raise ValueError("As durações dos clipes devem ser positivas.")
+    fade = min(transition_seconds, min(durations) / 3)
+    if fade <= 0:
+        raise ValueError("A duração da transição deve ser positiva.")
+    filters = []
+    previous_label = "0:v"
+    elapsed = durations[0]
+    for index, duration in enumerate(durations[1:], start=1):
+        output_label = f"v{index}"
+        offset = max(0.0, elapsed - fade)
+        filters.append(
+            f"[{previous_label}][{index}:v]xfade=transition=fade:duration={fade:.3f}:offset={offset:.3f}[{output_label}]"
+        )
+        previous_label = output_label
+        elapsed += duration - fade
+    return ";".join(filters), f"[{previous_label}]"
+
+
 def run_ffmpeg(arguments: list[str]) -> None:
     try:
         result = subprocess.run(
@@ -927,21 +970,44 @@ async def render_video(
             narration_path = await save_audio_upload(narration, temp_path / f"narration{safe_audio_extension(narration.filename)}") if narration else None
             music_path = await save_audio_upload(music, temp_path / f"music{safe_audio_extension(music.filename)}") if music else None
 
-            concat_list = temp_path / "clips.txt"
-            concat_list.write_text(
-                "".join(f"file '{path.as_posix()}'\n" for path in normalized_files),
-                encoding="utf-8",
-            )
-            run_ffmpeg([
-                "-f", "concat",
-                "-safe", "0",
-                "-i", str(concat_list),
-                "-c", "copy",
-                "-movflags", "+faststart",
-                str(temp_path / "joined-video.mp4"),
-            ])
-
             joined_video = temp_path / "joined-video.mp4"
+            if len(normalized_files) > 1:
+                durations = [probe_video_duration(path) for path in normalized_files]
+                transition_graph = build_crossfade_filter(durations)
+            else:
+                transition_graph = None
+
+            if transition_graph:
+                filter_graph, output_label = transition_graph
+                ffmpeg_inputs = []
+                for path in normalized_files:
+                    ffmpeg_inputs.extend(["-i", str(path)])
+                run_ffmpeg([
+                    *ffmpeg_inputs,
+                    "-filter_complex", filter_graph,
+                    "-map", output_label,
+                    "-an",
+                    "-c:v", "libx264",
+                    "-preset", "veryfast",
+                    "-crf", "20",
+                    "-pix_fmt", "yuv420p",
+                    "-movflags", "+faststart",
+                    str(joined_video),
+                ])
+            else:
+                concat_list = temp_path / "clips.txt"
+                concat_list.write_text(
+                    "".join(f"file '{path.as_posix()}'\n" for path in normalized_files),
+                    encoding="utf-8",
+                )
+                run_ffmpeg([
+                    "-f", "concat",
+                    "-safe", "0",
+                    "-i", str(concat_list),
+                    "-c", "copy",
+                    "-movflags", "+faststart",
+                    str(joined_video),
+                ])
             if narration_path or music_path:
                 audio_inputs = ["-i", str(joined_video)]
                 if narration_path:
