@@ -25,7 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from image_engine import IMAGE_OUTPUT_DIR, active_image_engine_status, diagnose_huggingface_image_space, generate_image, image_engine_status, huggingface_image_engine_status
 from video_engine import WAN_OUTPUT_DIR, generate_wan_video, validate_mp4_output, validate_reference_image, video_engine_status
-from agnes_video import generate_agnes_video
+from agnes_video import check_agnes_connection, generate_agnes_video
 from story_engine import generate_story_plan, story_engine_status
 
 logger = logging.getLogger(__name__)
@@ -435,6 +435,14 @@ def diagnose_image_provider(authorization: Annotated[str | None, Header()] = Non
     """Checks remote image provider connectivity and API metadata without generating an image."""
     require_token(authorization)
     return diagnose_huggingface_image_space()
+
+
+
+@app.get("/v1/diagnostics/agnes")
+def diagnose_agnes_provider(authorization: Annotated[str | None, Header()] = None) -> dict[str, object]:
+    """Verifica a chave Agnes via GET /models; não gera vídeo nem altera a configuração."""
+    require_token(authorization)
+    return check_agnes_connection()
 
 
 @app.post("/v1/stories/generate")
