@@ -157,7 +157,7 @@ function buildConsistentImagePrompt(project: Project, scene: Scene): string {
     "FICHA VISUAL FIXA DO ELENCO — mantenha os mesmos traços, rosto, cabelo, idade aparente, roupas, cores, acessórios e proporções descritos aqui: " + project.character,
     "A cena pode mudar de cenário, pose, expressão, ação e enquadramento, mas não pode redesenhar os personagens nem alterar a direção de arte.",
     "DESCRIÇÃO ESPECÍFICA DESTA CENA: " + scene.imagePrompt,
-  ].join("\\n");
+  ].join("\n");
 }
 
 function buildProject(idea: string, genre: string, duration: string, generatedPlan?: StoryPlan): Project {
