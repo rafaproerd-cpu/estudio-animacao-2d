@@ -512,27 +512,50 @@ class FluxKontextImageReferenceTests(unittest.TestCase):
             for key, value in original_values.items():
                 setattr(image_engine, key, value)
 
-    def test_flux_kontext_requires_a_reference_image(self):
+    def test_flux_kontext_can_create_the_first_image_without_a_reference(self):
         original_values = {
             "HF_SPACE_ID": image_engine.HF_SPACE_ID,
             "HF_SPACE_MODE": image_engine.HF_SPACE_MODE,
             "HF_TOKEN": image_engine.HF_TOKEN,
+            "IMAGE_OUTPUT_DIR": image_engine.IMAGE_OUTPUT_DIR,
         }
         try:
-            image_engine.HF_SPACE_ID = "black-forest-labs/FLUX.1-Kontext-Dev"
-            image_engine.HF_SPACE_MODE = "flux_kontext"
-            image_engine.HF_TOKEN = ""
-            fake_module = types.SimpleNamespace(Client=lambda *args, **kwargs: None)
-            with patch.dict(sys.modules, {"gradio_client": fake_module}), patch.object(
-                image_engine,
-                "huggingface_image_engine_status",
-                return_value={"available": True, "status": "configured_unverified"},
-            ):
-                with self.assertRaisesRegex(RuntimeError, "exige uma imagem-base"):
-                    image_engine.generate_huggingface_image(
-                        prompt="another scene", width=576, height=1024,
-                        seed=1, reference_image_bytes=None,
+            with tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                source = root / "first.png"
+                Image.new("RGB", (48, 64), (12, 34, 56)).save(source, format="PNG")
+                image_engine.HF_SPACE_ID = "black-forest-labs/FLUX.1-Kontext-Dev"
+                image_engine.HF_SPACE_MODE = "flux_kontext"
+                image_engine.HF_TOKEN = ""
+                image_engine.IMAGE_OUTPUT_DIR = root / "outputs"
+
+                class FakeClient:
+                    received = None
+                    def __init__(self, space_id, **kwargs):
+                        pass
+                    def predict(self, *args, **kwargs):
+                        self.__class__.received = (args, kwargs)
+                        return ({"path": str(source)}, 42, None)
+
+                fake_module = types.SimpleNamespace(Client=FakeClient)
+                with patch.dict(sys.modules, {"gradio_client": fake_module}), patch.object(
+                    image_engine,
+                    "huggingface_image_engine_status",
+                    return_value={"available": True, "status": "configured_unverified"},
+                ):
+                    output = image_engine.generate_huggingface_image(
+                        prompt="first scene, establish the character design",
+                        width=576,
+                        height=1024,
+                        seed=321,
+                        reference_image_bytes=None,
                     )
+
+                args, kwargs = FakeClient.received
+                self.assertIsNone(args[0])
+                self.assertEqual(args[1], "first scene, establish the character design")
+                self.assertEqual(kwargs, {"api_name": "/infer"})
+                self.assertTrue(output.is_file())
         finally:
             for key, value in original_values.items():
                 setattr(image_engine, key, value)
@@ -571,3 +594,27 @@ class FluxKontextImageReferenceTests(unittest.TestCase):
         finally:
             for key, value in original_values.items():
                 setattr(image_engine, key, value)
+
+    def test_flux_kontext_reference_failure_does_not_fall_back_to_text_only_cloudflare(self):
+        with patch.object(image_engine, "image_engine_status", return_value={"available": False}), patch.object(
+            image_engine, "huggingface_image_engine_status",
+            return_value={"available": True, "status": "configured_unverified"},
+        ), patch.object(
+            image_engine, "generate_huggingface_image",
+            side_effect=RuntimeError("Space queue is full"),
+        ), patch.object(
+            image_engine, "generate_cloudflare_image"
+        ) as cloudflare:
+            with patch.object(image_engine, "HF_SPACE_MODE", "flux_kontext"), patch.object(
+                image_engine, "CLOUDFLARE_ACCOUNT_ID", "account"
+            ), patch.object(image_engine, "CLOUDFLARE_API_TOKEN", "secret"):
+                with self.assertRaisesRegex(RuntimeError, "não conseguiu gerar a cena usando a imagem-base"):
+                    image_engine.generate_image(
+                        prompt="same character in another scene",
+                        negative_prompt=None,
+                        width=576,
+                        height=1024,
+                        seed=7,
+                        reference_image_bytes=b"reference",
+                    )
+        cloudflare.assert_not_called()
