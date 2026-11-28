@@ -142,6 +142,24 @@ function stableProjectSeed(seedKey: string): number {
   return hash >>> 0;
 }
 
+function buildConsistentImagePrompt(project: Project, scene: Scene): string {
+  const visualStyle: Record<string, string> = {
+    Aventura: "animação 2D de aventura cinematográfica, cenários coloridos e profundidade 2.5D",
+    Comédia: "animação 2D cartoon estilizada, formas claras, expressões vivas e cores alegres",
+    Fantasia: "animação 2D de fantasia cinematográfica, cenários mágicos desenhados e iluminação atmosférica",
+    Ação: "animação 2D de ação, desenho dinâmico e enquadramentos energéticos",
+    Drama: "animação 2D cinematográfica, acabamento ilustrado e iluminação natural",
+    Mistério: "animação 2D de suspense, cenários detalhados, sombras expressivas e paleta atmosférica",
+  };
+  return [
+    "PADRÃO VISUAL FIXO DESTE PROJETO: " + (visualStyle[project.genre] || "animação 2D cinematográfica") + ".",
+    "CONTINUIDADE OBRIGATÓRIA: esta imagem pertence à mesma obra e ao mesmo elenco das outras cenas. Preserve o desenho, o acabamento, a paleta, a proporção dos personagens e o nível de detalhe. Não mude para fotografia, 3D, anime ou outro estilo.",
+    "FICHA VISUAL FIXA DO ELENCO — mantenha os mesmos traços, rosto, cabelo, idade aparente, roupas, cores, acessórios e proporções descritos aqui: " + project.character,
+    "A cena pode mudar de cenário, pose, expressão, ação e enquadramento, mas não pode redesenhar os personagens nem alterar a direção de arte.",
+    "DESCRIÇÃO ESPECÍFICA DESTA CENA: " + scene.imagePrompt,
+  ].join("\\n");
+}
+
 function buildProject(idea: string, genre: string, duration: string, generatedPlan?: StoryPlan): Project {
   const character = generatedPlan?.characterBible?.trim() || "Personagem principal\nAparência: manter exatamente a descrição visual apresentada nos prompts de cada cena.\nRegra de continuidade: manter o mesmo rosto, cabelo, roupa, cores, proporções e acessórios em todas as cenas.";
   const plan = generatedPlan || createStoryPlan(idea, genre as Genre, duration, character);
@@ -513,7 +531,7 @@ export default function App() {
       const provider = new HttpImageGenerationProvider({ baseUrl: connection.baseUrl, token: connection.token });
       const referenceScene = findCharacterReference(selected.scenes, scene.title);
       const referenceImageBase64 = referenceScene?.imageUri ? await imageUriToBase64(referenceScene.imageUri) : undefined;
-      let result = await provider.generate({ prompt: scene.imagePrompt, width: 576, height: 1024, seed: stableProjectSeed(`${selected.id}:${scene.title}`), referenceImageBase64 });
+      let result = await provider.generate({ prompt: buildConsistentImagePrompt(selected, scene), width: 576, height: 1024, seed: stableProjectSeed(selected.id), referenceImageBase64 });
       // Se o motor remoto rejeitar a referência visual, repetir sem ela para
       // que a geração individual ainda possa funcionar.
       if (
@@ -615,7 +633,7 @@ export default function App() {
         setImageFeedback(`Gerando imagem ${completed + 1} de ${pendingScenes.length}: ${scene.title}. O motor remoto pode levar alguns minutos.`);
         const referenceScene = findCharacterReference(workingProject.scenes, scene.title);
         const referenceImageBase64 = referenceScene?.imageUri ? await imageUriToBase64(referenceScene.imageUri) : undefined;
-        let result = await provider.generate({ prompt: scene.imagePrompt, width: 576, height: 1024, seed: stableProjectSeed(`${workingProject.id}:${scene.title}`), referenceImageBase64 });
+        let result = await provider.generate({ prompt: buildConsistentImagePrompt(workingProject, scene), width: 576, height: 1024, seed: stableProjectSeed(workingProject.id), referenceImageBase64 });
         // Se o motor remoto rejeitar a referência visual, repetir sem a imagem-base
         // em vez de interromper toda a fila.
         if (
