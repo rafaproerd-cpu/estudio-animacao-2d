@@ -35,6 +35,27 @@ class StoryEngineTests(unittest.TestCase):
         self.assertEqual(story_engine.STORY_API_URL, "https://openrouter.ai/api/v1/chat/completions")
         self.assertEqual(story_engine.STORY_MODEL, "openrouter/free")
 
+    def test_device_key_can_be_used_without_server_environment_key(self):
+        response = {"choices": [{"message": {"content": json.dumps(valid_story(6))}}]}
+        captured = {}
+        class FakeResponse:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self): return json.dumps(response).encode()
+        def fake_urlopen(request, timeout):
+            captured["authorization"] = request.get_header("Authorization")
+            return FakeResponse()
+        with patch.object(story_engine, "STORY_API_URL", "https://example.test/v1/chat/completions"), patch.object(
+            story_engine, "STORY_API_KEY", ""
+        ), patch.object(story_engine, "STORY_MODEL", "test-model"), patch.object(
+            story_engine.urllib.request, "urlopen", side_effect=fake_urlopen
+        ):
+            plan = story_engine.generate_story_plan(
+                "Uma ideia", "Aventura", "30 segundos", "Personagem", api_key="device-secret"
+            )
+        self.assertEqual(captured["authorization"], "Bearer device-secret")
+        self.assertEqual(len(plan["scenes"]), 6)
+
     def test_status_requires_url_key_and_model(self):
         with patch.object(story_engine, "STORY_API_URL", ""), patch.object(
             story_engine, "STORY_API_KEY", "secret"
