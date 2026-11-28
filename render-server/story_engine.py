@@ -65,6 +65,13 @@ def generate_story_plan(idea: str, genre: str, duration: str, character: str) ->
     if not clean_idea:
         raise ValueError("Escreva uma ideia antes de criar o projeto.")
 
+    requested_seconds = _duration_in_seconds(duration)
+    if requested_seconds > 150:
+        raise ValueError(
+            "A geração de roteiro por IA atualmente suporta até 2 minutos e 30 segundos "
+            "(30 cenas de até 5 segundos). Para durações maiores, use o roteiro-base local."
+        )
+
     prompt = f"""
 Você é o ROTEIRISTA-CHEFE e DIRETOR CRIATIVO de um estúdio profissional de animação.
 Sua missão não é preencher um modelo: é transformar uma ideia curta em uma história memorável,
