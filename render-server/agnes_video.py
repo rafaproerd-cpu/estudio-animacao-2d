@@ -128,7 +128,7 @@ def _generate_huggingface_fallback(prompt: str, image_url: str, duration_seconds
             randomize_seed=seed is None,
             seed=int(seed if seed is not None else 42),
             steps=6,
-            api_name="/wan_2_2_fp8da_aoti_faster_generate_video",
+            api_name="/generate_video",
         )
     except Exception as error:
         raise RuntimeError("O motor gratuito alternativo do Hugging Face também não conseguiu gerar o vídeo: " + str(error).strip()[-1000:]) from error
