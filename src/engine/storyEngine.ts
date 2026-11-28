@@ -244,9 +244,12 @@ function cleanPremise(value: string): string {
 }
 
 function openingNarration(premise: string): string {
-  const firstSentence = (premise.split(/[.!?]/, 1)[0] || premise).trim();
-  const words = firstSentence.split(" ").filter(Boolean);
-  if (words.length <= 8) return firstSentence.endsWith(".") ? firstSentence : firstSentence + ".";
+  const match = premise.match(/^(.+?[.!?])(?:\\s|$)/);
+  const firstSentence = (match?.[1] || premise).trim();
+  const words = firstSentence.split(/\\s+/).filter(Boolean);
+  if (words.length <= 8) {
+    return /[.!?]$/.test(firstSentence) ? firstSentence : firstSentence + ".";
+  }
   return words.slice(0, 7).join(" ") + "…";
 }
 
