@@ -164,6 +164,32 @@ def _generate_huggingface_fallback(prompt: str, image_url: str, duration_seconds
     return output
 
 
+
+def check_agnes_connection() -> dict[str, object]:
+    """Verifica autenticação e catálogo via GET; não cria tarefas nem gera mídia."""
+    if not AGNES_API_KEY:
+        return {"status": "key_missing", "authenticated": False, "video_model_listed": False}
+    try:
+        catalog = _request_json(AGNES_BASE_URL + "/models")
+    except RuntimeError as error:
+        message = str(error)
+        if "HTTP 401" in message or "HTTP 403" in message:
+            return {"status": "authentication_failed", "authenticated": False, "video_model_listed": False}
+        return {"status": "provider_unreachable", "authenticated": None, "video_model_listed": False}
+    models = catalog.get("data", [])
+    found = any(
+        isinstance(item, dict) and item.get("id") == "agnes-video-2.5-flash"
+        for item in models
+    ) if isinstance(models, list) else False
+    return {
+        "status": "authenticated",
+        "authenticated": True,
+        "video_model_listed": found,
+        "model": "agnes-video-2.5-flash",
+        "note": "Consulta somente de catálogo; nenhum vídeo foi solicitado."
+    }
+
+
 def generate_agnes_video(prompt: str, image_url: str, duration_seconds: float, seed: int | None) -> Path:
     # Independent safety guard: never call Agnes unless the owner explicitly confirms $0 access.
     if os.getenv("AGNES_FREE_ACCESS_CONFIRMED", "").strip().lower() != "true":
