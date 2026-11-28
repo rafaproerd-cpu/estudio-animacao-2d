@@ -21,7 +21,7 @@ def story_engine_status() -> dict[str, Any]:
         "available": configured,
         "status": "configured" if configured else "not_configured",
         "message": (
-            "Modelo de roteiro conectado." if configured
+            "Chave do provedor configurada; a conexão será validada ao gerar o roteiro." if configured
             else "Configure STORY_API_KEY no Render. O modelo openrouter/free usa apenas opções gratuitas disponíveis no OpenRouter; disponibilidade e limites dependem do provedor."
         ),
     }
