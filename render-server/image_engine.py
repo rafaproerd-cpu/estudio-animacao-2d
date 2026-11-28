@@ -244,9 +244,18 @@ def generate_huggingface_image(
                 with tempfile.NamedTemporaryFile(prefix="estudio-qwen-reference-", suffix=suffix, delete=False) as temporary:
                     temporary.write(reference_image_bytes)
                     reference_path = Path(temporary.name)
+            contextual_prompt = prompt
+            if reference_path:
+                contextual_prompt = (
+                    "Use the input image as a strict visual identity reference for recurring characters. "
+                    "Preserve each character's recognizable face, hairstyle, age appearance, body proportions, "
+                    "clothing, colors and accessories. Create a new illustration for the described story scene: "
+                    "change the pose, action, framing and environment as requested; do not simply reproduce "
+                    "the reference image. Keep the same 2D art direction. Scene: " + prompt
+                )
             result = client.predict(
                 str(reference_path) if reference_path else None,
-                prompt,
+                contextual_prompt,
                 int(seed if seed is not None else 42),
                 False,
                 4.0,
