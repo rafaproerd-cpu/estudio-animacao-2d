@@ -45,6 +45,7 @@ export type StoryPlan = {
   duration: string;
   estimatedSeconds: number;
   visualStyle: string;
+  characterBible?: string;
   continuityRules: string[];
   scenes: PlannedScene[];
   generatedBy: "local-template" | "ai-provider";
