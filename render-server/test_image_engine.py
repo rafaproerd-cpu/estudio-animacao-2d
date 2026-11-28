@@ -451,6 +451,77 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class QwenImageEditReferenceTests(unittest.TestCase):
+    def test_qwen_edit_passes_reference_without_dashscope_prompt_rewrite(self):
+        original_values = {
+            "HF_SPACE_ID": image_engine.HF_SPACE_ID,
+            "HF_SPACE_MODE": image_engine.HF_SPACE_MODE,
+            "HF_TOKEN": image_engine.HF_TOKEN,
+            "IMAGE_OUTPUT_DIR": image_engine.IMAGE_OUTPUT_DIR,
+        }
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                source = root / "edited.png"
+                Image.new("RGB", (48, 64), (12, 34, 56)).save(source, format="PNG")
+                image_engine.HF_SPACE_ID = "Qwen/Qwen-Image-Edit"
+                image_engine.HF_SPACE_MODE = "qwen_edit"
+                image_engine.HF_TOKEN = ""
+                image_engine.IMAGE_OUTPUT_DIR = root / "outputs"
+
+                class FakeClient:
+                    received = None
+                    reference_path = None
+                    def __init__(self, space_id, **kwargs):
+                        self.space_id = space_id
+                    def predict(self, *args, **kwargs):
+                        self.__class__.received = (args, kwargs)
+                        self.__class__.reference_path = Path(args[0])
+                        return ({"path": str(source)}, 321)
+
+                fake_module = types.SimpleNamespace(Client=FakeClient)
+                with patch.dict(sys.modules, {"gradio_client": fake_module}), patch.object(
+                    image_engine,
+                    "huggingface_image_engine_status",
+                    return_value={"available": True, "status": "configured_unverified"},
+                ):
+                    output = image_engine.generate_huggingface_image(
+                        prompt="same character walking through a forest",
+                        width=576,
+                        height=1024,
+                        seed=321,
+                        reference_image_bytes=b"reference-image",
+                    )
+
+                args, kwargs = FakeClient.received
+                self.assertTrue(FakeClient.reference_path.exists() is False)
+                self.assertEqual(args[1:], ("same character walking through a forest", 321, False, 4.0, 50, False))
+                self.assertEqual(kwargs, {"api_name": "/infer"})
+                self.assertTrue(output.is_file())
+        finally:
+            for key, value in original_values.items():
+                setattr(image_engine, key, value)
+
+    def test_qwen_edit_status_reports_apache_license_and_reference_support(self):
+        original_values = {
+            "HF_SPACE_ID": image_engine.HF_SPACE_ID,
+            "HF_SPACE_MODE": image_engine.HF_SPACE_MODE,
+            "HF_TOKEN": image_engine.HF_TOKEN,
+        }
+        try:
+            image_engine.HF_SPACE_ID = "Qwen/Qwen-Image-Edit"
+            image_engine.HF_SPACE_MODE = "qwen_edit"
+            image_engine.HF_TOKEN = ""
+            with patch("importlib.util.find_spec", return_value=object()):
+                status = image_engine.huggingface_image_engine_status()
+            self.assertTrue(status["reference_images_supported"])
+            self.assertIn("Apache 2.0", status["reference_provider_notice"])
+            self.assertIn("cotas gratuitas", status["reference_provider_notice"])
+        finally:
+            for key, value in original_values.items():
+                setattr(image_engine, key, value)
+
+
 class FluxKontextImageReferenceTests(unittest.TestCase):
     def test_flux_kontext_status_warns_that_dev_license_is_non_commercial(self):
         original_values = {
