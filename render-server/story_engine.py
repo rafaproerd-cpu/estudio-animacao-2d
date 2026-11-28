@@ -88,7 +88,12 @@ LIBERDADE CRIATIVA (MUITO IMPORTANTE)
 - Fuja de clichês automáticos, moral da história explícita, coincidências convenientes e soluções fáceis.
 - Dê aos personagens desejos, medos, contradições e vozes diferentes. Eles não devem falar como narradores
   explicando o que a imagem já mostra.
-- Diálogo curto, falável e com subtexto. Use silêncio quando a ação contar melhor a história.
+- O formato é SEMPRE NARRADO por uma voz narradora externa. Não escreva falas de personagens, diálogos, conversas, aspas de fala ou rubricas de locutor/personagem.
+- O campo "dialogue" do JSON é legado técnico: preencha-o exclusivamente com o TEXTO DA NARRAÇÃO daquela cena, em voz de narrador, pronto para TTS.
+- Narração com ritmo oral, natural e expressivo em português brasileiro. Crie frases com cadência, imagens sensoriais e transições que despertem curiosidade.
+- Não descreva mecanicamente tudo que aparece na tela. Acrescente contexto, emoção, informação, suspense ou humor que complemente a imagem.
+- Cada trecho deve ligar-se ao anterior e terminar, quando apropriado, com gancho para a próxima cena. Não use "Cena 1", "agora vemos" ou instruções técnicas na narração.
+- Os personagens se comunicam por ações, expressões e linguagem corporal; a voz que ouvimos é sempre a do narrador.
 - Cada cena precisa ter uma imagem ou ação memorável. Não repita a mesma composição, ação ou emoção.
 
 ARQUITETURA DRAMÁTICA
@@ -111,7 +116,7 @@ DIREÇÃO PARA ANIMAÇÃO
 - Varie planos e movimentos de câmera por intenção dramática. Não use zoom ou travelling em todas.
 - Inclua movimento corporal concreto, expressão facial, interação com objetos e movimento do ambiente.
 - Mantenha geografia, figurino, aparência, objetos importantes e direção de movimento consistentes.
-- Se houver fala, escreva falas específicas do personagem, não frases genéricas que poderiam servir a qualquer história.
+- Escreva somente narração em todas as cenas. Nenhum personagem deve falar diretamente.
 - O prompt de imagem descreve um único quadro-chave coerente, sem pedir texto, legendas ou logotipos.
 - O prompt de vídeo descreve movimento que realmente pode ser animado, não apenas movimento de câmera.
 
@@ -125,7 +130,7 @@ ENTREGUE SOMENTE JSON VÁLIDO, sem Markdown, exatamente nesta estrutura:
       "title": "Cena 1 — título específico e cinematográfico",
       "purpose": "o que muda na história nesta cena e por que ela é necessária",
       "action": "ação visual específica, com personagem, espaço, gesto, objeto e consequência",
-      "dialogue": "fala curta e natural em português brasileiro ou string vazia",
+      "dialogue": "texto de narração externa, pronto para ser falado por um narrador; nunca diálogo de personagem",
       "shot": "plano e enquadramento adequados à ação",
       "camera": "movimento de câmera motivado pela emoção ou ação",
       "lighting": "luz e atmosfera coerentes com o momento",
@@ -140,7 +145,7 @@ CONTROLE DE QUALIDADE ANTES DE RESPONDER
 - Se eu trocar a ideia do usuário por qualquer outra, as cenas ainda serviriam? Se sim, estão genéricas: reescreva.
 - Cada cena acrescenta informação, consequência ou emoção nova? Remova cenas repetitivas.
 - A reviravolta foi preparada por pistas? O final recompensa a atenção do público?
-- As falas soam como pessoas reais e diferentes entre si?
+- A narração soa natural quando lida em voz alta, tem ritmo e não repete o que a imagem já mostra?
 - Os prompts descrevem exatamente o que acontece na ação, sem contradizer a história?
 - Preserve o núcleo da ideia do usuário e a identidade visual do personagem em todas as cenas.
 """.strip()
