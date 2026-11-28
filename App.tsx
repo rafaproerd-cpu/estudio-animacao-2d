@@ -348,6 +348,9 @@ export default function App() {
       const capabilities = await capabilitiesResponse.json();
       if (!capabilitiesResponse.ok) throw new Error(capabilities.detail || "Não foi possível consultar os motores.");
       const story = capabilities.engines?.story;
+      const storyStatusLabel = storyApiKey.trim()
+        ? "chave OpenRouter salva no aparelho · modelo gratuito openrouter/free será validado na primeira geração"
+        : story?.status || "desconhecido";
       const image = capabilities.engines?.image;
       const imageRemote = capabilities.engines?.image_remote;
       const video = capabilities.engines?.video;
@@ -400,11 +403,11 @@ export default function App() {
           : video?.status === "remote_space_ready"
             ? "Hugging Face remoto; sujeito à cota disponível"
             : video?.message || video?.status || "não informado";
-      const status = `Conectado · roteiro: ${story?.status || "desconhecido"} · imagem: ${image?.status || "desconhecido"} (${imageAuthentication}) · ${imageDiagnostic} · Agnes: ${agnesDiagnostic} · vídeo: ${video?.status || "desconhecido"} (${videoMode}) · áudio: ${audio?.status || "desconhecido"}`;
+      const status = `Conectado · roteiro: ${storyStatusLabel} · imagem: ${image?.status || "desconhecido"} (${imageAuthentication}) · ${imageDiagnostic} · Agnes: ${agnesDiagnostic} · vídeo: ${video?.status || "desconhecido"} (${videoMode}) · áudio: ${audio?.status || "desconhecido"}`;
       setConnectionStatus(status);
       Alert.alert(
         "Motor conectado",
-        `API conectada. Roteiro: ${story?.message || story?.status || "não informado"} Imagem: ${image?.message || image?.status || "não informado"}. Diagnóstico HF: ${imageDiagnostic}. Agnes: ${agnesDiagnostic}. Vídeo: ${videoMode}. Áudio: ${audio?.message || audio?.status || "não informado"}`
+        `API conectada. Roteiro: ${storyStatusLabel}. ${storyApiKey.trim() ? "A chave do aparelho será usada somente ao gerar uma história." : (story?.message || story?.status || "não informado")} Imagem: ${image?.message || image?.status || "não informado"}. Diagnóstico HF: ${imageDiagnostic}. Agnes: ${agnesDiagnostic}. Vídeo: ${videoMode}. Áudio: ${audio?.message || audio?.status || "não informado"}`
       );
     } catch (error) {
       setConnectionStatus("Falha na conexão");
