@@ -162,6 +162,11 @@ def huggingface_image_engine_status() -> dict[str, object]:
         "space_id": HF_SPACE_ID,
         "mode": HF_SPACE_MODE,
         "reference_images_supported": HF_SPACE_MODE in {"legacy", "flux_kontext"},
+        "reference_provider_notice": (
+            "FLUX.1 Kontext [dev] permite referência visual, mas sua licença é não comercial e não autoriza uso em produção ou geração de receita sem licença comercial separada."
+            if HF_SPACE_MODE == "flux_kontext"
+            else None
+        ),
         "fallback_provider": "Cloudflare Workers AI" if CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN else None,
         "fallback_reference_images_supported": False if CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN else None,
         "authentication": "token_configured" if token_configured else "anonymous",
