@@ -327,6 +327,21 @@ export function createStoryPlan(
     makeScene(index, count, premise, genre, characterDescription),
   );
 
+  // Acrescenta âncoras narrativas entre cenas consecutivas. Isso orienta os
+  // prompts a mostrar uma progressão, sem prometer identidade visual perfeita.
+  scenes.forEach((scene, index) => {
+    const previous = scenes[index - 1];
+    const next = scenes[index + 1];
+    const continuity = previous
+      ? `Continuidade: esta cena acontece depois de "${previous.title}". Retomar a consequência da ação anterior: ${previous.action} Não reiniciar a história nem voltar à pose inicial; mostrar o próximo acontecimento como consequência.`
+      : "Continuidade: estabelecer claramente a posição inicial do personagem, os objetos importantes e a geografia do cenário que serão retomados nas próximas cenas.";
+    const handoff = next
+      ? `Preparar a próxima cena: "${next.title}" — ${next.action} Terminar com posição corporal, direção do olhar e estado dos objetos que permitam essa transição.`
+      : "Desfecho: mostrar a consequência final da jornada e encerrar a ação com uma pose natural, sem introduzir um novo conflito.";
+    scene.imagePrompt += ` ${continuity} ${handoff}`;
+    scene.videoPrompt += ` ${continuity} ${handoff} Preservar a direção do movimento e a posição relativa dos elementos entre o início e o fim do clipe.`;
+  });
+
   return {
     title: premise.length > 42 ? premise.slice(0, 42).trim() + "…" : premise,
     premise,
