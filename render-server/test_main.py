@@ -355,6 +355,43 @@ class RenderServerTests(unittest.TestCase):
             main.API_TOKEN = original_token
             main.OUTPUT_DIR = original_output
 
+    def test_render_endpoint_preserves_portrait_landscape_and_square_canvas(self):
+        original_token = main.API_TOKEN
+        original_output = main.OUTPUT_DIR
+        try:
+            main.API_TOKEN = "integration-test-token"
+            cases = (
+                ((1080, 1920), "scale=576:1024:force_original_aspect_ratio=decrease", (576, 1024)),
+                ((1920, 1080), "scale=1024:576:force_original_aspect_ratio=decrease", (1024, 576)),
+                ((1080, 1080), "scale=768:768:force_original_aspect_ratio=decrease", (768, 768)),
+            )
+            for source_dimensions, expected_filter, expected_canvas in cases:
+                with self.subTest(source_dimensions=source_dimensions), tempfile.TemporaryDirectory() as temp_dir:
+                    main.OUTPUT_DIR = Path(temp_dir)
+
+                    def fake_ffmpeg(arguments):
+                        Path(arguments[-1]).write_bytes(
+                            b"\\x00\\x00\\x00\\x18ftypisom\\x00\\x00\\x02\\x00" + (b"mock-mp4-data" * 3)
+                        )
+
+                    upload = UploadFile(filename="scene.mp4", file=BytesIO(b"fake-source-video"))
+                    with patch.object(main, "probe_video_dimensions", return_value=source_dimensions), patch.object(
+                        main, "run_ffmpeg", side_effect=fake_ffmpeg
+                    ) as mocked:
+                        result = asyncio.run(main.render_video(
+                            [upload], None, None, "Aspect ratio test", "Bearer integration-test-token"
+                        ))
+
+                    normalize_command = mocked.call_args_list[0].args[0]
+                    video_filter = normalize_command[normalize_command.index("-vf") + 1]
+                    self.assertIn(expected_filter, video_filter)
+                    self.assertIn(f"pad={expected_canvas[0]}:{expected_canvas[1]}", video_filter)
+                    self.assertIn("fps=30", video_filter)
+                    self.assertTrue((main.OUTPUT_DIR / f"{result.id}.mp4").is_file())
+        finally:
+            main.API_TOKEN = original_token
+            main.OUTPUT_DIR = original_output
+
     def test_render_endpoint_rejects_invalid_final_mp4_output(self):
         original_token = main.API_TOKEN
         original_output = main.OUTPUT_DIR
