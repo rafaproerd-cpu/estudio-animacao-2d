@@ -271,7 +271,7 @@ class RenderServerTests(unittest.TestCase):
                     Path(arguments[-1]).write_bytes(b"\x00\x00\x00\x18ftypisom\x00\x00\x02\x00" + (b"mock-mp4-data" * 3))
 
                 upload = UploadFile(filename="first-scene.mp4", file=BytesIO(b"fake-source-video"))
-                with patch.object(main, "run_ffmpeg", side_effect=fake_ffmpeg) as mocked:
+                with patch.object(main, "probe_video_dimensions", return_value=(1920, 1080)), patch.object(main, "run_ffmpeg", side_effect=fake_ffmpeg) as mocked:
                     result = asyncio.run(main.render_video(
                         [upload],
                         None,
@@ -365,7 +365,7 @@ class RenderServerTests(unittest.TestCase):
                 def fake_ffmpeg(arguments):
                     Path(arguments[-1]).write_bytes(b"not-a-valid-mp4-file")
                 upload = UploadFile(filename="first-scene.mp4", file=BytesIO(b"fake-source-video"))
-                with patch.object(main, "run_ffmpeg", side_effect=fake_ffmpeg):
+                with patch.object(main, "probe_video_dimensions", return_value=(1920, 1080)), patch.object(main, "run_ffmpeg", side_effect=fake_ffmpeg):
                     with self.assertRaises(HTTPException) as raised:
                         asyncio.run(main.render_video(
                             [upload], None, None, "Minha história", "Bearer integration-test-token"
