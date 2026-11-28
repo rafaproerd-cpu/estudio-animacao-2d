@@ -137,6 +137,7 @@ ENTREGUE SOMENTE JSON VÁLIDO, sem Markdown, exatamente nesta estrutura:
 {{
   "title": "título curto, original e evocativo",
   "premise": "sinopse de 2 a 4 frases com protagonista, objetivo, conflito e diferencial da história",
+  "characterBible": "ficha visual fixa do protagonista e dos personagens recorrentes: nome, idade aparente, rosto, cabelo, pele, corpo, roupas, cores, acessórios e traços visuais que não podem mudar",
   "continuityRules": ["regras concretas de aparência, objetos, cenário e continuidade"],
   "scenes": [
     {{
@@ -218,6 +219,16 @@ CONTROLE DE QUALIDADE ANTES DE RESPONDER
         normalized["id"] = f"scene-{index}"
         normalized_scenes.append(normalized)
 
+    character_bible = str(result.get("characterBible", "")).strip()[:1800] or character.strip()[:1800]
+    if character_bible:
+        for normalized in normalized_scenes:
+            normalized["imagePrompt"] = (
+                normalized["imagePrompt"] + "\nFICHA VISUAL FIXA — preservar exatamente estes traços: " + character_bible
+            )[:6000]
+            normalized["videoPrompt"] = (
+                normalized["videoPrompt"] + "\nCONTINUIDADE DOS PERSONAGENS — não alterar identidade, rosto, cabelo, roupa, cores, proporções ou acessórios: " + character_bible
+            )[:6000]
+
     title = str(result.get("title", "")).strip()[:100] or clean_idea[:42]
     premise = str(result.get("premise", "")).strip()[:1200] or clean_idea
     continuity = result.get("continuityRules")
@@ -233,6 +244,7 @@ CONTROLE DE QUALIDADE ANTES DE RESPONDER
     return {
         "title": title,
         "premise": premise,
+        "characterBible": character_bible,
         "genre": genre,
         "duration": duration,
         "estimatedSeconds": _duration_in_seconds(duration),
