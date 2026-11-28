@@ -197,17 +197,25 @@ def generate_huggingface_image(
     if HF_SPACE_MODE == "flux_kontext":
         # Official FLUX.1 Kontext Space accepts an input image and edits it in place.
         # This mode is opt-in; the default text-only provider remains unchanged.
-        if not reference_image_bytes:
-            raise RuntimeError("O modo FLUX Kontext exige uma imagem-base para preservar a referência visual.")
         reference_path = None
         try:
-            suffix = ".png" if reference_image_bytes.startswith(b"\x89PNG") else ".jpg"
-            with tempfile.NamedTemporaryFile(prefix="estudio-kontext-reference-", suffix=suffix, delete=False) as temporary:
-                temporary.write(reference_image_bytes)
-                reference_path = Path(temporary.name)
+            if reference_image_bytes:
+                suffix = ".png" if reference_image_bytes.startswith(b"\x89PNG") else ".jpg"
+                with tempfile.NamedTemporaryFile(prefix="estudio-kontext-reference-", suffix=suffix, delete=False) as temporary:
+                    temporary.write(reference_image_bytes)
+                    reference_path = Path(temporary.name)
+            contextual_prompt = prompt
+            if reference_path:
+                contextual_prompt = (
+                    "Use the uploaded image as a strict visual identity reference for recurring characters only. "
+                    "Preserve their recognizable face, hair, age appearance, body proportions, clothing, colors and accessories. "
+                    "Create a genuinely new illustration for the requested scene: change the pose, action, camera framing, "
+                    "setting and background to match the scene description. Do not copy the reference image composition or background. "
+                    "Keep the same 2D illustration style. Scene: " + prompt
+                )
             result = client.predict(
-                str(reference_path),
-                prompt,
+                str(reference_path) if reference_path else None,
+                contextual_prompt,
                 int(seed if seed is not None else 42),
                 False,
                 2.5,
@@ -423,6 +431,12 @@ def generate_image(
             reference_image_bytes=reference_image_bytes,
         )
     except Exception as hf_error:
+        if HF_SPACE_MODE == "flux_kontext" and reference_image_bytes:
+            raise RuntimeError(
+                "FLUX Kontext não conseguiu gerar a cena usando a imagem-base. "
+                "A geração foi interrompida para não substituir silenciosamente a referência por um provedor só de texto. "
+                + str(hf_error)[:700]
+            ) from hf_error
         if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
             raise
         try:
