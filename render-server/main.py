@@ -34,6 +34,7 @@ APP_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = Path(os.getenv("RENDER_OUTPUT_DIR", str(APP_DIR / "outputs"))).resolve()
 API_TOKEN = os.getenv("ESTUDIO_RENDER_TOKEN", "").strip()
 FFMPEG = os.getenv("FFMPEG_PATH", "ffmpeg")
+FFPROBE = os.getenv("FFPROBE_PATH", "ffprobe")
 PIPER = os.getenv("PIPER_PATH", "piper")
 PIPER_VOICES_DIR = Path(os.getenv("PIPER_VOICES_DIR", str(APP_DIR / "voices"))).resolve()
 MAX_TTS_CHARACTERS = int(os.getenv("MAX_TTS_CHARACTERS", "6000"))
@@ -398,6 +399,32 @@ async def save_audio_upload(upload: UploadFile | None, target: Path) -> Path | N
     if total == 0:
         raise HTTPException(status_code=400, detail="O arquivo de áudio está vazio.")
     return target
+
+
+def probe_video_dimensions(video_path: Path) -> tuple[int, int]:
+    executable = shutil.which(FFPROBE)
+    if not executable:
+        raise HTTPException(status_code=503, detail="FFprobe não encontrado para identificar o formato dos vídeos.")
+    try:
+        result = subprocess.run(
+            [executable, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "json", str(video_path)],
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise HTTPException(status_code=504, detail="Não foi possível identificar o formato do vídeo a tempo.") from error
+    if result.returncode != 0:
+        raise HTTPException(status_code=422, detail="Não foi possível ler as dimensões do primeiro clipe.")
+    try:
+        streams = json.loads(result.stdout).get("streams", [])
+        width, height = int(streams[0]["width"]), int(streams[0]["height"])
+    except (ValueError, TypeError, KeyError, IndexError, json.JSONDecodeError) as error:
+        raise HTTPException(status_code=422, detail="O primeiro clipe não contém dimensões de vídeo válidas.") from error
+    if width <= 0 or height <= 0:
+        raise HTTPException(status_code=422, detail="O primeiro clipe tem dimensões inválidas.")
+    return width, height
 
 
 def run_ffmpeg(arguments: list[str]) -> None:
@@ -832,6 +859,7 @@ async def render_video(
         with tempfile.TemporaryDirectory(prefix="estudio2d-") as temp_dir:
             temp_path = Path(temp_dir)
             normalized_files: list[Path] = []
+            target_width, target_height = 576, 1024
 
             for index, upload in enumerate(clips):
                 extension = safe_extension(upload.filename)
@@ -850,11 +878,25 @@ async def render_video(
                 if total == 0:
                     raise HTTPException(status_code=400, detail=f"O clipe {index + 1} está vazio.")
 
+                if index == 0:
+                    source_width, source_height = probe_video_dimensions(source)
+                    if source_height > source_width:
+                        target_width, target_height = 576, 1024
+                    elif source_width > source_height:
+                        target_width, target_height = 1024, 576
+                    else:
+                        target_width, target_height = 768, 768
+
                 normalized = temp_path / f"normalized-{index:03d}.mp4"
+                video_filter = (
+                    f"scale={target_width}:{target_height}:force_original_aspect_ratio=decrease,"
+                    f"pad={target_width}:{target_height}:(ow-iw)/2:(oh-ih)/2,"
+                    "setsar=1,fps=30,format=yuv420p"
+                )
                 run_ffmpeg([
                     "-i", str(source),
                     "-map", "0:v:0",
-                    "-vf", "scale=1024:576:force_original_aspect_ratio=decrease,pad=1024:576:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p",
+                    "-vf", video_filter,
                     "-an",
                     "-c:v", "libx264",
                     "-preset", "veryfast",
