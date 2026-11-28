@@ -334,7 +334,11 @@ export default function App() {
         if (diagnosticResponse.ok) {
           const diagnostic = await diagnosticResponse.json();
           imageDiagnostic = diagnostic.connectivity === "reachable"
-            ? (diagnostic.reference_images_supported ? "Space HF acessível · referência visual suportada" : "Space HF acessível · geração por texto, sem referência visual")
+            ? (diagnostic.reference_images_supported
+              ? "Space HF acessível · referência visual suportada"
+              : diagnostic.fallback_provider
+                ? "Space HF acessível · sem referência visual; fallback " + diagnostic.fallback_provider + " também não usa imagem-base"
+                : "Space HF acessível · geração por texto, sem referência visual")
             : diagnostic.connectivity === "reachable_api_mismatch"
               ? "Space HF acessível, mas endpoint incompatível"
               : diagnostic.connectivity === "connection_failed"
@@ -1360,7 +1364,7 @@ export default function App() {
             <Text style={styles.body}>{selected.idea}</Text>
             <Text style={styles.label}>FICHA DO PERSONAGEM</Text>
             <TextInput value={selected.character} onChangeText={updateCharacter} multiline textAlignVertical="top" placeholder="Descreva aparência, roupa, personalidade e voz do personagem..." placeholderTextColor="#777789" style={styles.characterInput} />
-            <Text style={styles.note}>A ficha do personagem entra nos prompts e ajuda a manter a aparência. Atenção: o provedor gratuito de imagens atualmente configurado gera por texto e não aplica a imagem-base como referência visual; por isso, o rosto e os detalhes podem variar entre cenas.</Text>
+            <Text style={styles.note}>A ficha do personagem entra nos prompts e ajuda a orientar a aparência. Atenção: os provedores de imagem atualmente configurados geram por texto e não aplicam a imagem-base como referência visual, inclusive no fallback; por isso, rosto, roupa e detalhes podem variar entre cenas.</Text>
             {selected.scenes.map(scene => <View key={scene.title} style={styles.scene}>
               <Text style={styles.sceneTitle}>{scene.title}</Text>
               {scene.imageUri ? <><View style={styles.statusPill}><Text style={styles.statusReady}>✓ IMAGEM PRONTA</Text></View><Image source={{ uri: scene.imageUri }} style={styles.generatedImage} resizeMode="cover" /></> : <View style={styles.imagePlaceholder}><Text style={styles.note}>{busyScene === scene.title ? "GERANDO IMAGEM… aguarde a conclusão" : "IMAGEM PENDENTE · esta cena ainda não foi gerada"}</Text></View>}
