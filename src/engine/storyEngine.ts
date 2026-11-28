@@ -295,11 +295,16 @@ function makeScene(
       "Manter design, rosto, roupa, proporções e paleta do personagem idênticos às demais cenas. " +
       "Sem texto, legendas, logotipos ou marcas d'água.",
     videoPrompt:
-      "Animar a imagem como uma cena contínua de animação 2D cinematográfica. " +
-      `${camera}; ação: ${action} ` +
-      "Expressões naturais, movimento corporal coerente, cenário com profundidade 2.5D. " +
+      "Transformar a ilustração em uma cena de animação 2D com ação visível do início ao fim, não em uma imagem parada com zoom. " +
+      `${camera}; ação principal: ${action} ` +
+      "Traduzir a narração em uma ação física clara: o personagem deve deslocar o corpo, usar braços e mãos, olhar para o que está fazendo e interagir com objetos ou elementos do cenário que já estejam na ilustração. " +
+      "Mostrar uma pequena progressão em três momentos: preparação da ação, execução com movimento corporal e reação/pose final. " +
+      "Usar expressões faciais e linguagem corporal coerentes com a emoção da cena; incluir movimento secundário discreto no ambiente apenas quando houver elementos visíveis. " +
+      "Manter anatomia estável, sem deformações, sem trocar rosto, cabelo, roupa, cores, proporções ou identidade. " +
+      "A câmera pode complementar a ação, mas nunca substituir o movimento do personagem. " +
+      "Áudio será apenas narração externa adicionada depois: personagens não falam, sem diálogo, sem lip-sync, sem legendas, sem texto na tela e sem trilha sonora gerada. " +
       `Iluminação: ${lighting}. ` +
-      "Preservar rigorosamente o design do personagem e terminar em uma pose que permita continuidade.",
+      "Encerrar em uma pose natural que permita continuidade com a próxima cena.",
   };
 }
 
