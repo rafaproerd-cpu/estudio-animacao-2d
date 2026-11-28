@@ -1327,7 +1327,7 @@ export default function App() {
               <Text style={styles.primaryText}>{creatingStory ? "GERANDO ROTEIRO... AGUARDE" : "✦  CRIAR HISTÓRIA E PREENCHER CENAS"}</Text><Text style={styles.arrow}>{creatingStory ? "…" : "→"}</Text>
             </TouchableOpacity>
             {!!storyFeedback && <Text accessibilityLiveRegion="polite" style={styles.note}>{storyFeedback}</Text>}
-            <Text style={styles.note}>A IA cria o roteiro original pelo servidor conectado. A geração de imagens, animações e vozes depende dos respectivos motores hospedados.</Text>
+            <Text style={styles.note}>Quando o provedor de roteiro estiver configurado, a IA cria uma história original pelo servidor. Se ele não estiver disponível, o Estúdio avisa e oferece um roteiro-base local. Imagens, animações e vozes dependem dos respectivos motores hospedados.</Text>
           </View>
 
           <View style={styles.sectionHeader}>
