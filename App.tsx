@@ -364,11 +364,18 @@ export default function App() {
       } catch {
         agnesDiagnostic = "não foi possível consultar a Agnes";
       }
-      const status = `Conectado · roteiro: ${story?.status || "desconhecido"} · imagem: ${image?.status || "desconhecido"} (${imageAuthentication}) · ${imageDiagnostic} · Agnes: ${agnesDiagnostic} · vídeo: ${video?.status || "desconhecido"} · áudio: ${audio?.status || "desconhecido"}`;
+      const videoMode = video?.status === "ready_motion_only"
+        ? "somente movimento de câmera; personagens não são animados"
+        : video?.status === "agnes_configured_unverified"
+          ? "Agnes Flash configurada; geração depende de fila e cota"
+          : video?.status === "remote_space_ready"
+            ? "Hugging Face remoto; sujeito à cota disponível"
+            : video?.message || video?.status || "não informado";
+      const status = `Conectado · roteiro: ${story?.status || "desconhecido"} · imagem: ${image?.status || "desconhecido"} (${imageAuthentication}) · ${imageDiagnostic} · Agnes: ${agnesDiagnostic} · vídeo: ${video?.status || "desconhecido"} (${videoMode}) · áudio: ${audio?.status || "desconhecido"}`;
       setConnectionStatus(status);
       Alert.alert(
         "Motor conectado",
-        `API conectada. Roteiro: ${story?.message || story?.status || "não informado"} Imagem: ${image?.message || image?.status || "não informado"}. Diagnóstico HF: ${imageDiagnostic}. Agnes: ${agnesDiagnostic}. Vídeo: ${video?.message || video?.status || "não informado"} Áudio: ${audio?.message || audio?.status || "não informado"}`
+        `API conectada. Roteiro: ${story?.message || story?.status || "não informado"} Imagem: ${image?.message || image?.status || "não informado"}. Diagnóstico HF: ${imageDiagnostic}. Agnes: ${agnesDiagnostic}. Vídeo: ${videoMode}. Áudio: ${audio?.message || audio?.status || "não informado"}`
       );
     } catch (error) {
       setConnectionStatus("Falha na conexão");
