@@ -345,11 +345,29 @@ export default function App() {
       } catch (diagnosticError) {
         imageDiagnostic = "não foi possível consultar o diagnóstico do Space HF";
       }
-      const status = `Conectado · roteiro: ${story?.status || "desconhecido"} · imagem: ${image?.status || "desconhecido"} (${imageAuthentication}) · ${imageDiagnostic} · vídeo: ${video?.status || "desconhecido"} · áudio: ${audio?.status || "desconhecido"}`;
+      let agnesDiagnostic = "não consultada";
+      try {
+        const agnesResponse = await fetch(`${url}/v1/diagnostics/agnes`, { headers });
+        if (agnesResponse.ok) {
+          const agnes = await agnesResponse.json();
+          agnesDiagnostic = agnes.authenticated
+            ? `chave autenticada · modelo Flash ${agnes.video_model_listed ? "listado" : "não listado"}`
+            : agnes.status === "authentication_failed"
+              ? "chave recusada pelo provedor"
+              : agnes.status === "key_missing"
+                ? "chave AGNES_API_KEY ausente no servidor"
+                : "provedor indisponível para consulta";
+        } else {
+          agnesDiagnostic = `diagnóstico indisponível (HTTP ${agnesResponse.status})`;
+        }
+      } catch {
+        agnesDiagnostic = "não foi possível consultar a Agnes";
+      }
+      const status = `Conectado · roteiro: ${story?.status || "desconhecido"} · imagem: ${image?.status || "desconhecido"} (${imageAuthentication}) · ${imageDiagnostic} · Agnes: ${agnesDiagnostic} · vídeo: ${video?.status || "desconhecido"} · áudio: ${audio?.status || "desconhecido"}`;
       setConnectionStatus(status);
       Alert.alert(
         "Motor conectado",
-        `API conectada. Roteiro: ${story?.message || story?.status || "não informado"} Imagem: ${image?.message || image?.status || "não informado"}. Diagnóstico HF: ${imageDiagnostic}. Vídeo: ${video?.message || video?.status || "não informado"} Áudio: ${audio?.message || audio?.status || "não informado"}`
+        `API conectada. Roteiro: ${story?.message || story?.status || "não informado"} Imagem: ${image?.message || image?.status || "não informado"}. Diagnóstico HF: ${imageDiagnostic}. Agnes: ${agnesDiagnostic}. Vídeo: ${video?.message || video?.status || "não informado"} Áudio: ${audio?.message || audio?.status || "não informado"}`
       );
     } catch (error) {
       setConnectionStatus("Falha na conexão");
