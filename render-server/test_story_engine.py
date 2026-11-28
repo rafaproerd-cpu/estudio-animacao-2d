@@ -79,6 +79,23 @@ class StoryEngineTests(unittest.TestCase):
         self.assertEqual(plan["scenes"][0]["action"], "A protagonista encontra uma pista diferente 1.")
         self.assertEqual(plan["estimatedSeconds"], 30)
 
+
+    def test_rejects_scene_without_narrator_text(self):
+        broken = valid_story()
+        broken["scenes"][0]["dialogue"] = ""
+        response = {"choices": [{"message": {"content": json.dumps(broken)}}]}
+        class FakeResponse:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self): return json.dumps(response).encode()
+        with patch.object(story_engine, "STORY_API_URL", "https://example.test/v1/chat/completions"), patch.object(
+            story_engine, "STORY_API_KEY", "secret"
+        ), patch.object(story_engine, "STORY_MODEL", "test-model"), patch.object(
+            story_engine.urllib.request, "urlopen", return_value=FakeResponse()
+        ):
+            with self.assertRaisesRegex(ValueError, "sem narração do narrador"):
+                story_engine.generate_story_plan("Uma ideia", "Aventura", "30 segundos", "Personagem")
+
     def test_converts_supported_duration_labels_to_seconds(self):
         self.assertEqual(story_engine._duration_in_seconds("30 segundos"), 30)
         self.assertEqual(story_engine._duration_in_seconds("1 minuto"), 60)
