@@ -263,7 +263,7 @@ def video_generation_completion_message(engine_status: dict[str, object]) -> str
     if engine_status.get("model") == "Wan2.2 TI2V 5B":
         return "Clipe animado com Wan2.2: movimento gerado por IA."
     if engine_status.get("model") == "agnes-video-2.5-flash":
-        return "Clipe gerado por IA usando Agnes Video 2.5 Flash ou, se a fila gratuita estiver cheia, o motor alternativo gratuito do Hugging Face."
+        return "Clipe gerado por IA usando Agnes Video 2.5 Flash. Se a fila estiver cheia, a geração informa a falha sem acionar outro provedor automaticamente."
     return "Clipe de vídeo concluído. Consulte as capacidades do motor para identificar o modo usado."
 
 
