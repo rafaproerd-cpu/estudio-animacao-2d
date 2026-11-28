@@ -128,8 +128,8 @@ e entregue uma revelação justa; em aventura/ação, varie set pieces e objetiv
 escolhas e relações; em fantasia, estabeleça regras e custos para o extraordinário.
 
 DIREÇÃO PARA ANIMAÇÃO
-- Planeje entre 4 e 30 cenas, em ritmo compatível com a duração. Cada cena deve funcionar como um clipe
-  curto e animável, com uma ação principal legível.
+- Gere EXATAMENTE {planned_scene_count} cenas, nem mais nem menos. A quantidade foi calculada para cobrir a duração escolhida em clipes de aproximadamente 5 segundos.
+- Cada cena deve funcionar como um clipe curto e animável, com uma ação principal legível.
 - Pense em episódios de uma série: se a ideia pedir continuação, termine com um gancho forte; se for
   uma história fechada, entregue conclusão satisfatória. Não force um "continua" em toda história.
 - A narração deve caber no tempo real do clipe. Cada cena terá aproximadamente
@@ -219,8 +219,12 @@ CONTROLE DE QUALIDADE ANTES DE RESPONDER
         raise RuntimeError("O provedor retornou conteúdo de roteiro inválido.")
     result = _extract_json(content)
     scenes = result.get("scenes")
-    if not isinstance(scenes, list) or not 4 <= len(scenes) <= 30:
-        raise ValueError("O roteiro precisa conter entre 4 e 30 cenas.")
+    if not isinstance(scenes, list) or len(scenes) != planned_scene_count:
+        actual_count = len(scenes) if isinstance(scenes, list) else 0
+        raise ValueError(
+            f"O roteiro precisa conter exatamente {planned_scene_count} cenas para respeitar a duração escolhida; "
+            f"o provedor retornou {actual_count}."
+        )
     required = ("title", "purpose", "action", "dialogue", "shot", "camera", "lighting", "imagePrompt", "videoPrompt")
     normalized_scenes = []
     for index, scene in enumerate(scenes, start=1):
